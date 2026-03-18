@@ -2645,7 +2645,7 @@ function escapeHTML(s){
 function safeSrc(url){
   if(!url)return'';
   const s=String(url).trim();
-  if(s.startsWith('data:image/')||s.startsWith('https://')||s.startsWith('http://'))return s;
+  if(s.startsWith('data:image/')||s.startsWith('https://'))return s; // M-5 FIX: removed http:// — require TLS
   return'';
 }
 // ═══════════════════════════════════════════════════════════════
@@ -3082,7 +3082,9 @@ async function syncToFirebase(){ // PATCHED: write only changed records/metadata
     _fbPendingStoreOps=Object.create(null);
     _fbPendingMetaMerge={};
     setStorageChip('firebase-offline');
-    console.warn('HAMMS: Offline — unsaved changes were discarded to prevent multi-user collisions. Please reconnect and re-save.');
+    console.warn('HAMMS: Offline — unsaved changes were discarded to prevent multi-user collisions.');
+    // H-2 FIX: show user-facing notification instead of silent discard
+    try{ const t=document.createElement('div');t.className='toast-offline';t.textContent='You are offline. Changes were not saved. Please reconnect and try again.';t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);';document.body.appendChild(t);setTimeout(()=>t.remove(),5000);}catch(_){}
     return;
   }
   _fbWriteInProgress=true;
@@ -3309,7 +3311,7 @@ function closeSidebar(){
 function navigate(p){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
+  const _pgEl=document.getElementById('page-'+p); if(!_pgEl) return; _pgEl.classList.add('active'); // L-3 FIX: null guard
   document.querySelectorAll('.nav-item').forEach(x=>{if(x.getAttribute('onclick')?.includes("'"+p+"'"))x.classList.add('active');});
   // Auto-close sidebar on mobile after navigation
   if(window.innerWidth <= 768) closeSidebar();
@@ -3711,11 +3713,11 @@ function fillAssetDrop(sel=''){
   // ── Step 5: hint feedback ─────────────────────────────────
   if(hint){
     if(!assets.length&&loc.length>=1){
-      hint.innerHTML='<span style="color:#c0392b;">⚠ No registered '+sec+' assets found for "<strong>'+
-        locRaw.replace(/</g,'&lt;')+'</strong>". Check Asset Registry or clear location to see all '+sec+' assets.</span>';
+      hint.innerHTML='<span style="color:#c0392b;">⚠ No registered '+escapeHTML(sec)+' assets found for "<strong>'+
+        escapeHTML(locRaw)+'</strong>". Check Asset Registry or clear location to see all '+escapeHTML(sec)+' assets.</span>';
     }else if(assets.length&&loc.length>=1){
-      hint.innerHTML='<span style="color:#1f9452;">✔ '+assets.length+' '+sec+' asset'+(assets.length>1?'s':'')+
-        ' in "<strong>'+locRaw.replace(/</g,'&lt;')+'</strong>"</span>';
+      hint.innerHTML='<span style="color:#1f9452;">✔ '+assets.length+' '+escapeHTML(sec)+' asset'+(assets.length>1?'s':'')+
+        ' in "<strong>'+escapeHTML(locRaw)+'</strong>"</span>';
     }else if(assets.length&&!loc){
       hint.innerHTML='<span style="color:var(--muted);">'+assets.length+' '+sec+
         ' asset'+(assets.length>1?'s':'')+' registered — type a location to narrow down</span>';
@@ -3737,7 +3739,7 @@ function renderMaterialRows(){
   c.innerHTML=_woMaterials.map((m,i)=>`<div class="mpicker-row">
     <select style="flex:2;" onchange="_woMaterials[${i}].invId=parseInt(this.value)||''">
       <option value="">Select item…</option>
-      ${inv.map(it=>`<option value="${it.id}" ${m.invId===it.id?'selected':''}>${it.description} (${it.qty} ${it.unit||''})</option>`).join('')}
+      ${inv.map(it=>`<option value="${it.id}" ${m.invId===it.id?'selected':''}>${escapeHTML(it.description)} (${it.qty} ${escapeHTML(it.unit||'')})</option>`).join('')}
     </select>
     <input type="number" min="0.01" step="0.01" value="${m.qty||1}" placeholder="Qty" style="flex:0.6;min-width:60px;" onchange="_woMaterials[${i}].qty=parseFloat(this.value)||1">
     <input type="text" value="${m.issuedTo||''}" placeholder="Issued To" style="flex:1.2;" oninput="_woMaterials[${i}].issuedTo=this.value">
@@ -4240,7 +4242,7 @@ function renderWaste(){
   const allWaste=DB.g('waste');
   const cd=buildMonthlyData(allWaste,'date','volume',12);
   drawBarLineChart('waste-chart',cd.labels,cd.barData,cd.lineData,'#cc3333','#0f8c6e','Volume (kg)');
-  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" data-photo-src="${escapeHTML(w.photo)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${w.type}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
+  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" data-photo-src="${escapeHTML(w.photo)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
 }
 
 const WASTE_THRESH={Infectious:10,Pathological:10,Chemical:10,Pharmaceutical:20,Sharps:5,General:50,Radioactive:1};
@@ -4259,7 +4261,7 @@ function renderWasteFcast(){
   if(entriesTbody){
     const sorted=[...wastes].sort((a,b)=>b.id-a.id);
     entriesTbody.innerHTML=sorted.length?sorted.map(w=>`<tr>
-      <td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${w.type}</td>
+      <td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td>
       <td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td>
       <td>${emblBadge(w.emb)}</td>
       <td style="max-width:110px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td>
@@ -4273,7 +4275,7 @@ function renderWasteFcast(){
 // ═══════════════════════════════════════
 //  EXPORT / IMPORT
 // ═══════════════════════════════════════
-function dl(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();}
+function dl(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);} // M-7 FIX: revoke blob URL to prevent memory leak
 function csvRow(r){return r.map(c=>{const v=(c===0||c===false)?c:(Number.isNaN(c)||c==null?'':c);return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}
 function exportCSV(type){
   if(type==='wo'){const h=['WO#','Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Duration (days)','Assigned','Materials Used','Delay Reason','Delay Reason Other','Remarks'];const rows=DB.g('wo').map(w=>['WO-'+String(w.id).padStart(4,'0'),w.section,w.asset,w.location,w.description,w.priority,(overdue(w)?'Overdue':w.status),w.dateStart,w.targetCompletionDate||'',w.dateEnd,(w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd):''),w.assigned,(w.materials||[]).map(m=>m.name+'×'+m.qty).join('; '),w.delayReason||'',w.delayReasonOther||'',w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WorkOrders_'+today()+'.csv');}
@@ -4298,6 +4300,18 @@ function exportJSON(){
   _fbMetaState.lastExportDate=new Date().toISOString();
   queueScalarSync('lastExportDate',_fbMetaState.lastExportDate);
 }
+function applyParsed(d){ // C-1 FIX: define missing function so JSON import/restore actually works
+  if(!d || typeof d !== 'object') throw new Error('Invalid backup data');
+  const prev={};
+  STORES.forEach(store=>{
+    prev[store]=Array.isArray(_memDB[store]) ? cloneForFirebase(_memDB[store]) : [];
+    const arr=Array.isArray(d[store]) ? d[store] : [];
+    applyStoreData(store, arr);
+    queueStoreSync(store, prev[store], _memDB[store]);
+  });
+  if(d.inpatientToday != null) { _memDB.inpatientToday = d.inpatientToday; queueScalarSync('inpatientToday', d.inpatientToday); }
+  if(d.personnel) { _memDB.personnel = cloneForFirebase(d.personnel); queueScalarSync('personnel', d.personnel); }
+}
 function importJSON(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
@@ -4309,7 +4323,7 @@ function importJSON(e){
       await flushAll();
       alert('Backup restored successfully.');
       renderDash();updateInvAlerts();
-    }catch{alert('Invalid JSON file.');}
+    }catch(err){alert('Import failed: '+(err.message||'Invalid JSON file.'));}
   };
   r.readAsText(f);
 }
@@ -5203,7 +5217,7 @@ function renderWaterLogs(){
   list=list.filter(l=>matchMonthYear(l.date,'wl')); // month/year filter
   populateDateFilters('wl',DB.g('waterLogs'),'date');
   if(q)list=list.filter(l=>(l.ward||'').toLowerCase().includes(q)||(l.mitigation||'').toLowerCase().includes(q));
-  list.sort((a,b)=>b.date.localeCompare(a.date));
+  list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')); // L-4 FIX: null guard on date
   document.getElementById('water-log-tbody').innerHTML=list.length?list.map(l=>{
     const safeImgUrl=safeSrc(l.resultImage);
     const imgBtn=safeImgUrl?`<button class="btn btn-sm btn-outline" data-photo-src="${escapeHTML(l.resultImage)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">View</button>`:'—';
@@ -5211,9 +5225,9 @@ function renderWaterLogs(){
       <td class="mono" style="font-size:11px;">WL-${String(l.id).padStart(4,'0')}</td>
       <td>${fmt(l.date)}</td>
       <td style="font-weight:600;">${escapeHTML(l.ward)}</td>
-      <td style="font-size:12px;">${l.testType||'—'}</td>
+      <td style="font-size:12px;">${escapeHTML(l.testType)||'—'}</td>
       <td>${wsBadge(l.result)}</td>
-      <td class="mono" style="font-size:12px;">${l.bacteriaCount||'—'}</td>
+      <td class="mono" style="font-size:12px;">${escapeHTML(l.bacteriaCount)||'—'}</td>
       <td style="max-width:150px;white-space:normal;font-size:12px;">${escapeHTML(l.mitigation)||'—'}</td>
       <td>${imgBtn}</td>
       <td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(l.remarks)||'—'}</td>
@@ -5315,8 +5329,6 @@ function renderWaterTank(){
 }
 
 
-async function disconnectFile(){ showFirebaseStatus(); }
-
 
 // ═══════════════════════════════════════
 // PATCH: issuance log edit support — openIssueEditModal + saveIssuanceEdit
@@ -5355,11 +5367,12 @@ function saveIssuanceEdit(){
   const log=logs.find(x=>x.id===_editIssuance);if(!log)return;
   const oldQty=log.qtyIssued||0;
   const diff=qty-oldQty; // positive = more issued, negative = returned
-  // Adjust inventory stock
+  // Adjust inventory stock — M-4 FIX: validate before mutating
   const item=inv.find(i=>i.id===log.invId);
   if(item){
-    item.qty=parseFloat((item.qty-diff).toFixed(4));
-    if(item.qty<0){alert('Adjusted quantity would exceed available stock. Check inventory levels.');return;}
+    const newQty=parseFloat((item.qty-diff).toFixed(4));
+    if(newQty<0){alert('Adjusted quantity would exceed available stock. Check inventory levels.');return;}
+    item.qty=newQty;
   }
   log.qtyIssued=qty;
   log.date=document.getElementById('m-iss-date').value;
@@ -9827,26 +9840,33 @@ This CANNOT be undone. Continue?`);
 
     Object.keys(emptyDB).forEach(k=>{ _memDB[k]=emptyDB[k]; });
 
-    const emptyPayload = JSON.stringify(_memDB, null, 2);
-
     if(window._FB?.enabled && window._FB?.db){
       try{
         const { db, doc, getDocs, collection, writeBatch, setDoc, serverTimestamp } = window._FB;
-        const batch=writeBatch(db);
+        // H-1 FIX: chunk deletes into batches of 450 to stay under Firestore 500-op limit
+        const allOps=[];
         for(const store of STORES){
           const snap=await getDocs(collection(db,'hammsStores',store,'records'));
-          snap.forEach(ds=>batch.delete(ds.ref));
+          snap.forEach(ds=>allOps.push({type:'delete',ref:ds.ref}));
         }
-        batch.delete(doc(db,'hamms','mainData')); // PATCHED: remove legacy shared document so deleted stores never resurrect from fallback
-        batch.set(doc(db,'hammsMeta','state'),{
+        allOps.push({type:'delete',ref:doc(db,'hamms','mainData')}); // remove legacy shared document
+        allOps.push({type:'set',ref:doc(db,'hammsMeta','state'),data:{
           storeInitialized: Object.fromEntries(STORES.map(store=>[store,true])),
           inpatientToday: 0,
           personnel: {},
           updatedAt: serverTimestamp(),
           updatedBy: 'FACTORY_RESET',
           resetAt: new Date().toISOString()
-        }, { merge:false });
-        await batch.commit();
+        }});
+        const CHUNK=450;
+        for(let i=0;i<allOps.length;i+=CHUNK){
+          const batch=writeBatch(db);
+          allOps.slice(i,i+CHUNK).forEach(op=>{
+            if(op.type==='delete') batch.delete(op.ref);
+            else batch.set(op.ref, op.data, {merge:false});
+          });
+          await batch.commit();
+        }
         _fbLegacyParsed={}; // PATCHED: clear local legacy fallback cache after cloud reset
         _fbMetaState={storeInitialized:Object.fromEntries(STORES.map(store=>[store,true]))};
         _fbPendingStoreOps=Object.create(null);
