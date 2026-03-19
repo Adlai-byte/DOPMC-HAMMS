@@ -14,6 +14,23 @@
     "productivity",
     "utilities"
   ],
+  "shortcuts": [
+    {
+      "name": "Work Orders",
+      "url": "/?page=workorders",
+      "description": "Manage work orders"
+    },
+    {
+      "name": "Assets",
+      "url": "/?page=assets",
+      "description": "View asset registry"
+    },
+    {
+      "name": "Water Monitoring",
+      "url": "/?page=watertank",
+      "description": "Water supply monitoring"
+    }
+  ],
   "icons": [
     {
       "src": "/icon-192.png",

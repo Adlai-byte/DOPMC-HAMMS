@@ -36,6 +36,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   const s2=document.getElementById('dopmc-seal-sidebar');
   if(s1) s1.src=DOPMC_SEAL_SRC;
   if(s2) s2.src=DOPMC_SEAL_SRC;
+  // a11y: auto-associate labels with their inputs
+  document.querySelectorAll('.form-group label:not([for])').forEach(lbl=>{
+    const inp=lbl.parentElement.querySelector('input[id],select[id],textarea[id]');
+    if(inp) lbl.setAttribute('for',inp.id);
+  });
 });
 // PATCH END
   const FIREBASE_CONFIG = {
@@ -85,7 +90,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     onAuthStateChanged(auth, user => {
       if (user) {
-        console.log('HAMMS: logged in as', user.email||user.uid);
+        console.log('HAMMS: user authenticated');
         window._FB.uid   = user.uid;
         window._FB.email = user.email;
         // Hide login overlay, show app
@@ -382,6 +387,7 @@ tr.row-warn td{background:#fffdf0;}
 .form-group label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.8px;}
 .form-group input,.form-group select,.form-group textarea{border:1px solid var(--border);border-radius:3px;padding:8px 11px;font-size:13px;color:var(--text);background:#fff;width:100%;font-family:inherit;}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--teal);box-shadow:0 0 0 2px rgba(15,140,110,0.12);}
+.btn:focus-visible,button:focus-visible,.nav-item:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
 .form-group textarea{resize:vertical;min-height:64px;}
 .form-hint{font-size:11px;color:var(--muted);margin-top:2px;}
 
@@ -709,7 +715,7 @@ tr.row-warn td{background:#fffdf0;}
       <!-- PATCH START: Firebase status indicator -->
       <div id="fb-load-status" style="text-align:center;font-size:11px;color:#a0b0c0;margin-bottom:8px;min-height:16px;transition:opacity 0.5s;">Connecting to live data…</div>
       <!-- PATCH END -->
-      <button id="login-btn"  onclick="hammsLogin()" style="
+      <button type="button" id="login-btn"  onclick="hammsLogin()" style="
         width:100%;padding:13px;
         background:linear-gradient(135deg,#0f8c6e,#0a6b54);
         color:#fff;border:none;border-radius:7px;
@@ -802,31 +808,31 @@ async function hammsLogin(){
   <div class="sb-alert-pill" id="sb-inv-alert">⚠ Critical Stock — Action Needed</div>
   <nav>
     <div class="nav-group-label">Overview</div>
-    <div class="nav-item active" onclick="navigate('dashboard')"><span class="ni-icon">⊞</span>Dashboard</div>
+    <div class="nav-item active" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('dashboard')"><span class="ni-icon">⊞</span>Dashboard</div>
     <div class="nav-group-label">Maintenance</div>
-    <div class="nav-item" onclick="navigate('workorders')"><span class="ni-icon">📋</span>Work Orders</div>
-    <div class="nav-item" onclick="navigate('assets')"><span class="ni-icon">🔩</span>Asset Registry</div>
-    <div class="nav-item" onclick="navigate('forecast')"><span class="ni-icon">📈</span>WO Forecast</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('workorders')"><span class="ni-icon">📋</span>Work Orders</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('assets')"><span class="ni-icon">🔩</span>Asset Registry</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('forecast')"><span class="ni-icon">📈</span>WO Forecast</div>
     <div class="nav-group-label">Inventory</div>
-    <div class="nav-item" onclick="navigate('inventory')"><span class="ni-icon">📦</span>Materials Inventory<span class="nav-badge" id="nb-inv">0</span></div>
-    <div class="nav-item" onclick="navigate('issuance')"><span class="ni-icon">📤</span>Issuance Log</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('inventory')"><span class="ni-icon">📦</span>Materials Inventory<span class="nav-badge" id="nb-inv">0</span></div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('issuance')"><span class="ni-icon">📤</span>Issuance Log</div>
     <div class="nav-group-label">EMB Compliance</div>
-    <div class="nav-item" onclick="navigate('waste')"><span class="ni-icon">♻</span>Waste Management</div>
-    <div class="nav-item" onclick="navigate('wastefcast')"><span class="ni-icon">📊</span>Waste Forecast</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('waste')"><span class="ni-icon">♻</span>Waste Management</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wastefcast')"><span class="ni-icon">📊</span>Waste Forecast</div>
     <div class="nav-group-label">Facilities</div>
-    <div class="nav-item" onclick="navigate('safety')"><span class="ni-icon">🦺</span>Safety Management<span class="nav-badge" id="nb-safety" style="display:none;">0</span></div>
-    <div class="nav-item" onclick="navigate('projects')"><span class="ni-icon">🏗</span>Project Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('safety')"><span class="ni-icon">🦺</span>Safety Management<span class="nav-badge" id="nb-safety" style="display:none;">0</span></div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('projects')"><span class="ni-icon">🏗</span>Project Monitoring</div>
     <div class="nav-group-label">Water Safety</div>
-    <div class="nav-item" onclick="navigate('water')"><span class="ni-icon">💧</span>Water Safety Log</div>
-    <div class="nav-item" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('water')"><span class="ni-icon">💧</span>Water Safety Log</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
     <div class="nav-group-label">Environmental</div> <!-- PATCH: effluent monitoring -->
-    <div class="nav-item" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
     <div class="nav-group-label">Production</div> <!-- PATCH: production tabs -->
-    <div class="nav-item" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
-    <div class="nav-item" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
     <div class="nav-group-label">System</div>
-    <div class="nav-item" onclick="navigate('reports')"><span class="ni-icon">🖨</span>Reports &amp; Export</div>
-    <div class="nav-item" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('reports')"><span class="ni-icon">🖨</span>Reports &amp; Export</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
   </nav>
   <div class="sb-footer">General Services Division</div>
 </div>
@@ -835,7 +841,7 @@ async function hammsLogin(){
 <div id="main">
   <div id="topbar">
     <div class="tb-left">
-      <button id="btn-menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
+      <button type="button" id="btn-menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
       <span class="tb-bc">DOPMC / GSD</span>
       <div class="tb-div"></div>
       <span id="page-title">Dashboard</span>
@@ -844,7 +850,7 @@ async function hammsLogin(){
       <span class="tb-chip chip-firebase" id="storage-chip">CONNECTING</span>
       <span class="tb-chip chip-alert" id="top-inv-alert" onclick="navigate('inventory')">⚠ Low Stock</span>
       <span class="tb-chip chip-date" id="today-chip"></span>
-      <button id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
+      <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
     </div>
   </div>
   <!-- Storage banner -->
@@ -891,14 +897,14 @@ async function hammsLogin(){
       </div>
       <div class="two-col mb18">
         <div class="card">
-          <div class="card-header"><h3>Recent Work Orders</h3><button class="btn btn-sm btn-primary" onclick="navigate('workorders')">View All</button></div>
+          <div class="card-header"><h3>Recent Work Orders</h3><button type="button" class="btn btn-sm btn-primary" onclick="navigate('workorders')">View All</button></div>
           <div class="tbl-wrap"><table>
             <thead><tr><th>WO #</th><th>Section</th><th>Asset</th><th>Status</th><th>Started</th></tr></thead>
             <tbody id="dash-wo-body"></tbody>
           </table></div>
         </div>
         <div class="card">
-          <div class="card-header"><h3>Waste — This Week</h3><button class="btn btn-sm btn-outline" onclick="navigate('waste')">Log Waste</button></div>
+          <div class="card-header"><h3>Waste — This Week</h3><button type="button" class="btn btn-sm btn-outline" onclick="navigate('waste')">Log Waste</button></div>
           <div class="tbl-wrap"><table>
             <thead><tr><th>Waste Type</th><th>Volume (kg)</th><th>EMB Status</th></tr></thead>
             <tbody id="dash-waste-body"></tbody>
@@ -924,10 +930,10 @@ async function hammsLogin(){
           <input type="text" id="wof-search" placeholder="Search…" oninput="renderWO()" style="width:170px;">
         </div>
         <div style="display:flex;gap:7px;align-items:center;">
-          <button class="btn btn-ghost" onclick="downloadWOTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-outline" onclick="document.getElementById('wo-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadWOTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('wo-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="wo-csv-upload" accept=".csv" style="display:none;" onchange="importWOCSV(event)">
-          <button class="btn btn-primary" onclick="openWOModal()">+ New Work Order</button>
+          <button type="button" class="btn btn-primary" onclick="openWOModal()">+ New Work Order</button>
         </div>
       </div>
       <!-- PATCH START: Work Orders KPI stat-grid -->
@@ -953,10 +959,10 @@ async function hammsLogin(){
           <select id="af-year" onchange="renderAssets()"><option value="">All Years</option></select>
           <input type="text" id="af-search" placeholder="Search asset…" oninput="renderAssets()" style="width:170px;">
         </div>
-        <button class="btn btn-primary" onclick="openAssetModal()">+ Add Asset</button>
-          <button class="btn btn-outline" onclick="document.getElementById('asset-csv-upload').click()">📤 Upload CSV</button>
+        <button type="button" class="btn btn-primary" onclick="openAssetModal()">+ Add Asset</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('asset-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="asset-csv-upload" accept=".csv" style="display:none;" onchange="importAssetCSV(event)">
-          <button class="btn btn-ghost" onclick="downloadAssetTemplate()">⬇ Asset Template</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadAssetTemplate()">⬇ Asset Template</button>
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
@@ -979,10 +985,10 @@ async function hammsLogin(){
           <input type="text" id="sf-search" placeholder="Search issue…" oninput="renderSafety()" style="width:160px;">
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadSafetyTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
-          <button class="btn btn-outline" onclick="document.getElementById('safety-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadSafetyTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('safety-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="safety-csv-upload" accept=".csv" style="display:none;" onchange="importSafetyCSV(event)">
-          <button class="btn btn-primary" onclick="openSafetyModal()">+ Log Safety Issue</button>
+          <button type="button" class="btn btn-primary" onclick="openSafetyModal()">+ Log Safety Issue</button>
         </div>
       </div>
       <div class="two-col mb14">
@@ -1012,10 +1018,10 @@ async function hammsLogin(){
           <input type="text" id="pj-search" placeholder="Search project…" oninput="renderProjects()" style="width:160px;">
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadProjectTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV upload for project monitoring -->
-          <button class="btn btn-outline" onclick="document.getElementById('proj-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadProjectTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV upload for project monitoring -->
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('proj-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="proj-csv-upload" accept=".csv" style="display:none;" onchange="importProjectCSV(event)">
-          <button class="btn btn-primary" onclick="openProjectModal()">+ Add Project</button>
+          <button type="button" class="btn btn-primary" onclick="openProjectModal()">+ Add Project</button>
         </div>
       </div>
       <div class="stat-grid mb14" id="proj-stat-row"></div>
@@ -1038,10 +1044,10 @@ async function hammsLogin(){
           <input type="text" id="wl-search" placeholder="Search…" oninput="renderWaterLogs()" style="width:140px;">
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadWaterLogTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
-          <button class="btn btn-outline" onclick="document.getElementById('wlog-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadWaterLogTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('wlog-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="wlog-csv-upload" accept=".csv" style="display:none;" onchange="importWaterLogCSV(event)">
-          <button class="btn btn-primary" onclick="openWaterLogModal()">+ Log Water Test</button>
+          <button type="button" class="btn btn-primary" onclick="openWaterLogModal()">+ Log Water Test</button>
         </div>
       </div>
       <div class="card mb14">
@@ -1067,8 +1073,8 @@ async function hammsLogin(){
           <select id="wt-year" onchange="renderWaterTank();renderTankTrends();renderTankKPIs();"><option value="">All Years</option></select>
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="openWaterSettings()" style="font-size:13px;padding:7px 14px;">⚙ Settings</button>
-          <button class="btn btn-primary" onclick="openTankModal()" style="font-size:13px;padding:7px 18px;">＋ Log Level Reading</button>
+          <button type="button" class="btn btn-ghost" onclick="openWaterSettings()" style="font-size:13px;padding:7px 14px;">⚙ Settings</button>
+          <button type="button" class="btn btn-primary" onclick="openTankModal()" style="font-size:13px;padding:7px 18px;">＋ Log Level Reading</button>
         </div>
       </div>
 
@@ -1231,14 +1237,14 @@ async function hammsLogin(){
         <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
           <h3>Reading Log</h3>
           <div style="display:flex;gap:6px;">
-            <button class="btn btn-sm btn-outline" onclick="downloadTankCSVTemplate()" title="Download CSV template with 1 sample row">📥 CSV Template</button>
-            <button class="btn btn-sm btn-outline" onclick="document.getElementById('wtank-csv-upload').click()">📤 Import CSV</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="downloadTankCSVTemplate()" title="Download CSV template with 1 sample row">📥 CSV Template</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="document.getElementById('wtank-csv-upload').click()">📤 Import CSV</button>
             <input type="file" id="wtank-csv-upload" accept=".csv" style="display:none;" onchange="importWaterTankCSV(event)">
-            <button class="btn btn-sm btn-outline" onclick="exportCSV('watertank')" title="Export raw readings + computations">📊 Export Raw Log</button>
-            <button class="btn btn-sm btn-outline" onclick="exportCSV('watertank-daily')" title="Export daily summary">📅 Daily Summary</button>
-            <button class="btn btn-sm btn-outline" onclick="exportCSV('watertank-activity')" title="Export activity/demand drivers">👥 Activity Log</button>
-            <button class="btn btn-sm btn-outline" onclick="exportCSV('watertank-fixtures')" title="Export fixture snapshot">🔧 Fixture Snapshot</button>
-            <button class="btn btn-sm btn-outline" onclick="exportCSV('watertank-assumptions')" title="Export full assumption snapshot for audit">📋 Assumptions</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank')" title="Export raw readings + computations">📊 Export Raw Log</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank-daily')" title="Export daily summary">📅 Daily Summary</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank-activity')" title="Export activity/demand drivers">👥 Activity Log</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank-fixtures')" title="Export fixture snapshot">🔧 Fixture Snapshot</button>
+            <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank-assumptions')" title="Export full assumption snapshot for audit">📋 Assumptions</button>
           </div>
         </div>
         <div class="tbl-wrap" style="max-height:420px;overflow-y:auto;"><table>
@@ -1279,10 +1285,10 @@ async function hammsLogin(){
           <input type="text" id="invf-search" placeholder="Search item…" oninput="renderInventory()" style="width:180px;">
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadInvTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-outline" onclick="document.getElementById('inv-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadInvTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('inv-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="inv-csv-upload" accept=".csv" style="display:none;" onchange="importInventoryCSV(event)">
-          <button class="btn btn-primary" onclick="openInvModal()">+ Add Item</button>
+          <button type="button" class="btn btn-primary" onclick="openInvModal()">+ Add Item</button>
         </div>
       </div>
       <div class="card">
@@ -1302,7 +1308,7 @@ async function hammsLogin(){
           <select id="isf-year" onchange="renderIssuance()"><option value="">All Years</option></select>
           <input type="text" id="isf-search" placeholder="Search item / name…" oninput="renderIssuance()" style="width:180px;">
         </div>
-        <button class="btn btn-primary" onclick="openIssueModal()">+ Manual Issue</button>
+        <button type="button" class="btn btn-primary" onclick="openIssueModal()">+ Manual Issue</button>
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
@@ -1322,10 +1328,10 @@ async function hammsLogin(){
           <select id="wastef-year" onchange="renderWaste()"><option value="">All Years</option></select>
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadWasteTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
-          <button class="btn btn-outline" onclick="document.getElementById('waste-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadWasteTemplate()">⬇ CSV Template</button> <!-- PATCH: CSV import enhancement -->
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('waste-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="waste-csv-upload" accept=".csv" style="display:none;" onchange="importWasteCSV(event)">
-          <button class="btn btn-primary" onclick="openWasteModal()">+ Log Waste Entry</button>
+          <button type="button" class="btn btn-primary" onclick="openWasteModal()">+ Log Waste Entry</button>
         </div>
       </div>
       <!-- Waste Chart -->
@@ -1376,33 +1382,33 @@ async function hammsLogin(){
           <div class="card-header"><h3>Export Data</h3></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:9px;">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:700;padding:4px 0 2px;">Maintenance &amp; Assets</div>
-            <button class="btn btn-outline" onclick="exportCSV('wo')">📥 Export Work Orders (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('assets')">📥 Export Asset Registry (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('safety')">📥 Export Safety Issues (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('projects')">📥 Export Projects (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('wo')">📥 Export Work Orders (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('assets')">📥 Export Asset Registry (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('safety')">📥 Export Safety Issues (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('projects')">📥 Export Projects (.csv)</button>
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:700;padding:6px 0 2px;">Inventory &amp; Issuance</div>
-            <button class="btn btn-outline" onclick="exportCSV('inventory')">📥 Export Inventory (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('issuance')">📥 Export Issuance Log (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('inventory')">📥 Export Inventory (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('issuance')">📥 Export Issuance Log (.csv)</button>
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);font-weight:700;padding:6px 0 2px;">Water &amp; Environmental</div>
-            <button class="btn btn-outline" onclick="exportCSV('water')">📥 Export Water Safety Log (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('watertank')">📥 Export Tank Level Readings (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('effluent')">📥 Export Effluent Monitoring (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('waste')">📥 Export Waste Log (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('medwaste')">📥 Export Med. Waste Production (.csv)</button>
-            <button class="btn btn-outline" onclick="exportCSV('wwprod')">📥 Export Wastewater Production (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('water')">📥 Export Water Safety Log (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('watertank')">📥 Export Tank Level Readings (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('effluent')">📥 Export Effluent Monitoring (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('waste')">📥 Export Waste Log (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('medwaste')">📥 Export Med. Waste Production (.csv)</button>
+            <button type="button" class="btn btn-outline" onclick="exportCSV('wwprod')">📥 Export Wastewater Production (.csv)</button>
             <hr class="divider">
-            <button class="btn btn-ghost" onclick="exportJSON()">💾 Full Backup — Export All (.json)</button>
-            <button class="btn btn-success" onclick="document.getElementById('import-file').click()">📤 Restore Backup (.json)</button>
+            <button type="button" class="btn btn-ghost" onclick="exportJSON()">💾 Full Backup — Export All (.json)</button>
+            <button type="button" class="btn btn-success" onclick="document.getElementById('import-file').click()">📤 Restore Backup (.json)</button>
             <input type="file" id="import-file" accept=".json" style="display:none;" onchange="importJSON(event)">
             <hr class="divider">
-            <button class="btn btn-primary" onclick="showFirebaseStatus()" style="background:var(--green);">View Live Status</button>
-            <button class="btn btn-ghost" onclick="reloadFromFirebase()">🔄 Reload from Firebase</button>
+            <button type="button" class="btn btn-primary" onclick="showFirebaseStatus()" style="background:var(--green);">View Live Status</button>
+            <button type="button" class="btn btn-ghost" onclick="reloadFromFirebase()">🔄 Reload from Firebase</button>
           </div>
         </div>
         <div class="card">
           <div class="card-header"><h3>Print &amp; System Info</h3></div>
           <div class="card-body" style="display:flex;flex-direction:column;gap:9px;">
-            <button class="btn btn-outline" onclick="window.print()">🖨 Print Current View</button>
+            <button type="button" class="btn btn-outline" onclick="window.print()">🖨 Print Current View</button>
             <div class="info-box" style="margin:0;">Navigate to any page and press Ctrl+P or use the print button above. Export to CSV for spreadsheet printing.</div>
             <hr class="divider">
             <div style="font-size:13px;color:var(--muted);line-height:2.1;">
@@ -1444,10 +1450,10 @@ async function hammsLogin(){
           <input type="text" id="eff-search" placeholder="Search…" oninput="renderEffluent()" style="width:140px;">
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadEffluentTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-outline" onclick="document.getElementById('eff-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadEffluentTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('eff-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="eff-csv-upload" accept=".csv" style="display:none;" onchange="importEffluentCSV(event)">
-          <button class="btn btn-primary" onclick="openEffluentModal()">+ Add Reading</button>
+          <button type="button" class="btn btn-primary" onclick="openEffluentModal()">+ Add Reading</button>
         </div>
       </div>
       <div class="info-box">Effluent monitoring per DENR DAO 2021-19 / DOH standards. Log all outfall/discharge point results. Status is <strong>Compliant</strong> if all parameters are within limits.</div>
@@ -1473,10 +1479,10 @@ async function hammsLogin(){
           <select id="mw-year" onchange="renderMedWaste()"><option value="">All Years</option></select>
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadMedWasteTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-outline" onclick="document.getElementById('mw-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadMedWasteTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('mw-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="mw-csv-upload" accept=".csv" style="display:none;" onchange="importMedWasteCSV(event)">
-          <button class="btn btn-primary" onclick="openMedWasteModal()">+ Log Production</button>
+          <button type="button" class="btn btn-primary" onclick="openMedWasteModal()">+ Log Production</button>
         </div>
       </div>
       <div class="stat-grid mb14" id="mw-stat-row"></div>
@@ -1502,10 +1508,10 @@ async function hammsLogin(){
           <select id="ww-year" onchange="renderWWProd()"><option value="">All Years</option></select>
         </div>
         <div style="display:flex;gap:7px;">
-          <button class="btn btn-ghost" onclick="downloadWWProdTemplate()">⬇ CSV Template</button>
-          <button class="btn btn-outline" onclick="document.getElementById('ww-csv-upload').click()">📤 Upload CSV</button>
+          <button type="button" class="btn btn-ghost" onclick="downloadWWProdTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('ww-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="ww-csv-upload" accept=".csv" style="display:none;" onchange="importWWProdCSV(event)">
-          <button class="btn btn-primary" onclick="openWWProdModal()">+ Log Production</button>
+          <button type="button" class="btn btn-primary" onclick="openWWProdModal()">+ Log Production</button>
         </div>
       </div>
       <div class="stat-grid mb14" id="ww-stat-row"></div>
@@ -1856,7 +1862,7 @@ async function hammsLogin(){
                   style="width:100%;padding:9px 12px;border:2px solid #f0a0a0;border-radius:4px;font-size:14px;box-sizing:border-box;"
                   onkeydown="if(event.key==='Enter')confirmFactoryReset()">
               </div>
-              <button class="btn" onclick="confirmFactoryReset()"
+              <button type="button" class="btn" onclick="confirmFactoryReset()"
                 style="background:#cc3333;color:#fff;min-width:140px;white-space:nowrap;">
                 🗑 Reset All Data
               </button>
@@ -1879,9 +1885,9 @@ async function hammsLogin(){
 <!-- ══════════════════════ MODALS -->
 
 <!-- WO Modal -->
-<div class="modal-overlay" id="mo-wo">
+<div class="modal-overlay" id="mo-wo" role="dialog" aria-modal="true" aria-labelledby="mo-wo-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-wo-title">New Work Order</h3><button class="modal-close" onclick="closeModal('mo-wo')">×</button></div>
+    <div class="modal-header"><h3 id="mo-wo-title">New Work Order</h3><button type="button" class="modal-close" onclick="closeModal('mo-wo')">×</button></div>
     <div class="modal-body">
       <datalist id="wo-loc-list"></datalist>
       <div class="form-grid fg-3 mb14">
@@ -1942,32 +1948,32 @@ async function hammsLogin(){
         </div>
       </div>
       <div id="wo-report-preview-wrap" style="margin:-8px 0 12px;display:none;">
-        <img id="wo-report-preview" style="max-width:100%;max-height:160px;border:1px solid var(--border);border-radius:3px;display:block;">
+        <img id="wo-report-preview" alt="Service report preview" style="max-width:100%;max-height:160px;border:1px solid var(--border);border-radius:3px;display:block;">
       </div>
       <div style="border:1px solid var(--border);border-radius:4px;padding:13px 15px;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
           <strong style="font-size:12px;text-transform:uppercase;letter-spacing:0.8px;color:var(--navy);">Materials Used (Auto-deducts Inventory)</strong>
-          <button class="btn btn-sm btn-gold" onclick="addMaterialRow()">+ Add Item</button>
+          <button type="button" class="btn btn-sm btn-gold" onclick="addMaterialRow()">+ Add Item</button>
         </div>
         <div id="material-rows"></div>
         <div class="form-hint" style="margin-top:4px;">Quantities are deducted from inventory upon saving. Enter the Issued To name for each item.</div>
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-wo')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWO()">Save Work Order</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-wo')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveWO()">Save Work Order</button>
     </div>
   </div>
 </div>
 
 <!-- Asset Modal — Enhanced v1.5 (tabbed) -->
-<div class="modal-overlay" id="mo-asset">
+<div class="modal-overlay" id="mo-asset" role="dialog" aria-modal="true" aria-labelledby="mo-asset-title">
   <div class="modal" style="max-width:720px;width:96vw;">
     <div class="modal-header">
       <h3 id="mo-asset-title">Add Asset</h3>
       <div style="display:flex;align-items:center;gap:8px;">
         <span class="asset-code" id="mo-asset-code-display" style="display:none;"></span>
-        <button class="modal-close" onclick="closeModal('mo-asset')">×</button>
+        <button type="button" class="modal-close" onclick="closeModal('mo-asset')">×</button>
       </div>
     </div>
     <div class="modal-body">
@@ -2123,8 +2129,8 @@ async function hammsLogin(){
           <input type="file" id="m-a-image" accept="image/jpeg,image/jpg,image/png,image/webp" onchange="previewAssetImage(event)">
         </div>
         <div id="asset-img-preview-wrap" style="display:none;">
-          <img id="asset-img-preview" class="asset-img-preview">
-          <button class="btn btn-sm btn-danger" style="margin-top:6px;" onclick="clearAssetImage()">Remove Photo</button>
+          <img id="asset-img-preview" class="asset-img-preview" alt="Asset photo preview">
+          <button type="button" class="btn btn-sm btn-danger" style="margin-top:6px;" onclick="clearAssetImage()">Remove Photo</button>
         </div>
         <div id="asset-img-placeholder" style="border:2px dashed var(--border);border-radius:6px;padding:30px;text-align:center;color:var(--muted);font-size:13px;">
           📷 No photo attached yet. Click above to select an image.
@@ -2199,22 +2205,22 @@ async function hammsLogin(){
 
     </div><!-- /modal-body -->
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-asset')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-asset')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
     </div>
   </div>
 </div>
 
 
 <!-- ══ ROOM VIEW MODAL ══════════════════════════════════════════ -->
-<div class="modal-overlay" id="mo-room-view">
+<div class="modal-overlay" id="mo-room-view" role="dialog" aria-modal="true">
   <div class="modal" style="max-width:800px;width:97vw;">
     <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#0d5fa3);">
       <div>
         <h3 id="room-view-title" style="color:#fff;margin:0;">📍 Room View</h3>
         <div id="room-view-subtitle" style="color:rgba(255,255,255,0.7);font-size:12px;margin-top:2px;"></div>
       </div>
-      <button class="modal-close" onclick="closeModal('mo-room-view')" style="color:#fff;">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('mo-room-view')" style="color:#fff;">×</button>
     </div>
     <div class="modal-body" style="padding:0;">
 
@@ -2261,15 +2267,15 @@ async function hammsLogin(){
 
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-room-view')">Close</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-room-view')">Close</button>
     </div>
   </div>
 </div>
 
 <!-- Inventory Modal -->
-<div class="modal-overlay" id="mo-inv">
+<div class="modal-overlay" id="mo-inv" role="dialog" aria-modal="true" aria-labelledby="mo-inv-title">
   <div class="modal">
-    <div class="modal-header"><h3 id="mo-inv-title">Add Inventory Item</h3><button class="modal-close" onclick="closeModal('mo-inv')">×</button></div>
+    <div class="modal-header"><h3 id="mo-inv-title">Add Inventory Item</h3><button type="button" class="modal-close" onclick="closeModal('mo-inv')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group" style="grid-column:1/-1;"><label>Description *</label><input type="text" id="m-i-desc" placeholder="e.g. 20A Circuit Breaker"></div>
@@ -2280,16 +2286,16 @@ async function hammsLogin(){
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-inv')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveInvItem()">Save Item</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-inv')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveInvItem()">Save Item</button>
     </div>
   </div>
 </div>
 
 <!-- Manual Issue Modal -->
-<div class="modal-overlay" id="mo-issue">
+<div class="modal-overlay" id="mo-issue" role="dialog" aria-modal="true" aria-labelledby="mo-issue-title">
   <div class="modal">
-    <div class="modal-header"><h3 id="mo-issue-title">Manual Issuance</h3><button class="modal-close" onclick="closeModal('mo-issue')">×</button></div>
+    <div class="modal-header"><h3 id="mo-issue-title">Manual Issuance</h3><button type="button" class="modal-close" onclick="closeModal('mo-issue')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group" style="grid-column:1/-1;"><label>Item *</label><select id="m-iss-item"><option value="">Select inventory item…</option></select></div>
@@ -2302,16 +2308,16 @@ async function hammsLogin(){
       <div class="form-grid" style="margin-top:12px;"><div class="form-group"><label>Remarks</label><textarea id="m-iss-remarks" style="min-height:44px;"></textarea></div></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-issue')">Cancel</button>
-      <button class="btn btn-primary" id="btn-iss-save" onclick="saveManualIssue()">Issue &amp; Deduct</button> <!-- PATCH: issuance log edit support -->
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-issue')">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-iss-save" onclick="saveManualIssue()">Issue &amp; Deduct</button> <!-- PATCH: issuance log edit support -->
     </div>
   </div>
 </div>
 
 <!-- Waste Modal -->
-<div class="modal-overlay" id="mo-waste">
+<div class="modal-overlay" id="mo-waste" role="dialog" aria-modal="true">
   <div class="modal">
-    <div class="modal-header"><h3>Log Waste Entry</h3><button class="modal-close" onclick="closeModal('mo-waste')">×</button></div>
+    <div class="modal-header"><h3>Log Waste Entry</h3><button type="button" class="modal-close" onclick="closeModal('mo-waste')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group"><label>Date *</label><input type="date" id="m-w-date"></div>
@@ -2321,42 +2327,42 @@ async function hammsLogin(){
         <div class="form-group"><label>EMB Compliance Status</label><select id="m-w-emb"><option>OK</option><option>Warning</option><option>Critical</option></select></div>
         <div class="form-group"><label>Photo Attachment</label><input type="file" id="m-w-photo" accept="image/*" onchange="previewWastePhoto(event)"></div>
       </div>
-      <div id="waste-photo-wrap" style="margin:9px 0;display:none;"><img id="waste-photo-preview" style="max-width:100%;max-height:150px;border:1px solid var(--border);border-radius:3px;"></div>
+      <div id="waste-photo-wrap" style="margin:9px 0;display:none;"><img id="waste-photo-preview" alt="Waste photo preview" style="max-width:100%;max-height:150px;border:1px solid var(--border);border-radius:3px;"></div>
       <div class="form-grid" style="margin-top:12px;"><div class="form-group"><label>Remarks</label><textarea id="m-w-remarks" style="min-height:44px;"></textarea></div></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-waste')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWaste()">Save Entry</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-waste')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveWaste()">Save Entry</button>
     </div>
   </div>
 </div>
 
 <!-- Repair History Modal -->
-<div class="modal-overlay" id="mo-history">
+<div class="modal-overlay" id="mo-history" role="dialog" aria-modal="true" aria-labelledby="mo-history-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-history-title">Repair History</h3><button class="modal-close" onclick="closeModal('mo-history')">×</button></div>
+    <div class="modal-header"><h3 id="mo-history-title">Repair History</h3><button type="button" class="modal-close" onclick="closeModal('mo-history')">×</button></div>
     <div class="modal-body" style="padding:0;">
       <div class="tbl-wrap"><table>
         <thead><tr><th>WO #</th><th>Description</th><th>Priority</th><th>Status</th><th>Date Started</th><th>Date Completed</th><th>Duration</th><th>Assigned To</th></tr></thead>
         <tbody id="history-tbody"></tbody>
       </table></div>
     </div>
-    <div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-history')">Close</button></div>
+    <div class="modal-footer"><button type="button" class="btn btn-ghost" onclick="closeModal('mo-history')">Close</button></div>
   </div>
 </div>
 
 <!-- Photo Viewer -->
-<div class="modal-overlay" id="mo-photo" onclick="closeModal('mo-photo')" style="cursor:zoom-out;">
+<div class="modal-overlay" id="mo-photo" role="dialog" aria-modal="true" aria-label="Photo viewer" onclick="closeModal('mo-photo')" style="cursor:zoom-out;">
   <div style="background:#fff;padding:8px;border-radius:4px;max-width:90vw;">
-    <img id="photo-view-img" style="max-width:80vw;max-height:80vh;display:block;">
+    <img id="photo-view-img" alt="Photo" style="max-width:80vw;max-height:80vh;display:block;">
   </div>
 </div>
 
 
 <!-- Safety Issue Modal -->
-<div class="modal-overlay" id="mo-safety">
+<div class="modal-overlay" id="mo-safety" role="dialog" aria-modal="true" aria-labelledby="mo-safety-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-safety-title">Log Safety Issue</h3><button class="modal-close" onclick="closeModal('mo-safety')">×</button></div>
+    <div class="modal-header"><h3 id="mo-safety-title">Log Safety Issue</h3><button type="button" class="modal-close" onclick="closeModal('mo-safety')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group" style="grid-column:1/-1;"><label>Issue Description *</label>
@@ -2375,16 +2381,16 @@ async function hammsLogin(){
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-safety')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSafety()">Save Issue</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-safety')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveSafety()">Save Issue</button>
     </div>
   </div>
 </div>
 
 <!-- Project Modal -->
-<div class="modal-overlay" id="mo-project">
+<div class="modal-overlay" id="mo-project" role="dialog" aria-modal="true" aria-labelledby="mo-project-title">
   <div class="modal" style="max-width:700px;width:96vw;">
-    <div class="modal-header"><h3 id="mo-project-title">Add Project</h3><button class="modal-close" onclick="closeModal('mo-project')">×</button></div>
+    <div class="modal-header"><h3 id="mo-project-title">Add Project</h3><button type="button" class="modal-close" onclick="closeModal('mo-project')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group"><label>Project Code *</label><input type="text" id="m-pj-code" placeholder="e.g. GSD-2026-001"></div>
@@ -2407,16 +2413,16 @@ async function hammsLogin(){
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-project')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-project')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveProject()">Save Project</button>
     </div>
   </div>
 </div>
 
 <!-- Water Safety Log Modal -->
-<div class="modal-overlay" id="mo-waterlog">
+<div class="modal-overlay" id="mo-waterlog" role="dialog" aria-modal="true" aria-labelledby="mo-waterlog-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-waterlog-title">Log Water Test Result</h3><button class="modal-close" onclick="closeModal('mo-waterlog')">×</button></div>
+    <div class="modal-header"><h3 id="mo-waterlog-title">Log Water Test Result</h3><button type="button" class="modal-close" onclick="closeModal('mo-waterlog')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group"><label>Date of Test *</label><input type="date" id="m-wl-date"></div>
@@ -2435,20 +2441,20 @@ async function hammsLogin(){
         <div class="form-group"><label>Remarks</label><textarea id="m-wl-remarks" style="min-height:44px;"></textarea></div>
       </div>
       <div id="water-result-preview-wrap" style="margin-top:6px;display:none;">
-        <img id="water-result-preview" style="max-height:120px;max-width:100%;border:1px solid var(--border);border-radius:3px;display:block;">
+        <img id="water-result-preview" alt="Water test result" style="max-height:120px;max-width:100%;border:1px solid var(--border);border-radius:3px;display:block;">
       </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-waterlog')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWaterLog()">Save Test Log</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-waterlog')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveWaterLog()">Save Test Log</button>
     </div>
   </div>
 </div>
 
 <!-- Water Tank / Pressure Modal — v2.1 HYDRAULIC ANALYTICS PATCH -->
-<div class="modal-overlay" id="mo-tank">
+<div class="modal-overlay" id="mo-tank" role="dialog" aria-modal="true" aria-labelledby="mo-tank-title">
   <div class="modal" style="max-width:500px;">
-    <div class="modal-header"><h3 id="mo-tank-title">Log Level Reading</h3><button class="modal-close" onclick="closeModal('mo-tank')">×</button></div>
+    <div class="modal-header"><h3 id="mo-tank-title">Log Level Reading</h3><button type="button" class="modal-close" onclick="closeModal('mo-tank')">×</button></div>
     <div class="modal-body">
 
       <!-- FIELD 1: Date & Time -->
@@ -2563,16 +2569,16 @@ async function hammsLogin(){
       <input type="hidden" id="m-tk-loss">
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-tank')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTankReading()" style="min-width:120px;">Save Reading</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-tank')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveTankReading()" style="min-width:120px;">Save Reading</button>
     </div>
   </div>
 </div>
 
 <!-- Effluent Monitoring Modal — PATCH: effluent monitoring -->
-<div class="modal-overlay" id="mo-effluent">
+<div class="modal-overlay" id="mo-effluent" role="dialog" aria-modal="true" aria-labelledby="mo-effluent-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-effluent-title">Add Effluent Reading</h3><button class="modal-close" onclick="closeModal('mo-effluent')">×</button></div>
+    <div class="modal-header"><h3 id="mo-effluent-title">Add Effluent Reading</h3><button type="button" class="modal-close" onclick="closeModal('mo-effluent')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Date *</label><input type="date" id="m-eff-date"></div>
@@ -2602,16 +2608,16 @@ async function hammsLogin(){
       <!-- PATCH END -->
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-effluent')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveEffluent()">Save Reading</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-effluent')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveEffluent()">Save Reading</button>
     </div>
   </div>
 </div>
 
 <!-- Medical Waste Treatment Production Modal — PATCH: production tabs -->
-<div class="modal-overlay" id="mo-medwaste">
+<div class="modal-overlay" id="mo-medwaste" role="dialog" aria-modal="true" aria-labelledby="mo-medwaste-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-medwaste-title">Log Med. Waste Treatment</h3><button class="modal-close" onclick="closeModal('mo-medwaste')">×</button></div>
+    <div class="modal-header"><h3 id="mo-medwaste-title">Log Med. Waste Treatment</h3><button type="button" class="modal-close" onclick="closeModal('mo-medwaste')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Date *</label><input type="date" id="m-mw-date"></div>
@@ -2627,16 +2633,16 @@ async function hammsLogin(){
       <div class="form-group"><label>Remarks / Operator Notes</label><textarea id="m-mw-remarks" style="min-height:44px;"></textarea></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-medwaste')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveMedWaste()">Save Log</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-medwaste')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveMedWaste()">Save Log</button>
     </div>
   </div>
 </div>
 
 <!-- Wastewater Treatment Production Modal — PATCH: production tabs -->
-<div class="modal-overlay" id="mo-wwprod">
+<div class="modal-overlay" id="mo-wwprod" role="dialog" aria-modal="true" aria-labelledby="mo-wwprod-title">
   <div class="modal modal-wide">
-    <div class="modal-header"><h3 id="mo-wwprod-title">Log Wastewater Treatment</h3><button class="modal-close" onclick="closeModal('mo-wwprod')">×</button></div>
+    <div class="modal-header"><h3 id="mo-wwprod-title">Log Wastewater Treatment</h3><button type="button" class="modal-close" onclick="closeModal('mo-wwprod')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Date *</label><input type="date" id="m-ww-date"></div>
@@ -2652,8 +2658,8 @@ async function hammsLogin(){
       <div class="form-group"><label>Remarks / Operator Notes</label><textarea id="m-ww-remarks" style="min-height:44px;"></textarea></div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('mo-wwprod')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveWWProd()">Save Log</button>
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-wwprod')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveWWProd()">Save Log</button>
     </div>
   </div>
 </div>
@@ -3055,8 +3061,9 @@ function mergeListenerSnapshot(store, snap){ // PATCHED: merge remote changes pe
       merged.push(serverByDocId[dk]); // accept server version
       seen.add(dk);
     }else if(dk&&!serverByDocId[dk]){
-      // Local record not on server and not pending — may have been deleted remotely
-      if(!pendingUpsertKeys.has(dk)){}else merged.push(r); // skip if not pending
+      // Local record not on server — may have been deleted remotely
+      // Keep only if a pending local write exists; otherwise drop (accept remote delete)
+      if(pendingUpsertKeys.has(dk)) merged.push(r);
       seen.add(dk);
     }else{
       merged.push(r);
@@ -3323,7 +3330,10 @@ window._hammsFirebaseReady = async function(){ // PATCHED: startup reads collect
     await loadAllFirebaseData();
     _fbLoadedOnce=true;
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
-    renderDash(); updateInvAlerts();
+    // Navigate to page from URL query param, or default to dashboard
+    const _initPage=new URLSearchParams(location.search).get('page')||'dashboard';
+    navigate(_initPage);
+    updateInvAlerts();
     console.log('HAMMS: Firestore collection data loaded ✅');
   }catch(e){
     console.warn('Firebase initial load failed:', e.message||e);
@@ -3438,17 +3448,22 @@ function closeSidebar(){
   document.body.style.overflow='';
 }
 
-function navigate(p){
+function navigate(p, _noPush){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
-  const _pgEl=document.getElementById('page-'+p); if(!_pgEl) return; _pgEl.classList.add('active'); // L-3 FIX: null guard
+  const _pgEl=document.getElementById('page-'+p); if(!_pgEl){showToast('Page not found.','error');return;} _pgEl.classList.add('active');
   document.querySelectorAll('.nav-item').forEach(x=>{if(x.getAttribute('onclick')?.includes("'"+p+"'"))x.classList.add('active');});
   // Auto-close sidebar on mobile after navigation
   if(window.innerWidth <= 768) closeSidebar();
   document.getElementById('page-title').textContent=PAGE_TITLES[p];
+  // Focus management: move focus to page heading
+  const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
+  // Browser history
+  if(!_noPush) history.pushState({page:p},'','?page='+p);
   const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();renderTankKPIs();},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();}}; // PATCH: added medwaste
   if(r[p])r[p]();
 }
+window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
 
 // ═══════════════════════════════════════
 //  UTILS
@@ -3701,15 +3716,18 @@ function updateInvAlerts(){
 // ═══════════════════════════════════════
 //  MODALS
 // ═══════════════════════════════════════
-function openModal(id){document.getElementById(id).classList.add('open');}
+function openModal(id){const el=document.getElementById(id);el.classList.add('open');if(!el._bdClick){el._bdClick=true;el.addEventListener('click',e=>{if(e.target===el)closeModal(id);});}}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { const open = document.querySelector('.modal-overlay.open'); if (open) closeModal(open.id); }
+});
 
 // ── Toast Notifications ─────────────────
 function showToast(msg, type, duration){
   type=type||'success'; duration=duration||4000;
   if(Array.isArray(window._alerts)) window._alerts.push(msg); // test hook
   let c=document.getElementById('toast-container');
-  if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}
+  if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';c.setAttribute('aria-live','polite');c.setAttribute('role','status');document.body.appendChild(c);}
   const icons={success:'✓',error:'✕',warning:'⚠',info:'ℹ'};
   const t=document.createElement('div');
   t.className='toast toast-'+type;
@@ -3719,7 +3737,7 @@ function showToast(msg, type, duration){
   t.appendChild(ic);t.appendChild(mg);t.appendChild(cl);
   c.appendChild(t);
   let timer=setTimeout(dismiss, duration);
-  function dismiss(){clearTimeout(timer);if(!t.parentNode)return;t.classList.add('removing');setTimeout(()=>t.remove(),300);}
+  function dismiss(){clearTimeout(timer);if(!t.parentNode)return;t.classList.add('removing');setTimeout(()=>{try{t.remove();}catch(e){}},300);}
 }
 
 // ── Confirm Dialog ──────────────────────
@@ -3831,7 +3849,7 @@ function fillAssetDrop(sel=''){
       if(a.location&&a.location.length>1)locSet.add(a.location);
       if(a.department)locSet.add(a.department);
     });
-    dlEl.innerHTML=[...locSet].sort().map(v=>`<option value="${v}">`).join('');
+    dlEl.innerHTML=[...locSet].sort().map(v=>`<option value="${escapeHTML(v)}">`).join('');
   }
 
   // ── Step 3: filter & score by location ────────────────────
@@ -3914,7 +3932,7 @@ function renderMaterialRows(){
     </select>
     <input type="number" min="0.01" step="0.01" value="${m.qty||1}" placeholder="Qty" style="flex:0.6;min-width:60px;" onchange="_woMaterials[${i}].qty=parseFloat(this.value)||1">
     <input type="text" value="${m.issuedTo||''}" placeholder="Issued To" style="flex:1.2;" oninput="_woMaterials[${i}].issuedTo=this.value">
-    <button class="btn btn-sm btn-danger" onclick="_woMaterials.splice(${i},1);renderMaterialRows()">✕</button>
+    <button type="button" class="btn btn-sm btn-danger" onclick="_woMaterials.splice(${i},1);renderMaterialRows()">✕</button>
   </div>`).join('');
 }
 
@@ -3964,7 +3982,7 @@ function saveWO(){
     serviceReport:document._woReport||(_editWO?wos.find(x=>x.id===_editWO)?.serviceReport:null)||null,
     createdAt:_editWO?wos.find(x=>x.id===_editWO)?.createdAt:today()
   };
-  if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);wos[idx]=o;}else wos.push(o);
+  if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wo');return;}wos[idx]=o;}else wos.push(o);
   DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
 async function delWO(id){if(!await confirmDialog('Delete this Work Order?'))return;DB.s('wo',DB.g('wo').filter(x=>x.id!==id));renderWO();renderDash();showToast('Work order deleted.','info');}
@@ -4005,7 +4023,7 @@ function saveInvItem(){
   const inv=DB.g('inventory');
   const existing=_editInv?inv.find(x=>x.id===_editInv):null;
   const item={id:_editInv||DB.nid('inventory'),description:desc,category:cat,unit:document.getElementById('m-i-unit').value,qty,minLevel:min,originalQty:_editInv?(existing?.originalQty||qty):qty};
-  if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);inv[idx]=item;}else inv.push(item);
+  if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-inv');return;}inv[idx]=item;}else inv.push(item);
   DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
 async function delInvItem(id){if(!await confirmDialog('Delete this inventory item?'))return;DB.s('inventory',DB.g('inventory').filter(x=>x.id!==id));renderInventory();updateInvAlerts();showToast('Inventory item deleted.','info');}
@@ -4342,7 +4360,7 @@ function renderForecast(){
   } else {
     const sorted=Object.entries(delayGroups).sort((a,b)=>b[1]-a[1]);
     const maxDR=Math.max(...sorted.map(([,c])=>c),1);
-    drEl.innerHTML=`<div style="margin-bottom:8px;font-size:12px;color:var(--muted);">${overdueWOs.length} overdue WO(s) total</div>`+sorted.map(([reason,cnt])=>{const pct=Math.round((cnt/maxDR)*100);return`<div class="fbar"><span class="fbar-label" style="min-width:220px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${reason}">${reason}</span><div class="fbar-track"><div class="fbar-fill" style="width:${pct}%;background:#cc3333;"></div></div><span class="fbar-val" style="color:#cc3333;font-weight:700;">${cnt}</span></div>`;}).join('');
+    drEl.innerHTML=`<div style="margin-bottom:8px;font-size:12px;color:var(--muted);">${overdueWOs.length} overdue WO(s) total</div>`+sorted.map(([reason,cnt])=>{const pct=Math.round((cnt/maxDR)*100);return`<div class="fbar"><span class="fbar-label" style="min-width:220px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(reason)}">${escapeHTML(reason)}</span><div class="fbar-track"><div class="fbar-fill" style="width:${pct}%;background:#cc3333;"></div></div><span class="fbar-val" style="color:#cc3333;font-weight:700;">${cnt}</span></div>`;}).join('');
   }
   const open=wos.filter(w=>w.status==='Open'||w.status==='In Progress');
   document.getElementById('fc-tbody').innerHTML=open.length?open.map(w=>{
@@ -4371,7 +4389,7 @@ function renderInventory(){
     const barClass=s==='Critical'?'sb-crit':s==='Warning'?'sb-warn':'sb-ok';
     const lastIssued=issuanceLogs.filter(l=>l.invId===item.id&&l.issuedTo&&l.issuedTo!=='—').sort((a,b)=>b.id-a.id)[0];
     const rowClass=s==='Critical'?'row-crit':s==='Warning'?'row-warn':'';
-    return`<tr class="${rowClass}"><td>${invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
+    return`<tr class="${rowClass}"><td>${invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="10" class="empty">No inventory items. Upload CSV or add manually.</td></tr>';
   updateInvAlerts();
 }
@@ -4390,7 +4408,7 @@ function renderIssuance(){
   const invMap={};DB.g('inventory').forEach(i=>{invMap[i.id]={desc:i.description,origQty:i.originalQty||i.qty,unit:i.unit};});
   document.getElementById('issue-tbody').innerHTML=logs.length?logs.map(l=>{
     const fromWO=l.woRef&&l.woRef!=='—';
-    const editBtn=!fromWO?`<button class="btn btn-sm btn-ghost" onclick="openIssueEditModal(${l.id})">Edit</button> `:'';
+    const editBtn=!fromWO?`<button type="button" class="btn btn-sm btn-ghost" onclick="openIssueEditModal(${l.id})">Edit</button> `:'';
     const delBtn=`<button onclick="deleteIssuanceLog(${l.id})" style="color:#cc3333;background:none;border:1px solid #f0c0c0;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;margin-left:2px;font-family:inherit;">Del</button>`;
     return`<tr><td>${issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(l.woRef)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
   }).join(''):'<tr><td colspan="11" class="empty">No issuance records found.</td></tr>';
@@ -4417,7 +4435,7 @@ function renderWaste(){
   const allWaste=DB.g('waste');
   const cd=buildMonthlyData(allWaste,'date','volume',12);
   drawBarLineChart('waste-chart',cd.labels,cd.barData,cd.lineData,'#cc3333','#0f8c6e','Volume (kg)');
-  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" data-photo-src="${escapeHTML(w.photo)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
+  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" alt="Waste photo" data-photo-src="${escapeHTML(photoUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button type="button" class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
 }
 
 const WASTE_THRESH={Infectious:10,Pathological:10,Chemical:10,Pharmaceutical:20,Sharps:5,General:50,Radioactive:1};
@@ -4440,7 +4458,7 @@ function renderWasteFcast(){
       <td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td>
       <td>${emblBadge(w.emb)}</td>
       <td style="max-width:110px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td>
-      <td><button class="btn btn-sm btn-danger" onclick="delWasteFromFcast(${w.id})">Del</button></td>
+      <td><button type="button" class="btn btn-sm btn-danger" onclick="delWasteFromFcast(${w.id})">Del</button></td>
     </tr>`).join(''):'<tr><td colspan="8" class="empty">No waste entries.</td></tr>';
   }
   // PATCH END
@@ -4998,7 +5016,7 @@ function saveAsset(){
     normalRuntimeMinPerDay: gn('m-a-runtime-day'),
   };
 
-  if(_editAsset){const i=assets.findIndex(x=>x.id===_editAsset);assets[i]=a;}
+  if(_editAsset){const i=assets.findIndex(x=>x.id===_editAsset);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-asset');return;}assets[i]=a;}
   else assets.push(a);
   DB.s('assets',assets);
   closeModal('mo-asset');
@@ -5032,7 +5050,7 @@ function renderAssets(){
     const catDisplay=[a.mainCategory,a.assetClass].filter(Boolean).join(' / ')||a.section||'—';
     const kwh=a.estimatedKwhMonth?a.estimatedKwhMonth.toFixed(1):'—';
     const safeImg=safeSrc(a.imageData);
-    const imgBtn=safeImg?`<button class="btn btn-sm btn-outline" title="View photo" data-photo-src="${escapeHTML(a.imageData)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">📷</button>`:'';
+    const imgBtn=safeImg?`<button type="button" class="btn btn-sm btn-outline" title="View photo" data-photo-src="${escapeHTML(safeImg)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">📷</button>`:'';
     const locLabel=a.location||a.roomNumber||a.roomName||'—';
     const locCell=locLabel!=='—'?`<span class="room-tag" style="cursor:pointer;" data-loc="${escapeHTML(locLabel)}" onclick="openRoomView(this.dataset.loc)" title="Click to view all assets & repairs in this room">${escapeHTML(locLabel)} ↗</span>`:'—';
     return`<tr>
@@ -5049,9 +5067,9 @@ function renderAssets(){
       <td style="text-align:center;font-family:'IBM Plex Mono',monospace;">${cnt}</td>
       <td style="font-size:12px;max-width:140px;white-space:normal;color:var(--muted);">${escapeHTML(a.remarks)||'—'}</td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-sm btn-outline" onclick="viewHistory(${a.id})">History</button>
-        <button class="btn btn-sm btn-ghost" onclick="openAssetModal(${a.id})">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="delAsset(${a.id})">Del</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="viewHistory(${a.id})">History</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="openAssetModal(${a.id})">Edit</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="delAsset(${a.id})">Del</button>
       </td>
     </tr>`;
   }).join(''):'<tr><td colspan="13" class="empty">No assets found.</td></tr>';
@@ -5139,7 +5157,7 @@ function renderDash(){
     if(daysAgo>30){
       expEl.innerHTML=`<div style="background:#fff9f0;border:1px solid #f5cc6e;border-radius:6px;padding:10px 16px;font-size:13px;margin-bottom:12px;">
         <strong>Backup Reminder:</strong> ${lastExp?'Last export was '+daysAgo+' days ago.':'No backup export on record.'}
-        <button class="btn btn-sm btn-outline" onclick="exportJSON();" style="margin-left:8px;">Export Now</button></div>`;
+        <button type="button" class="btn btn-sm btn-outline" onclick="exportJSON();" style="margin-left:8px;">Export Now</button></div>`;
       expEl.style.display='';
     }else expEl.style.display='none';
   }
@@ -5196,7 +5214,7 @@ function saveSafety(){
     loggedBy:document.getElementById('m-sf-by').value,
     remarks:document.getElementById('m-sf-remarks').value,
   };
-  if(_editSafety){const i=list.findIndex(x=>x.id===_editSafety);list[i]=s;}else list.push(s);
+  if(_editSafety){const i=list.findIndex(x=>x.id===_editSafety);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-safety');return;}list[i]=s;}else list.push(s);
   DB.s('safety',list);closeModal('mo-safety');renderSafety();renderDash();showToast('Safety issue saved.');
 }
 
@@ -5232,7 +5250,7 @@ function renderSafety(){
     <td>${ssBadge(s.status)}</td>
     <td>${fmt(s.date)}</td>
     <td style="max-width:140px;white-space:normal;font-size:12px;">${escapeHTML(s.remarks)||'—'}</td>
-    <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openSafetyModal(${s.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delSafety(${s.id})">Del</button></td>
+    <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openSafetyModal(${s.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delSafety(${s.id})">Del</button></td>
   </tr>`).join(''):'<tr><td colspan="9" class="empty">No safety issues found.</td></tr>';
 }
 
@@ -5282,7 +5300,7 @@ function saveProject(){
     financialPct:parseFloat(document.getElementById('m-pj-financial').value)||0,
     remarks:document.getElementById('m-pj-remarks').value,
   };
-  if(_editProject){const i=list.findIndex(x=>x.id===_editProject);list[i]=p;}else list.push(p);
+  if(_editProject){const i=list.findIndex(x=>x.id===_editProject);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-project');return;}list[i]=p;}else list.push(p);
   DB.s('projects',list);closeModal('mo-project');renderProjects();renderProjStats();renderDash();showToast('Project saved.');
 }
 
@@ -5312,7 +5330,7 @@ function renderProjects(){
       <td style="font-size:12px;">${p.targetDate?fmt(p.targetDate):'—'}</td>
       <td style="font-size:12px;">${escapeHTML(p.responsible)||'—'}</td>
       <td style="max-width:140px;white-space:normal;font-size:12px;">${escapeHTML(p.remarks)||'—'}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openProjectModal(${p.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delProject(${p.id})">Del</button></td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openProjectModal(${p.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delProject(${p.id})">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="12" class="empty">No projects found.</td></tr>';
 }
@@ -5379,7 +5397,7 @@ function saveWaterLog(){
     resultImage:document._wlResultImg||(_editWaterLog?list.find(x=>x.id===_editWaterLog)?.resultImage||null:null),
   };
   document._wlResultImg=null;
-  if(_editWaterLog){const i=list.findIndex(x=>x.id===_editWaterLog);list[i]=l;}else list.push(l);
+  if(_editWaterLog){const i=list.findIndex(x=>x.id===_editWaterLog);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-waterlog');return;}list[i]=l;}else list.push(l);
   DB.s('waterLogs',list);closeModal('mo-waterlog');renderWaterLogs();renderWardStatus();showToast('Water log saved.');
 }
 
@@ -5401,7 +5419,7 @@ function renderWaterLogs(){
   list.sort((a,b)=>(b.date||'').localeCompare(a.date||'')); // L-4 FIX: null guard on date
   document.getElementById('water-log-tbody').innerHTML=list.length?list.map(l=>{
     const safeImgUrl=safeSrc(l.resultImage);
-    const imgBtn=safeImgUrl?`<button class="btn btn-sm btn-outline" data-photo-src="${escapeHTML(l.resultImage)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">View</button>`:'—';
+    const imgBtn=safeImgUrl?`<button type="button" class="btn btn-sm btn-outline" data-photo-src="${escapeHTML(safeImgUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">View</button>`:'—';
     return`<tr>
       <td class="mono" style="font-size:11px;">WL-${String(l.id).padStart(4,'0')}</td>
       <td>${fmt(l.date)}</td>
@@ -5412,7 +5430,7 @@ function renderWaterLogs(){
       <td style="max-width:150px;white-space:normal;font-size:12px;">${escapeHTML(l.mitigation)||'—'}</td>
       <td>${imgBtn}</td>
       <td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(l.remarks)||'—'}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openWaterLogModal(${l.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delWaterLog(${l.id})">Del</button></td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWaterLogModal(${l.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWaterLog(${l.id})">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="10" class="empty">No water test logs found.</td></tr>';
 }
@@ -5476,7 +5494,7 @@ function saveTankReading(){
     status:document.getElementById('m-tk-status').value,
     remarks:document.getElementById('m-tk-remarks').value,
   };
-  if(_editTank){const i=list.findIndex(x=>x.id===_editTank);list[i]=t;}else list.push(t);
+  if(_editTank){const i=list.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}list[i]=t;}else list.push(t);
   DB.s('waterTank',list);closeModal('mo-tank');renderWaterTank();renderTankGauges();showToast('Tank reading saved.');
 }
 
@@ -5506,7 +5524,7 @@ function renderWaterTank(){
     <td class="mono">${t.flowRate!=null?t.flowRate+' LPM':'—'}</td>
     <td>${tkBadge(t.status||'Normal')}</td>
     <td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(t.remarks)||'—'}</td>
-    <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button></td>
+    <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button></td>
   </tr>`).join(''):'<tr><td colspan="9" class="empty">No tank readings found.</td></tr>';
 }
 
@@ -5571,6 +5589,8 @@ function saveIssuanceEdit(){
 // PATCH: personnel per shift — save/load
 // ═══════════════════════════════════════
 function savePersonnel(){
+  // Intentional: mutates _memDB directly + queueScalarSync() instead of DB.s()
+  // because personnel is a scalar in _fbMetaState, not a store collection.
   _memDB.personnel={
     elec:parseInt(document.getElementById('pers-elec')?.value)||0,
     mech:parseInt(document.getElementById('pers-mech')?.value)||0,
@@ -6031,7 +6051,7 @@ function saveEffluent(){
   // PATCH END
   const items=DB.g('effluent');
   const o={id:_editEffluent||DB.nid('effluent'),date,samplingPoint:point,status:document.getElementById('m-eff-status').value,pH:gn('m-eff-ph'),BOD:gn('m-eff-bod'),COD:gn('m-eff-cod'),TSS:gn('m-eff-tss'),oilGrease:gn('m-eff-oil'),temperature:gn('m-eff-temp'),totalColiform:gn('m-eff-coliform'),fecalColiform:gn('m-eff-fecal'),dissolvedOxygen:gn('m-eff-do'),remarks:document.getElementById('m-eff-remarks').value,customParams};
-  if(_editEffluent){const i=items.findIndex(x=>x.id===_editEffluent);items[i]=o;}else items.push(o);
+  if(_editEffluent){const i=items.findIndex(x=>x.id===_editEffluent);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-effluent');return;}items[i]=o;}else items.push(o);
   DB.s('effluent',items);closeModal('mo-effluent');renderEffluent();showToast('Effluent reading saved.');
 }
 
@@ -6156,7 +6176,7 @@ function renderEffluent(){
       <td class="mono">${r.temperature!=null?r.temperature+'°C':'—'}</td>
       <td>${effluentBadge(r.status||'Compliant')}</td>
       <td style="max-width:130px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}${customSummary}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openEffluentModal(${r.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delEffluent(${r.id})">Del</button></td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openEffluentModal(${r.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delEffluent(${r.id})">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="13" class="empty">No effluent readings found.</td></tr>';
   // PATCH END
@@ -6170,8 +6190,8 @@ let _editMedWaste=null;
 function calcMWUtil(){
   const ophrs=parseFloat(document.getElementById('m-mw-ophrs')?.value)||0;
   const downtime=parseFloat(document.getElementById('m-mw-downtime')?.value)||0;
-  const shiftHrs=8;
-  const util=shiftHrs>0?Math.min(100,Math.round((ophrs/Math.max(ophrs+downtime,shiftHrs))*100)):0;
+  const shiftHrs=8;const denom=Math.max(ophrs+downtime,shiftHrs);
+  const util=denom>0?Math.min(100,Math.round((ophrs/denom)*100)):0;
   const el=document.getElementById('m-mw-util');if(el)el.value=util;
 }
 function openMedWasteModal(id=null){
@@ -6198,9 +6218,9 @@ function saveMedWaste(){
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('medWasteProd');
   const opHrs=gn('m-mw-ophrs');const downtime=gn('m-mw-downtime');
-  const shiftHrs=8;const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),shiftHrs))*100)):null;
+  const shiftHrs=8;const mwDenom=Math.max(opHrs+(downtime||0),shiftHrs);const util=opHrs!=null&&mwDenom>0?Math.min(100,Math.round((opHrs/mwDenom)*100)):null;
   const o={id:_editMedWaste||DB.nid('medWasteProd'),date,shift:document.getElementById('m-mw-shift').value,status:document.getElementById('m-mw-status').value,inputQty:gn('m-mw-input'),treatedQty:gn('m-mw-treated'),outputQty:gn('m-mw-output'),opHours:opHrs,downtime:downtime,utilizationPct:util,remarks:document.getElementById('m-mw-remarks').value};
-  if(_editMedWaste){const i=items.findIndex(x=>x.id===_editMedWaste);items[i]=o;}else items.push(o);
+  if(_editMedWaste){const i=items.findIndex(x=>x.id===_editMedWaste);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-medwaste');return;}items[i]=o;}else items.push(o);
   DB.s('medWasteProd',items);closeModal('mo-medwaste');renderMedWaste();showToast('Medical waste log saved.');
 }
 async function delMedWaste(id){if(!await confirmDialog('Delete this log?'))return;DB.s('medWasteProd',DB.g('medWasteProd').filter(x=>x.id!==id));renderMedWaste();showToast('Log deleted.','info');}
@@ -6221,7 +6241,7 @@ function importMedWasteCSV(e){
       const gv=j=>j>=0?row[j]||'':'';const gn=j=>{const v=parseFloat(gv(j));return isNaN(v)?null:v;};
       const date=gv(idx.date).trim();if(!date)continue;
       const opHrs=gn(idx.ophrs);const downtime=gn(idx.downtime);
-      const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),8))*100)):null;
+      const mwcDenom=Math.max((opHrs||0)+(downtime||0),8);const util=opHrs!=null&&mwcDenom>0?Math.min(100,Math.round((opHrs/mwcDenom)*100)):null;
       items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inputQty:gn(idx.input),treatedQty:gn(idx.treated),outputQty:gn(idx.output),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
       added++;
     }
@@ -6335,7 +6355,7 @@ function renderMedWaste(){
     <td class="mono">${r.inputQty!=null?r.inputQty.toFixed(2):'—'}</td><td class="mono">${r.treatedQty!=null?r.treatedQty.toFixed(2):'—'}</td><td class="mono">${r.outputQty!=null?r.outputQty.toFixed(2):'—'}</td>
     <td class="mono">${r.opHours!=null?r.opHours:'—'}</td><td class="mono">${r.downtime!=null?r.downtime:'—'}</td><td class="mono">${r.utilizationPct!=null?r.utilizationPct+'%':'—'}</td>
     <td>${r.status||'—'}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}</td>
-    <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openMedWasteModal(${r.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delMedWaste(${r.id})">Del</button></td>
+    <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openMedWasteModal(${r.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delMedWaste(${r.id})">Del</button></td>
   </tr>`).join(''):'<tr><td colspan="12" class="empty">No production logs found.</td></tr>';
 }
 
@@ -6346,7 +6366,7 @@ let _editWWProd=null;
 function calcWWUtil(){
   const ophrs=parseFloat(document.getElementById('m-ww-ophrs')?.value)||0;
   const downtime=parseFloat(document.getElementById('m-ww-downtime')?.value)||0;
-  const util=Math.min(100,Math.round((ophrs/Math.max(ophrs+downtime,24))*100));
+  const wwDenom=Math.max(ophrs+downtime,24);const util=wwDenom>0?Math.min(100,Math.round((ophrs/wwDenom)*100)):0;
   const el=document.getElementById('m-ww-util');if(el)el.value=util;
 }
 function openWWProdModal(id=null){
@@ -6373,9 +6393,9 @@ function saveWWProd(){
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('wwProd');
   const opHrs=gn('m-ww-ophrs');const downtime=gn('m-ww-downtime');
-  const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),24))*100)):null;
+  const wwsDenom=Math.max(opHrs+(downtime||0),24);const util=opHrs!=null&&wwsDenom>0?Math.min(100,Math.round((opHrs/wwsDenom)*100)):null;
   const o={id:_editWWProd||DB.nid('wwProd'),date,shift:document.getElementById('m-ww-shift').value,status:document.getElementById('m-ww-status').value,inflow:gn('m-ww-inflow'),treated:gn('m-ww-treated'),outflow:gn('m-ww-outflow'),opHours:opHrs,downtime,utilizationPct:util,remarks:document.getElementById('m-ww-remarks').value};
-  if(_editWWProd){const i=items.findIndex(x=>x.id===_editWWProd);items[i]=o;}else items.push(o);
+  if(_editWWProd){const i=items.findIndex(x=>x.id===_editWWProd);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wwprod');return;}items[i]=o;}else items.push(o);
   DB.s('wwProd',items);closeModal('mo-wwprod');renderWWProd();showToast('Wastewater log saved.');
 }
 async function delWWProd(id){if(!await confirmDialog('Delete this log?'))return;DB.s('wwProd',DB.g('wwProd').filter(x=>x.id!==id));renderWWProd();showToast('Log deleted.','info');}
@@ -6396,7 +6416,7 @@ function importWWProdCSV(e){
       const gv=j=>j>=0?row[j]||'':'';const gn=j=>{const v=parseFloat(gv(j));return isNaN(v)?null:v;};
       const date=gv(idx.date).trim();if(!date)continue;
       const opHrs=gn(idx.ophrs);const downtime=gn(idx.downtime);
-      const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),24))*100)):null;
+      const wwcDenom=Math.max((opHrs||0)+(downtime||0),24);const util=opHrs!=null&&wwcDenom>0?Math.min(100,Math.round((opHrs/wwcDenom)*100)):null;
       items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inflow:gn(idx.inflow),treated:gn(idx.treated),outflow:gn(idx.outflow),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
       added++;
     }
@@ -6511,7 +6531,7 @@ function renderWWProd(){
     <td class="mono">${r.inflow!=null?r.inflow.toFixed(2):'—'}</td><td class="mono">${r.treated!=null?r.treated.toFixed(2):'—'}</td><td class="mono">${r.outflow!=null?r.outflow.toFixed(2):'—'}</td>
     <td class="mono">${r.opHours!=null?r.opHours:'—'}</td><td class="mono">${r.downtime!=null?r.downtime:'—'}</td><td class="mono">${r.utilizationPct!=null?r.utilizationPct+'%':'—'}</td>
     <td>${r.status||'—'}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}</td>
-    <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openWWProdModal(${r.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delWWProd(${r.id})">Del</button></td>
+    <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWWProdModal(${r.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWWProd(${r.id})">Del</button></td>
   </tr>`).join(''):'<tr><td colspan="12" class="empty">No production logs found.</td></tr>';
 }
 
@@ -6566,7 +6586,7 @@ saveTankReading=function(){
     const prev=tanks.filter(t=>t.tankName===name&&t.id!==o.id).sort((a,b)=>b.id-a.id)[0];
     if(prev?.tankVolume!=null){o.estimatedConsumption=Math.max(0,parseFloat(((prev.tankVolume+o.refillVolume-o.tankVolume).toFixed(0))));}
   }
-  if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);tanks[i]=o;}else tanks.push(o);
+  if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}tanks[i]=o;}else tanks.push(o);
   DB.s('waterTank',tanks);closeModal('mo-tank');renderWaterTank();renderTankGauges();renderTankTrends();
 };
 
@@ -7053,16 +7073,16 @@ function renderWO(){
     const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';
     const mats=w.materials?.length?w.materials.map(m=>`${escapeHTML(m.name)||'?'} ×${m.qty}`).join(', '):'—';
     const rptUrl=safeSrc(w.serviceReport);
-    const rpt=rptUrl?`<img src="${rptUrl}" style="width:46px;height:36px;object-fit:cover;border-radius:2px;border:1px solid var(--border);cursor:zoom-in;" data-photo-src="${escapeHTML(w.serviceReport)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View service report">`:'—';
+    const rpt=rptUrl?`<img src="${rptUrl}" alt="Service report" style="width:46px;height:36px;object-fit:cover;border-radius:2px;border:1px solid var(--border);cursor:zoom-in;" data-photo-src="${escapeHTML(rptUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View service report">`:'—';
     const overdueAlert=isOvr?`<div style="font-size:10px;color:#9b1a1a;font-weight:700;margin-top:3px;">&#9888; OVERDUE${w.delayReason?' — '+escapeHTML(w.delayReason):''}</div>`:'';
     const lateAlert=isLateCmp?`<div style="font-size:10px;color:#b06000;font-weight:700;margin-top:3px;">&#9201; Late Completed</div>`:'';
     const rowBg=isOvr?' style="background:#fff8f8;"':isLateCmp?' style="background:#fffbf0;"':'';
-    return`<tr${rowBg}><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
+    return`<tr${rowBg}><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="15" class="empty">No work orders found.</td></tr>';
   if(!_woShowAll&&totalWOs>50){
     document.getElementById('wo-tbody').innerHTML+=
       `<tr><td colspan="15" style="text-align:center;padding:12px;">
-        <button class="btn btn-outline" onclick="_woShowAll=true;renderWO();">
+        <button type="button" class="btn btn-outline" onclick="_woShowAll=true;renderWO();">
           Show all ${totalWOs} work orders (showing first 50)
         </button></td></tr>`;
   }
@@ -7074,7 +7094,7 @@ function renderWO(){
 //  INIT
 // ═══════════════════════════════════════
 document.getElementById('today-chip').textContent=new Date().toLocaleDateString('en-PH',{weekday:'short',month:'short',day:'numeric',year:'numeric'});
-initStorage(); setTimeout(updateOnlineChip, 300);
+if(typeof initStorage==='function') initStorage(); setTimeout(updateOnlineChip, 300);
   // Make all tables scrollable on mobile
   setTimeout(()=>{
     document.querySelectorAll('table').forEach(t=>{
@@ -7524,7 +7544,7 @@ saveTankReading = function(){
   // Linked asset
   const linkedAssetId = window._tkLinkedAssetId || null;
   const linkedAsset = linkedAssetId ? DB.g('assets').find(x=>x.id===linkedAssetId) : null;
-  const tankCapacityL = gn('m-tk-vol')!=null ? null : (linkedAsset?.tankCapacityLiters||null);
+  const tankCapacityL = gn('m-tk-vol') || linkedAsset?.tankCapacityLiters || null;
 
   // Operational factors
   const operationalFactors = [...document.querySelectorAll('#tk-factor-tags input:checked')].map(c=>c.value);
@@ -7590,7 +7610,7 @@ saveTankReading = function(){
     }
   }
 
-  if(_editTank){ const i=tanks.findIndex(x=>x.id===_editTank); tanks[i]=o; } else tanks.push(o);
+  if(_editTank){ const i=tanks.findIndex(x=>x.id===_editTank); if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;} tanks[i]=o; } else tanks.push(o);
   DB.s('waterTank', tanks);
   // P4: Remember last used tank name for next log entry
   if(tankName) sessionStorage.setItem('_hamms_lastTankName', tankName);
@@ -7622,7 +7642,7 @@ renderWaterTank = function(){
   if(locSel){
     const tanks=[...new Set(DB.g('waterTank').map(l=>l.tankName).filter(Boolean))];
     const cur=locSel.value;
-    locSel.innerHTML='<option value="">All Tanks/Sources</option>'+tanks.map(t=>`<option${cur===t?' selected':''}>${t}</option>`).join('');
+    locSel.innerHTML='<option value="">All Tanks/Sources</option>'+tanks.map(t=>`<option value="${escapeHTML(t)}"${cur===t?' selected':''}>${escapeHTML(t)}</option>`).join('');
   }
   if(locf) list=list.filter(l=>l.tankName===locf);
   if(q) list=list.filter(l=>(l.tankName||'').toLowerCase().includes(q)||(l.remarks||'').toLowerCase().includes(q));
@@ -7680,7 +7700,7 @@ renderWaterTank = function(){
       <td class="mono">${t.patientCount!=null?t.patientCount:'—'}</td>
       <td class="mono">${t.litersPerPatient!=null?t.litersPerPatient+' L/pt':'—'}</td>
       <td>${makeFlagBadge(t)}</td>
-      <td style="white-space:nowrap;"><button class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button> <button class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button></td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button></td>
     </tr>`;
   }).join('') : '<tr><td colspan="13" class="empty">No tank readings found.</td></tr>';
 };
@@ -8518,7 +8538,7 @@ saveTankReading=function(){
   };
 
   let tanks=DB.g('waterTank');
-  if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);tanks[i]=o;} else tanks.push(o);
+  if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}tanks[i]=o;} else tanks.push(o);
 
   // Run compute engine on all records (edit of one reading can affect subsequent same-tank readings)
   tanks=computeTankAnalytics(tanks);
@@ -8698,15 +8718,15 @@ renderWaterTank=function(){
       }</td>
       <td>${flagBadge(t)}</td>
       <td style="white-space:nowrap;">
-        <button class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button>
-        <button class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="openTankModal(${t.id})">Edit</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="delTankReading(${t.id})">Del</button>
       </td>
     </tr>`;
   }).join(''):'<tr><td colspan="17" class="empty">No readings yet. Click "＋ Log Level Reading" to start.</td></tr>';
   if(!_tankShowAll&&totalTanks>50){
     tbody.innerHTML+=
       `<tr><td colspan="17" style="text-align:center;padding:12px;">
-        <button class="btn btn-outline" onclick="_tankShowAll=true;renderWaterTank();">
+        <button type="button" class="btn btn-outline" onclick="_tankShowAll=true;renderWaterTank();">
           Show all ${totalTanks} readings (showing first 50)
         </button></td></tr>`;
   }
@@ -9070,6 +9090,10 @@ function getWaterSettings(){
 function saveWaterSettings(obj){
   // PATCH: save to Firebase-backed DB only
   DB.s('waterSettings', [obj]);
+  // Refresh any dependent panels
+  if(typeof renderTankKPIs==='function') renderTankKPIs();
+  if(typeof renderExpectedComparison==='function') renderExpectedComparison();
+  if(typeof renderWaterAlarmPanel==='function') renderWaterAlarmPanel();
   showToast('Water settings saved.');
 }
 async function resetWaterSettingsDefaults(){
@@ -10246,18 +10270,18 @@ function updateRoomDatalist(){
   DB.g('assets').forEach(a=>{
     [a.location,a.roomNumber,a.roomName].filter(Boolean).forEach(r=>rooms.add(r));
   });
-  dl.innerHTML = [...rooms].sort().map(r=>`<option value="${r}">`).join('');
+  dl.innerHTML = [...rooms].sort().map(r=>`<option value="${escapeHTML(r)}">`).join('');
 }
 </script>
 
 
 
 <!-- ══ WATER SYSTEM SETTINGS MODAL — PATCH: Water Log Settings Extension ══ -->
-<div class="modal-overlay" id="mo-water-settings">
+<div class="modal-overlay" id="mo-water-settings" role="dialog" aria-modal="true" aria-label="Water Settings">
   <div class="modal modal-wide" style="max-width:760px;">
     <div class="modal-header">
       <h3>💧 Water System — Assumption Settings</h3>
-      <button class="modal-close" onclick="closeModal('mo-water-settings')">×</button>
+      <button type="button" class="modal-close" onclick="closeModal('mo-water-settings')">×</button>
     </div>
     <div class="modal-body" style="max-height:72vh;overflow-y:auto;">
 
@@ -10423,10 +10447,10 @@ function updateRoomDatalist(){
 
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
-      <button class="btn btn-ghost" onclick="resetWaterSettingsDefaults()">↺ Reset to Defaults</button>
+      <button type="button" class="btn btn-ghost" onclick="resetWaterSettingsDefaults()">↺ Reset to Defaults</button>
       <div style="display:flex;gap:8px;">
-        <button class="btn btn-ghost" onclick="closeModal('mo-water-settings')">Cancel</button>
-        <button class="btn btn-primary" onclick="applyWaterSettings()">✓ Save &amp; Apply</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('mo-water-settings')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="applyWaterSettings()">✓ Save &amp; Apply</button>
       </div>
     </div>
   </div>
