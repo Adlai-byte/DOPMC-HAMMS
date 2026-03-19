@@ -10,7 +10,9 @@ service cloud.firestore {
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
                      'medWasteProd','wwProd','censusLog','waterSettings']
-        && request.resource.data.keys().size() < 100;
+        && request.resource.data.keys().size() < 100
+        && (!('_v' in request.resource.data) || request.resource.data._v is int)
+        && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int);
     }
     match /hammsMeta/state {
       allow read, write: if request.auth != null;

@@ -1,0 +1,5 @@
+node_modules/
+.firebase/
+.playwright-mcp/
+package-lock.json
+*.docx

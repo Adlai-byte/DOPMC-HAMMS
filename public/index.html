@@ -39,13 +39,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 // PATCH END
   const FIREBASE_CONFIG = {
-    apiKey:            "AIzaSyA_S1KKX3zZsSg2rT6oy9jRGaBkRNbxnfg",
-    authDomain:        "demoapp-7864a.firebaseapp.com",
-    databaseURL:       "https://demoapp-7864a-default-rtdb.firebaseio.com",
-    projectId:         "demoapp-7864a",
-    storageBucket:     "demoapp-7864a.firebasestorage.app",
-    messagingSenderId: "396200076876",
-    appId:             "1:396200076876:web:8fce8aa3407748f188b6e9"
+    apiKey:            "AIzaSyBrzhDWjwo57XXoZd1kZGYfZCo4xu1Ji1Q",
+    authDomain:        "dopmc-cmms-74ae4.firebaseapp.com",
+    databaseURL:       "https://dopmc-cmms-74ae4-default-rtdb.firebaseio.com",
+    projectId:         "dopmc-cmms-74ae4",
+    storageBucket:     "dopmc-cmms-74ae4.firebasestorage.app",
+    messagingSenderId: "384450995311",
+    appId:             "1:384450995311:web:496835011ad6016a8d199a",
+    measurementId:     "G-GQ8P4TE3CP"
   };
   // Set to false to disable cloud sync (offline-only mode)
   const FIREBASE_ENABLED = true;
@@ -222,6 +223,8 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .chip-date{background:#e8f0fb;color:var(--blue);}
 .chip-offline{background:var(--teal-light);color:var(--teal);}
 .chip-firebase{background:#FF6F00;color:#fff;font-weight:700;}
+.chip-syncing{background:#1565C0;color:#fff;font-weight:700;animation:chip-pulse 1.2s ease-in-out infinite;}
+@keyframes chip-pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .chip-file{background:#e6f5e6;color:#1a6b1a;font-weight:700;}
 .chip-idb{background:#e8f0fb;color:#0d4a8a;font-weight:700;}
 .chip-ls{background:#fff4dc;color:#7a5000;font-weight:700;}
@@ -609,6 +612,31 @@ tr.row-warn td{background:#fffdf0;}
   #sidebar,#app-footer,.btn,.filter-bar,.modal-overlay{display:none!important;}
   body{display:block;}#app{display:block;}
 }
+
+/* ── Toast Notifications ─────────────────────────────── */
+.toast-container{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column-reverse;gap:8px;z-index:100000;pointer-events:none;}
+.toast{pointer-events:auto;display:flex;align-items:center;gap:10px;min-width:280px;max-width:420px;padding:12px 16px;border-radius:8px;font-size:13px;font-weight:600;color:#fff;box-shadow:0 4px 16px rgba(0,0,0,.25);animation:toastIn .3s ease forwards;font-family:'IBM Plex Sans',sans-serif;}
+.toast.removing{animation:toastOut .3s ease forwards;}
+.toast-icon{font-size:16px;flex-shrink:0;}
+.toast-msg{flex:1;}
+.toast-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:16px;padding:0 0 0 8px;line-height:1;}
+.toast-close:hover{color:#fff;}
+.toast-success{background:#1f9452;}
+.toast-error{background:#cc3333;}
+.toast-warning{background:#d97b1a;}
+.toast-info{background:#1e6fb5;}
+@keyframes toastIn{from{transform:translateX(100%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes toastOut{from{transform:translateX(0);opacity:1;}to{transform:translateX(100%);opacity:0;}}
+@media(max-width:768px){.toast-container{left:12px;right:12px;bottom:12px;}.toast{min-width:0;max-width:100%;}}
+
+/* ── Confirm Dialog ──────────────────────────────────── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100001;animation:confirmFadeIn .2s ease;}
+.confirm-box{background:#fff;border-radius:10px;width:90%;max-width:400px;box-shadow:0 8px 32px rgba(0,0,0,.3);border-top:4px solid #cc3333;animation:confirmSlideIn .25s ease;font-family:'IBM Plex Sans',sans-serif;}
+.confirm-body{padding:24px 24px 16px;font-size:14px;color:var(--navy);line-height:1.6;}
+.confirm-body h3{margin:0 0 12px;font-size:16px;font-weight:700;}
+.confirm-footer{display:flex;justify-content:flex-end;gap:8px;padding:12px 24px 20px;}
+@keyframes confirmFadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes confirmSlideIn{from{transform:translateY(-20px);opacity:0;}to{transform:translateY(0);opacity:1;}}
 </style>
 </head>
 <body>
@@ -1380,7 +1408,7 @@ async function hammsLogin(){
             <hr class="divider">
             <div style="font-size:13px;color:var(--muted);line-height:2.1;">
               <strong style="color:var(--navy);">System Information</strong><br>
-              Application: <strong style="color:var(--teal);">HAMMS v2.3</strong><br>
+              Application: <strong style="color:var(--teal);">HAMMS v2.6.0</strong><br>
               Storage: Firebase Firestore live data source + optional JSON manual backup<br>
               Institution: DOPMC – GSD Division<br>
               Sections: CMW · Electrical · Plumbing · Mechanical · Housekeeping<br>
@@ -1501,7 +1529,7 @@ async function hammsLogin(){
         <div class="card mb18" style="border-top:4px solid var(--teal);">
           <div class="card-body" style="padding:22px 24px;">
             <div style="font-size:20px;font-weight:700;color:var(--navy);margin-bottom:4px;">DAVAO ORIENTAL PROVINCIAL MEDICAL CENTER</div>
-            <div style="font-size:15px;color:var(--teal);font-weight:600;margin-bottom:6px;">Hospital Asset Maintenance Monitoring System (HAMMS) — Version 2.3</div>
+            <div style="font-size:15px;color:var(--teal);font-weight:600;margin-bottom:6px;">Hospital Asset Maintenance Monitoring System (HAMMS) — Version 2.6.0</div>
             <div style="font-size:13px;color:var(--muted);line-height:1.9;">
               A comprehensive facilities management system for the <strong style="color:var(--navy);">General Services Division</strong>. Covers Work Orders, Asset Registry with PMS scheduling, Energy &amp; Carbon Estimates, Safety Issue Monitoring, Project Tracking, EMB Waste Compliance, Materials Inventory, Water Safety, and Water Supply Monitoring with DOH/WHO-referenced demand analytics — with Firebase as the live operational data source for synchronized records.
             </div>
@@ -1798,7 +1826,7 @@ async function hammsLogin(){
                 <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Detail</th>
               </tr></thead>
               <tbody>
-                <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Version</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;"><strong>HAMMS v2.3</strong> — single HTML file with Firebase-only live data mode.</td></tr>
+                <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Version</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;"><strong>HAMMS v2.6.0</strong> — single HTML file with Firebase-only live data mode.</td></tr>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Storage</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Firebase Firestore — the only live operational data source for HAMMS.</td></tr>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Manual backup</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">JSON export — optional archive or recovery copy only, not auto-loaded as the live dataset.</td></tr>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Recommended browser</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Google Chrome or Microsoft Edge (Chromium) with a stable network connection for Firebase sync.</td></tr>
@@ -2642,6 +2670,38 @@ function escapeHTML(s){
   if(s==null)return'';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+function stampRecord(rec){
+  if(!rec||typeof rec!=='object')return rec;
+  rec._updatedAt=Date.now();
+  rec._updatedBy=window._FB?.email||window._FB?.uid||'unknown';
+  rec._v=(rec._v||0)+1;
+  return rec;
+}
+function stampChangedRecords(prev,next){
+  const META_KEYS=new Set(['_v','_updatedAt','_updatedBy']);
+  const prevMap=Object.create(null);
+  prev.forEach(r=>{if(r&&r.id!=null)prevMap[r.id]=r;});
+  next.forEach(r=>{
+    if(!r||typeof r!=='object')return;
+    const old=r.id!=null?prevMap[r.id]:null;
+    if(!old){stampRecord(r);return;}
+    const changed=Object.keys(r).some(k=>{
+      if(META_KEYS.has(k))return false;
+      return JSON.stringify(r[k])!==JSON.stringify(old[k]);
+    })||Object.keys(old).some(k=>{
+      if(META_KEYS.has(k))return false;
+      return !(k in r);
+    });
+    if(changed){
+      r._v=old._v||0;
+      stampRecord(r);
+    }else{
+      r._v=old._v||0;
+      r._updatedAt=old._updatedAt||0;
+      r._updatedBy=old._updatedBy||'';
+    }
+  });
+}
 function safeSrc(url){
   if(!url)return'';
   const s=String(url).trim();
@@ -2660,6 +2720,7 @@ function safeSrc(url){
 
 const STORES=['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings']; // PATCHED: record-level Firestore collections remain the live operational stores
 let _memDB={wo:[],assets:[],inventory:[],issuance:[],waste:[],safety:[],projects:[],waterLogs:[],waterTank:[],effluent:[],medWasteProd:[],wwProd:[],censusLog:[],waterSettings:[]}; // PATCHED: in-memory mirror fed from record-level cloud collections
+let _cleanStoreState=Object.create(null); // PATCHED: pre-mutation snapshot for version stamping — survives in-place mutations by callers
 let _storageMode='firebase-loading'; // PATCHED: Firebase-only status mode
 let _saveTimer=null;
 let _fbSyncTimer=null;
@@ -2675,6 +2736,7 @@ let _fbVisibilityReloadHandler=null; // PATCHED: visibility-triggered refresh re
 let _fbRefreshInProgress=false; // PATCHED: prevents overlapping focus/visibility/manual reload reads
 let _fbWriteInProgress=false; // PATCHED: blocks refresh hooks while explicit cloud writes are committing
 let _fbListenersStarted=false; // PATCHED: keep one stable Firestore listener set alive instead of tearing listeners down around every save
+let _fbAllFromCache=false; // PATCHED: true when Firestore listeners report cache-only — navigator.onLine is unreliable on Windows
 
 function cloneForFirebase(value){ // PATCHED: snapshot write payloads so later mutations do not rewrite stale references
   return value==null ? value : JSON.parse(JSON.stringify(value));
@@ -2875,12 +2937,14 @@ function storeInitialized(store){ // PATCHED: once a store is explicitly saved i
 }
 function applyStoreData(store, arr){ // PATCHED: single entry point for all store memory writes
   _memDB[store]=prepareStoreArray(store, arr);
+  _cleanStoreState[store]=cloneForFirebase(_memDB[store]);
 }
 function applyMetaData(meta){ // PATCHED: keep scalar state separate from record collections
   _fbMetaState=deepMerge({storeInitialized:{}}, cloneForFirebase(meta||{}));
   _memDB.inpatientToday = _fbMetaState.inpatientToday!=null ? _fbMetaState.inpatientToday : (_fbLegacyParsed?.inpatientToday||0);
   _memDB.personnel = _fbMetaState.personnel ? cloneForFirebase(_fbMetaState.personnel) : cloneForFirebase(_fbLegacyParsed?.personnel||{});
 }
+let _lastRefreshToast=0;
 function scheduleUiRefresh(){ // PATCHED: coalesce listener-driven rerenders after cloud updates
   clearTimeout(_renderRefreshTimer);
   _renderRefreshTimer=setTimeout(()=>{
@@ -2891,6 +2955,10 @@ function scheduleUiRefresh(){ // PATCHED: coalesce listener-driven rerenders aft
       if(activeEl){
         const pageId=activeEl.id?.replace('page-','');
         if(pageId) navigate(pageId);
+      }
+      if(!_fbWriteInProgress && _fbLoadedOnce && document.visibilityState==='visible' && Date.now()-_lastRefreshToast>10000){
+        _lastRefreshToast=Date.now();
+        showToast('Data updated from cloud.','info',2500);
       }
     }catch(e){
       console.warn('UI refresh after Firebase update failed:', e);
@@ -2918,10 +2986,11 @@ async function loadAllFirebaseData(){ // PATCHED: startup now reads store collec
       return [store, snap.docs.map(docSnap=>({ ...cloneForFirebase(docSnap.data()), _docId: docSnap.id }))];
     }catch(e){
       console.warn(`HAMMS store load failed for ${store}:`, e);
-      return [store, []];
+      return [store, null]; // PATCHED: null = keep existing _memDB data instead of wiping with empty array
     }
   }));
   results.forEach(([store, arr])=>{
+    if(arr===null) return; // PATCHED: load failed — keep existing _memDB data
     const useLegacy=!arr.length && !storeInitialized(store) && Array.isArray(legacy?.[store]);
     applyStoreData(store, useLegacy ? legacy[store] : arr);
   });
@@ -2944,6 +3013,7 @@ function clearFirebaseListeners(){ // PATCHED: detach any legacy realtime subscr
 }
 async function refreshFromFirebaseSilently(reason='focus'){ // PATCHED: replace persistent realtime listeners with safe one-time reads on focus/return
   if(!window._FB?.enabled || !window._FB?.db) return;
+  if(!navigator.onLine) return; // PATCHED: don't attempt refresh when known offline — prevents wiping _memDB on navigator.onLine flicker
   if(_fbWriteInProgress || _fbRefreshInProgress) return;
   if(Object.keys(_fbPendingMetaMerge).length) return;
   if(Object.keys(_fbPendingStoreOps).some(store=>hasPendingStoreOps(store))) return;
@@ -2962,15 +3032,54 @@ async function refreshFromFirebaseSilently(reason='focus'){ // PATCHED: replace 
     _fbRefreshInProgress=false;
   }
 }
+function mergeListenerSnapshot(store, snap){ // PATCHED: merge remote changes per-record instead of blocking entire snapshot
+  const ops=_fbPendingStoreOps[store];
+  const pendingUpsertKeys=ops?new Set(Object.keys(ops.upserts)):new Set();
+  const pendingDeleteKeys=ops?ops.deletes:new Set();
+  const serverArr=snap.docs.map(docSnap=>({...cloneForFirebase(docSnap.data()),_docId:docSnap.id}));
+  const localArr=Array.isArray(_memDB[store])?_memDB[store]:[];
+  // Build map of server records by _docId
+  const serverByDocId=Object.create(null);
+  serverArr.forEach(r=>{if(r._docId)serverByDocId[r._docId]=r;});
+  // Build map of local records by _docId
+  const localByDocId=Object.create(null);
+  localArr.forEach(r=>{if(r._docId)localByDocId[r._docId]=r;});
+  // Merged result: start with local records, update non-pending ones from server
+  const merged=[];
+  const seen=new Set();
+  localArr.forEach(r=>{
+    const dk=r?._docId;
+    if(dk&&(pendingUpsertKeys.has(dk)||pendingDeleteKeys.has(dk))){
+      merged.push(r); // keep local version — pending write
+      seen.add(dk);
+    }else if(dk&&serverByDocId[dk]){
+      merged.push(serverByDocId[dk]); // accept server version
+      seen.add(dk);
+    }else if(dk&&!serverByDocId[dk]){
+      // Local record not on server and not pending — may have been deleted remotely
+      if(!pendingUpsertKeys.has(dk)){}else merged.push(r); // skip if not pending
+      seen.add(dk);
+    }else{
+      merged.push(r);
+    }
+  });
+  // Add new server records not in local
+  serverArr.forEach(r=>{
+    if(r._docId&&!seen.has(r._docId))merged.push(r);
+  });
+  applyStoreData(store, merged);
+}
 function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fuel Monitor by keeping one listener set attached
   if(_fbListenersStarted) return;
   if(!window._FB?.enabled || !window._FB?.db || typeof window._FB.onSnapshot!=='function') return;
   clearFirebaseListeners();
   _fbListenersStarted=true;
-  const shouldIgnoreCacheSnapshot=snap=>!!(navigator.onLine && snap?.metadata?.fromCache);
+  const shouldIgnoreCacheSnapshot=snap=>{ // PATCHED: only ignore cache before first load — after that, cached data is better than no data
+    return !_fbLoadedOnce && navigator.onLine && !!snap?.metadata?.fromCache;
+  };
   const publishLiveUi=()=>{
     _fbLoadedOnce=true;
-    setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
+    setStorageChip(navigator.onLine && !_fbAllFromCache ? 'firebase-live' : 'firebase-offline'); // PATCHED: respect Firestore connectivity, not just navigator.onLine
     scheduleUiRefresh();
   };
   try{
@@ -2986,7 +3095,14 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     STORES.forEach(store=>{
       _fbUnsubscribe.push(window._FB.onSnapshot(getStoreCollectionRef(store), snap=>{
         if(shouldIgnoreCacheSnapshot(snap)) return;
-        if(_fbWriteInProgress || hasPendingStoreOps(store)) return;
+        // PATCHED: track Firestore connectivity — fromCache while navigator.onLine means real connection lost
+        if(snap.metadata.fromCache && navigator.onLine){ _fbAllFromCache=true; }
+        else if(!snap.metadata.fromCache){ _fbAllFromCache=false; }
+        if(_fbWriteInProgress || hasPendingStoreOps(store)){
+          mergeListenerSnapshot(store, snap);
+          publishLiveUi();
+          return;
+        }
         const arr=snap.docs.map(docSnap=>({ ...cloneForFirebase(docSnap.data()), _docId: docSnap.id }));
         const useLegacy=!arr.length && !storeInitialized(store) && Array.isArray(_fbLegacyParsed?.[store]);
         applyStoreData(store, useLegacy ? cloneForFirebase(_fbLegacyParsed[store]) : arr);
@@ -3005,9 +3121,11 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
 const DB={
   g(k){return _memDB[k]||[];},
   s(k,v){ // PATCHED: persist only explicit user changes for the target store collection
-    const prev=Array.isArray(_memDB[k]) ? cloneForFirebase(_memDB[k]) : [];
+    const prev=Array.isArray(_cleanStoreState[k]) ? _cleanStoreState[k] : (Array.isArray(_memDB[k]) ? cloneForFirebase(_memDB[k]) : []);
     const next=prepareStoreArray(k, Array.isArray(v)?v:[]);
+    stampChangedRecords(prev, next);
     _memDB[k]=next;
+    _cleanStoreState[k]=cloneForFirebase(next);
     queueStoreSync(k, prev, next);
     scheduleFlush();
   },
@@ -3084,7 +3202,7 @@ async function syncToFirebase(){ // PATCHED: write only changed records/metadata
     setStorageChip('firebase-offline');
     console.warn('HAMMS: Offline — unsaved changes were discarded to prevent multi-user collisions.');
     // H-2 FIX: show user-facing notification instead of silent discard
-    try{ const t=document.createElement('div');t.className='toast-offline';t.textContent='You are offline. Changes were not saved. Please reconnect and try again.';t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#c0392b;color:#fff;padding:12px 24px;border-radius:8px;font-size:13px;font-weight:600;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.3);';document.body.appendChild(t);setTimeout(()=>t.remove(),5000);}catch(_){}
+    showToast('You are offline. Changes were not saved. Please reconnect and try again.','error',6000);
     return;
   }
   _fbWriteInProgress=true;
@@ -3144,14 +3262,14 @@ function setStorageChip(mode){
     const labels={
       'firebase-loading':'CONNECTING',
       'firebase-live':'LIVE',
-      'firebase-syncing':'LIVE',
+      'firebase-syncing':'SYNCING',
       'firebase-offline':'OFFLINE',
       'firebase-unavailable':'UNAVAILABLE'
     };
     const classes={
       'firebase-loading':'tb-chip chip-firebase',
       'firebase-live':'tb-chip chip-firebase',
-      'firebase-syncing':'tb-chip chip-firebase',
+      'firebase-syncing':'tb-chip chip-syncing',
       'firebase-offline':'tb-chip chip-offline',
       'firebase-unavailable':'tb-chip chip-ls'
     };
@@ -3167,25 +3285,19 @@ function showFirebaseStatus(){
   const statusMap={
     'firebase-loading':'Connecting to Firebase live data.',
     'firebase-live':'Firebase is connected and HAMMS uses record-level collections with safe one-time cloud refreshes.',
-    'firebase-syncing':'Firebase is connected and recent explicit user changes are syncing.',
+    'firebase-syncing':'Saving your changes to Firebase...',
     'firebase-offline':'Internet is offline. This session can keep editing, but cloud save is not confirmed until reconnection.',
     'firebase-unavailable':'Firebase is currently unavailable or not yet ready.'
   };
-  // PATCHED: use a template literal so the status dialog does not break script parsing
-  alert(`HAMMS Firebase Status
-
-Status: ${_storageMode||'unknown'}
-Network: ${net}
-
-${statusMap[_storageMode]||'Firebase status unavailable.'}`);
+  showToast(`Firebase: ${_storageMode||'unknown'} · ${net} — ${statusMap[_storageMode]||'Status unavailable.'}`, 'info');
 }
 async function reloadFromFirebase(){ // PATCHED: force a fresh read from record-level collections + metadata
   if(!window._FB?.enabled || !window._FB?.db){
-    alert('Firebase is not ready yet.');
+    showToast('Firebase is not ready yet.','info');
     return;
   }
   if(_fbWriteInProgress || _fbRefreshInProgress){
-    alert('A Firebase sync/refresh is already in progress. Please try again in a moment.');
+    showToast('A Firebase sync/refresh is already in progress. Please try again in a moment.','info');
     return;
   }
   _fbRefreshInProgress=true;
@@ -3196,11 +3308,11 @@ async function reloadFromFirebase(){ // PATCHED: force a fresh read from record-
     await loadAllFirebaseData();
     scheduleUiRefresh();
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
-    alert('Firebase data reloaded successfully.');
+    showToast('Firebase data reloaded successfully.','success');
   }catch(e){
     console.warn('Firebase reload failed:', e);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-    alert('Firebase reload failed: '+e.message);
+    showToast('Firebase reload failed: '+e.message,'error');
   }finally{
     _fbRefreshInProgress=false;
     startFirebaseListener(); // PATCHED: reattach one stable listener set after manual reload succeeds or fails
@@ -3234,7 +3346,7 @@ async function disconnectFile(){ showFirebaseStatus(); }
 function updateOnlineChip(){
   return;
 }
-window.addEventListener('online',  () => { updateOnlineChip(); setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); }); // always do a fresh load on reconnect — never flush stale offline ops (prevents multi-user collision)
+window.addEventListener('online',  () => { updateOnlineChip(); _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); }); // PATCHED: reset _fbAllFromCache on reconnect; always do a fresh load — never flush stale offline ops (prevents multi-user collision)
 window.addEventListener('offline', () => { updateOnlineChip(); setStorageChip('firebase-offline'); });
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
@@ -3249,7 +3361,7 @@ function installPWA(){
   const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent||'');
   const isInStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone;
   if(isInStandalone){
-    alert('This app is already installed on your device.');
+    showToast('This app is already installed on your device.','info');
     return;
   }
   if(_installPrompt){
@@ -3264,9 +3376,9 @@ function installPWA(){
     return;
   }
   if(isIOS){
-    alert('To install on iPad/iPhone: open this site in Safari, tap Share, then choose “Add to Home Screen”.');
+    showToast('To install on iPad/iPhone: open this site in Safari, tap Share, then choose “Add to Home Screen”.','info',6000);
   } else {
-    alert('If your tablet does not show an install prompt, open the browser menu and choose “Add to Home Screen” or “Install app”.');
+    showToast('If your tablet does not show an install prompt, open the browser menu and choose “Add to Home Screen” or “Install app”.','info',6000);
   }
 }
 window.addEventListener('appinstalled', () => {
@@ -3281,6 +3393,25 @@ window.addEventListener('appinstalled', () => {
 // ═══════════════════════════════════════
 const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment'}; // PATCH: effluent monitoring + production tabs
 let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null; // PATCH: issuance log edit support
+let _editSnapshot=null; // { store, id, _v } — optimistic concurrency
+function captureEditSnapshot(store,id){
+  if(!id){_editSnapshot=null;return;}
+  const rec=(DB.g(store)||[]).find(x=>x.id===id);
+  _editSnapshot=rec?{store,id,_v:rec._v||0}:null;
+}
+function checkEditConflict(store,editId){
+  if(!editId||!_editSnapshot||_editSnapshot.store!==store||_editSnapshot.id!==editId)return false;
+  const cur=(DB.g(store)||[]).find(x=>x.id===editId);
+  if(!cur)return false;
+  const curV=cur._v||0;
+  if(curV>_editSnapshot._v){
+    const who=cur._updatedBy||'another user';
+    const when=cur._updatedAt?new Date(cur._updatedAt).toLocaleString():'unknown time';
+    showToast(`Conflict: This record was modified by ${who} at ${when}. Your changes were NOT saved. Please close, review, and retry.`,'error',8000);
+    return true;
+  }
+  return false;
+}
 let _woShowAll=false;
 let _tankShowAll=false;
 let _editSafety=null,_editProject=null,_editWaterLog=null,_editTank=null;
@@ -3574,6 +3705,47 @@ function updateInvAlerts(){
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
 
+// ── Toast Notifications ─────────────────
+function showToast(msg, type, duration){
+  type=type||'success'; duration=duration||4000;
+  if(Array.isArray(window._alerts)) window._alerts.push(msg); // test hook
+  let c=document.getElementById('toast-container');
+  if(!c){c=document.createElement('div');c.id='toast-container';c.className='toast-container';document.body.appendChild(c);}
+  const icons={success:'✓',error:'✕',warning:'⚠',info:'ℹ'};
+  const t=document.createElement('div');
+  t.className='toast toast-'+type;
+  const ic=document.createElement('span');ic.className='toast-icon';ic.textContent=icons[type]||'ℹ';
+  const mg=document.createElement('span');mg.className='toast-msg';mg.textContent=msg;
+  const cl=document.createElement('button');cl.className='toast-close';cl.textContent='×';cl.onclick=()=>dismiss();
+  t.appendChild(ic);t.appendChild(mg);t.appendChild(cl);
+  c.appendChild(t);
+  let timer=setTimeout(dismiss, duration);
+  function dismiss(){clearTimeout(timer);if(!t.parentNode)return;t.classList.add('removing');setTimeout(()=>t.remove(),300);}
+}
+
+// ── Confirm Dialog ──────────────────────
+function confirmDialog(msg, opts){
+  opts=opts||{};
+  return new Promise(resolve=>{
+    const ov=document.createElement('div');ov.className='confirm-overlay';
+    const box=document.createElement('div');box.className='confirm-box';
+    const body=document.createElement('div');body.className='confirm-body';
+    const h3=document.createElement('h3');h3.textContent=opts.title||'Confirm';
+    const p=document.createElement('p');p.textContent=msg;
+    body.appendChild(h3);body.appendChild(p);
+    const foot=document.createElement('div');foot.className='confirm-footer';
+    const btnCancel=document.createElement('button');btnCancel.className='btn btn-ghost';btnCancel.textContent=opts.cancelText||'Cancel';
+    const btnOk=document.createElement('button');btnOk.className=opts.confirmClass||'btn btn-danger';btnOk.textContent=opts.confirmText||'Delete';
+    foot.appendChild(btnCancel);foot.appendChild(btnOk);
+    box.appendChild(body);box.appendChild(foot);ov.appendChild(box);document.body.appendChild(ov);
+    btnCancel.focus();
+    function done(v){ov.remove();resolve(v);}
+    btnOk.onclick=()=>done(true);
+    btnCancel.onclick=()=>done(false);
+    ov.addEventListener('click',e=>{if(e.target===ov)done(false);});
+  });
+}
+
 // ── WO DELAY REASON TOGGLE ────────────
 function toggleDelayReason(){
   const status=document.getElementById('m-wo-status').value;
@@ -3588,7 +3760,7 @@ function toggleDelayOther(){
 }
 // ── WO ────────────────────────────────
 function openWOModal(id=null){
-  _editWO=id;_woMaterials=[];
+  _editWO=id;_woMaterials=[];captureEditSnapshot('wo',id);
   document._woReport=null;
   document.getElementById('wo-report-preview-wrap').style.display='none';
   const repInput=document.getElementById('m-wo-report');if(repInput)repInput.value='';
@@ -3728,7 +3900,7 @@ function fillAssetDrop(sel=''){
 }
 function addMaterialRow(){
   const inv=DB.g('inventory');
-  if(!inv.length){alert('No inventory items. Please add items to inventory first.');return;}
+  if(!inv.length){showToast('No inventory items. Please add items to inventory first.','warning');return;}
   _woMaterials.push({invId:'',qty:1,issuedTo:''});
   renderMaterialRows();
 }
@@ -3748,15 +3920,16 @@ function renderMaterialRows(){
 }
 
 function saveWO(){
+  if(checkEditConflict('wo',_editWO))return;
   const sec=document.getElementById('m-wo-section').value;
   const desc=document.getElementById('m-wo-desc').value.trim();
-  if(!sec||!desc){alert('Section and Description are required.');return;}
+  if(!sec||!desc){showToast('Section and Description are required.','warning');return;}
   const inv=DB.g('inventory');
   for(const m of _woMaterials){
-    if(!m.invId){alert('Please select an item for all material rows, or remove empty rows.');return;}
+    if(!m.invId){showToast('Please select an item for all material rows, or remove empty rows.','warning');return;}
     const item=inv.find(i=>i.id===m.invId);
-    if(!item){alert('Inventory item not found.');return;}
-    if(m.qty>item.qty){alert(`Insufficient stock for "${item.description}". Available: ${item.qty} ${item.unit||''}`);return;}
+    if(!item){showToast('Inventory item not found.','warning');return;}
+    if(m.qty>item.qty){showToast(`Insufficient stock for "${item.description}". Available: ${item.qty} ${item.unit||''}`,'warning');return;}
   }
   const wos=DB.g('wo');
   // Restore old deductions if editing
@@ -3793,14 +3966,14 @@ function saveWO(){
     createdAt:_editWO?wos.find(x=>x.id===_editWO)?.createdAt:today()
   };
   if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);wos[idx]=o;}else wos.push(o);
-  DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();
+  DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
-function delWO(id){if(!confirm('Delete this Work Order?'))return;DB.s('wo',DB.g('wo').filter(x=>x.id!==id));renderWO();renderDash();}
+async function delWO(id){if(!await confirmDialog('Delete this Work Order?'))return;DB.s('wo',DB.g('wo').filter(x=>x.id!==id));renderWO();renderDash();showToast('Work order deleted.','info');}
 
 // ── ASSET ─────────────────────────────
 
 
-function delAsset(id){if(!confirm('Delete this asset?'))return;DB.s('assets',DB.g('assets').filter(x=>x.id!==id));renderAssets();}
+async function delAsset(id){if(!await confirmDialog('Delete this asset?'))return;DB.s('assets',DB.g('assets').filter(x=>x.id!==id));renderAssets();showToast('Asset deleted.','info');}
 function viewHistory(idOrName){
   let name=idOrName;
   if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);name=a?a.name:'';}
@@ -3812,7 +3985,7 @@ function viewHistory(idOrName){
 
 // ── INVENTORY ─────────────────────────
 function openInvModal(id=null){
-  _editInv=id;
+  _editInv=id;captureEditSnapshot('inventory',id);
   document.getElementById('mo-inv-title').textContent=id?'Edit Item':'Add Inventory Item';
   if(!id){['m-i-desc','m-i-unit','m-i-qty','m-i-min'].forEach(x=>document.getElementById(x).value='');document.getElementById('m-i-cat').selectedIndex=0;}
   else{
@@ -3824,18 +3997,19 @@ function openInvModal(id=null){
   openModal('mo-inv');
 }
 function saveInvItem(){
+  if(checkEditConflict('inventory',_editInv))return;
   const desc=document.getElementById('m-i-desc').value.trim();
   const cat=document.getElementById('m-i-cat').value;
   const qty=parseFloat(document.getElementById('m-i-qty').value);
   const min=parseFloat(document.getElementById('m-i-min').value)||0;
-  if(!desc||!cat||isNaN(qty)){alert('Description, Category, and Qty are required.');return;}
+  if(!desc||!cat||isNaN(qty)){showToast('Description, Category, and Qty are required.','warning');return;}
   const inv=DB.g('inventory');
   const existing=_editInv?inv.find(x=>x.id===_editInv):null;
   const item={id:_editInv||DB.nid('inventory'),description:desc,category:cat,unit:document.getElementById('m-i-unit').value,qty,minLevel:min,originalQty:_editInv?(existing?.originalQty||qty):qty};
   if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);inv[idx]=item;}else inv.push(item);
-  DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();
+  DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
-function delInvItem(id){if(!confirm('Delete this inventory item?'))return;DB.s('inventory',DB.g('inventory').filter(x=>x.id!==id));renderInventory();updateInvAlerts();}
+async function delInvItem(id){if(!await confirmDialog('Delete this inventory item?'))return;DB.s('inventory',DB.g('inventory').filter(x=>x.id!==id));renderInventory();updateInvAlerts();showToast('Inventory item deleted.','info');}
 
 // ── MANUAL ISSUE ──────────────────────
 function openIssueModal(){
@@ -3862,16 +4036,16 @@ function saveManualIssue(){
   const invId=parseInt(document.getElementById('m-iss-item').value);
   const qty=parseFloat(document.getElementById('m-iss-qty').value);
   const to=document.getElementById('m-iss-to').value.trim();
-  if(!invId||isNaN(qty)||qty<=0||!to){alert('Item, Qty, and Issued To are required.');return;}
+  if(!invId||isNaN(qty)||qty<=0||!to){showToast('Item, Qty, and Issued To are required.','warning');return;}
   const inv=DB.g('inventory');
   const item=inv.find(i=>i.id===invId);
-  if(!item){alert('Item not found.');return;}
-  if(qty>item.qty){alert(`Insufficient stock. Available: ${item.qty} ${item.unit||''}`);return;}
+  if(!item){showToast('Item not found.','warning');return;}
+  if(qty>item.qty){showToast(`Insufficient stock. Available: ${item.qty} ${item.unit||''}`,'warning');return;}
   item.qty=parseFloat((item.qty-qty).toFixed(4));
   DB.s('inventory',inv);
   const log=DB.g('issuance');
   log.push({id:DB.nid('issuance'),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:document.getElementById('m-iss-section').value,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
-  DB.s('issuance',log);closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();
+  DB.s('issuance',log);closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance recorded.');
 }
 
 // ── CSV UPLOAD ────────────────────────
@@ -3880,10 +4054,10 @@ function importInventoryCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split('\n').filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
     const idx={desc:header.findIndex(h=>h.includes('description')),cat:header.findIndex(h=>h.includes('category')),unit:header.findIndex(h=>h.includes('unit')),qty:header.findIndex(h=>h.includes('qty')||h.includes('quantity')),min:header.findIndex(h=>h.includes('min')),issued:header.findIndex(h=>h.includes('issued'))};
-    if(idx.desc<0||idx.qty<0){alert('CSV must have at least "Description" and "Qty_On_Hand" columns.');return;}
+    if(idx.desc<0||idx.qty<0){showToast('CSV must have at least "Description" and "Qty_On_Hand" columns.','warning');return;}
     const inv=DB.g('inventory');let added=0;
     const _usedIds=new Set(inv.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -3893,7 +4067,7 @@ function importInventoryCSV(e){
       const item={id:generateUniqueNumericId(_usedIds),description:desc,category:idx.cat>=0?c[idx.cat]||'General':'General',unit:idx.unit>=0?c[idx.unit]||'piece':'piece',qty,originalQty:qty,minLevel:min};
       inv.push(item);added++;
     }
-    DB.s('inventory',inv);alert(`${added} item(s) imported successfully.`);renderInventory();updateInvAlerts();
+    DB.s('inventory',inv);showToast(`${added} item(s) imported successfully.`,'success');renderInventory();updateInvAlerts();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -3991,7 +4165,7 @@ function importAssetCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const rawLines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!rawLines.length){alert('Empty file.');return;}
+    if(!rawLines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(rawLines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const hf=n=>header.findIndex(h=>{
       const aliases={
@@ -4024,7 +4198,7 @@ function importAssetCSV(e){
       ophrs:hf('ophrs'),opdays:hf('opdays'),
       dutytype:hf('dutytype'),remarks:hf('remarks')
     };
-    if(idx.name<0){alert('CSV must have an Asset_Name column.');return;}
+    if(idx.name<0){showToast('CSV must have an Asset_Name column.','warning');return;}
     const assets=DB.g('assets');let added=0;
     const _usedIds=new Set(assets.map(x=>String(x.id||'')));
     for(let i=1;i<rawLines.length;i++){
@@ -4062,7 +4236,7 @@ function importAssetCSV(e){
       added++;
     }
     DB.s('assets',assets);
-    alert(added+' asset(s) imported successfully.');
+    showToast(added+' asset(s) imported successfully.','success');
     renderAssets();renderDash();
   };
   r.readAsText(f);e.target.value='';
@@ -4119,18 +4293,19 @@ function saveWaste(){
   const date=document.getElementById('m-w-date').value;
   const type=document.getElementById('m-w-type').value;
   const vol=parseFloat(document.getElementById('m-w-vol').value);
-  if(!date||!type||isNaN(vol)){alert('Date, Type, and Volume are required.');return;}
+  if(!date||!type||isNaN(vol)){showToast('Date, Type, and Volume are required.','warning');return;}
   const w=DB.g('waste');
   w.push({id:DB.nid('waste'),date,type,volume:vol,contractor:document.getElementById('m-w-contractor').value,emb:document.getElementById('m-w-emb').value,remarks:document.getElementById('m-w-remarks').value,photo:document._wPhoto||null,createdAt:today()});
-  DB.s('waste',w);closeModal('mo-waste');renderWaste();renderDash();
+  DB.s('waste',w);closeModal('mo-waste');renderWaste();renderDash();showToast('Waste entry saved.');
 }
-function delWaste(id){if(!confirm('Delete this entry?'))return;DB.s('waste',DB.g('waste').filter(x=>x.id!==id));renderWaste();}
+async function delWaste(id){if(!await confirmDialog('Delete this entry?'))return;DB.s('waste',DB.g('waste').filter(x=>x.id!==id));renderWaste();showToast('Waste entry deleted.','info');}
 // PATCH START: delWasteFromFcast — delete from forecast page, update both views
-function delWasteFromFcast(id){
-  if(!confirm('Delete this waste entry? This will update the forecast.'))return;
+async function delWasteFromFcast(id){
+  if(!await confirmDialog('Delete this waste entry? This will update the forecast.'))return;
   DB.s('waste',DB.g('waste').filter(x=>x.id!==id));
   renderWasteFcast();
   renderDash();
+  showToast('Waste entry deleted.','info');
 }
 // PATCH END
 
@@ -4221,13 +4396,14 @@ function renderIssuance(){
     return`<tr><td>${issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(l.woRef)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
   }).join(''):'<tr><td colspan="11" class="empty">No issuance records found.</td></tr>';
 }
-function deleteIssuanceLog(id){
-  if(!confirm('Delete this issuance log? This cannot be undone.')) return;
+async function deleteIssuanceLog(id){
+  if(!await confirmDialog('Delete this issuance log? This cannot be undone.')) return;
   const log=DB.g('issuance').filter(l=>l.id!==id);
   DB.s('issuance',log);
   renderIssuance();
   renderInventory();
   updateInvAlerts();
+  showToast('Issuance log deleted.','info');
 }
 
 function renderWaste(){
@@ -4318,12 +4494,12 @@ function importJSON(e){
   r.onload=async ev=>{
     try{
       const d=JSON.parse(ev.target.result);
-      if(!confirm('This will REPLACE all current data. Continue?'))return;
+      if(!await confirmDialog('This will REPLACE all current data. Continue?',{title:'Import Data',confirmText:'Replace All',confirmClass:'btn btn-danger'}))return;
       applyParsed(d);
       await flushAll();
-      alert('Backup restored successfully.');
+      showToast('Backup restored successfully.','success');
       renderDash();updateInvAlerts();
-    }catch(err){alert('Import failed: '+(err.message||'Invalid JSON file.'));}
+    }catch(err){showToast('Import failed: '+(err.message||'Invalid JSON file.'),'error');}
   };
   r.readAsText(f);
 }
@@ -4635,6 +4811,7 @@ function saveInpatient(){
     _memDB.inpatientToday=v;
     queueScalarSync('inpatientToday', v); // PATCHED: update only the inpatient field instead of writing the full dataset
     scheduleFlush();
+    showToast('Inpatient count updated.');
   }
 }
 
@@ -4647,7 +4824,7 @@ function loadInpatient(){
 // NEW: ENHANCED ASSET MODAL open/save
 // ═══════════════════════════════════════
 function openAssetModal(id=null){
-  _editAsset=id;
+  _editAsset=id;captureEditSnapshot('assets',id);
   _assetImageData=null;
   document.getElementById('mo-asset-title').textContent=id?'Edit Asset':'Add Asset';
   // Reset tabs — null-safe (modal may not be visible yet)
@@ -4741,9 +4918,10 @@ function openAssetModal(id=null){
 }
 
 function saveAsset(){
+  if(checkEditConflict('assets',_editAsset))return;
   const name=(document.getElementById('m-a-name').value||'').trim();
   const sec=document.getElementById('m-a-section').value;
-  if(!name||!sec){alert('Asset Name and Section are required.');return;}
+  if(!name||!sec){showToast('Asset Name and Section are required.','warning');return;}
 
   const gv=fid=>{const el=document.getElementById(fid);return el?el.value:''};
   const gn=fid=>{const v=parseFloat(document.getElementById(fid)?.value);return isNaN(v)?null:v;};
@@ -4827,6 +5005,7 @@ function saveAsset(){
   closeModal('mo-asset');
   renderAssets();
   renderDash();
+  showToast('Asset saved.');
 }
 
 // ═══════════════════════════════════════
@@ -4981,7 +5160,7 @@ function sevBadge(s){const m={'Low':'sev-low','Moderate':'sev-moderate','High':'
 function ssBadge(s){const m={'Open':'ss-open','Under Action':'ss-action','Resolved':'ss-resolved','Verified':'ss-verified','Closed':'ss-closed'};return`<span class="${m[s]||'ss-open'}">${s}</span>`;}
 
 function openSafetyModal(id=null){
-  _editSafety=id;
+  _editSafety=id;captureEditSnapshot('safety',id);
   document.getElementById('mo-safety-title').textContent=id?'Edit Safety Issue':'Log Safety Issue';
   if(!id){
     ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks'].forEach(x=>document.getElementById(x).value='');
@@ -5003,9 +5182,10 @@ function openSafetyModal(id=null){
 }
 
 function saveSafety(){
+  if(checkEditConflict('safety',_editSafety))return;
   const desc=(document.getElementById('m-sf-desc').value||'').trim();
   const sev=document.getElementById('m-sf-sev').value;
-  if(!desc||!sev){alert('Description and Severity are required.');return;}
+  if(!desc||!sev){showToast('Description and Severity are required.','warning');return;}
   const list=DB.g('safety');
   const s={
     id:_editSafety||DB.nid('safety'),
@@ -5018,10 +5198,10 @@ function saveSafety(){
     remarks:document.getElementById('m-sf-remarks').value,
   };
   if(_editSafety){const i=list.findIndex(x=>x.id===_editSafety);list[i]=s;}else list.push(s);
-  DB.s('safety',list);closeModal('mo-safety');renderSafety();renderDash();
+  DB.s('safety',list);closeModal('mo-safety');renderSafety();renderDash();showToast('Safety issue saved.');
 }
 
-function delSafety(id){if(!confirm('Delete this safety issue?'))return;DB.s('safety',DB.g('safety').filter(x=>x.id!==id));renderSafety();renderDash();}
+async function delSafety(id){if(!await confirmDialog('Delete this safety issue?'))return;DB.s('safety',DB.g('safety').filter(x=>x.id!==id));renderSafety();renderDash();showToast('Safety issue deleted.','info');}
 
 function renderSafety(){
   let list=DB.g('safety');
@@ -5063,7 +5243,7 @@ function renderSafety(){
 function pjBadge(s){const m={'Proposed':'pj-proposed','For Approval':'pj-approval','Ongoing':'pj-ongoing','Delayed':'pj-delayed','Completed':'pj-completed','Closed':'pj-closed'};return`<span class="${m[s]||'pj-proposed'}">${s}</span>`;}
 
 function openProjectModal(id=null){
-  _editProject=id;
+  _editProject=id;captureEditSnapshot('projects',id);
   document.getElementById('mo-project-title').textContent=id?'Edit Project':'Add Project';
   if(!id){
     ['m-pj-code','m-pj-title','m-pj-loc','m-pj-budget','m-pj-fund','m-pj-resp','m-pj-start','m-pj-target','m-pj-actual','m-pj-physical','m-pj-financial','m-pj-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
@@ -5083,9 +5263,10 @@ function openProjectModal(id=null){
 }
 
 function saveProject(){
+  if(checkEditConflict('projects',_editProject))return;
   const code=(document.getElementById('m-pj-code').value||'').trim();
   const title=(document.getElementById('m-pj-title').value||'').trim();
-  if(!code||!title){alert('Project Code and Title are required.');return;}
+  if(!code||!title){showToast('Project Code and Title are required.','warning');return;}
   const list=DB.g('projects');
   const p={
     id:_editProject||DB.nid('projects'),code,title,
@@ -5103,10 +5284,10 @@ function saveProject(){
     remarks:document.getElementById('m-pj-remarks').value,
   };
   if(_editProject){const i=list.findIndex(x=>x.id===_editProject);list[i]=p;}else list.push(p);
-  DB.s('projects',list);closeModal('mo-project');renderProjects();renderProjStats();renderDash();
+  DB.s('projects',list);closeModal('mo-project');renderProjects();renderProjStats();renderDash();showToast('Project saved.');
 }
 
-function delProject(id){if(!confirm('Delete this project?'))return;DB.s('projects',DB.g('projects').filter(x=>x.id!==id));renderProjects();renderProjStats();renderDash();}
+async function delProject(id){if(!await confirmDialog('Delete this project?'))return;DB.s('projects',DB.g('projects').filter(x=>x.id!==id));renderProjects();renderProjStats();renderDash();showToast('Project deleted.','info');}
 
 function renderProjects(){
   let list=DB.g('projects');
@@ -5155,7 +5336,7 @@ function renderProjStats(){
 function wsBadge(s){const m={'Safe':'ws-safe','Warning':'ws-warning','Fail':'ws-fail'};return`<span class="${m[s]||'ws-safe'}">${s}</span>`;}
 
 function openWaterLogModal(id=null){
-  _editWaterLog=id;
+  _editWaterLog=id;captureEditSnapshot('waterLogs',id);
   document.getElementById('mo-waterlog-title').textContent=id?'Edit Water Test':'Log Water Test Result';
   if(!id){
     ['m-wl-ward','m-wl-bacteria','m-wl-chlorine','m-wl-mitigation','m-wl-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
@@ -5183,9 +5364,10 @@ function previewWaterResult(e){
 }
 
 function saveWaterLog(){
+  if(checkEditConflict('waterLogs',_editWaterLog))return;
   const ward=(document.getElementById('m-wl-ward').value||'').trim();
   const date=document.getElementById('m-wl-date').value;
-  if(!ward||!date){alert('Ward/Location and Date are required.');return;}
+  if(!ward||!date){showToast('Ward/Location and Date are required.','warning');return;}
   const list=DB.g('waterLogs');
   const l={
     id:_editWaterLog||DB.nid('waterLogs'),date,ward,
@@ -5199,10 +5381,10 @@ function saveWaterLog(){
   };
   document._wlResultImg=null;
   if(_editWaterLog){const i=list.findIndex(x=>x.id===_editWaterLog);list[i]=l;}else list.push(l);
-  DB.s('waterLogs',list);closeModal('mo-waterlog');renderWaterLogs();renderWardStatus();
+  DB.s('waterLogs',list);closeModal('mo-waterlog');renderWaterLogs();renderWardStatus();showToast('Water log saved.');
 }
 
-function delWaterLog(id){if(!confirm('Delete this water log?'))return;DB.s('waterLogs',DB.g('waterLogs').filter(x=>x.id!==id));renderWaterLogs();renderWardStatus();}
+async function delWaterLog(id){if(!await confirmDialog('Delete this water log?'))return;DB.s('waterLogs',DB.g('waterLogs').filter(x=>x.id!==id));renderWaterLogs();renderWardStatus();showToast('Water log deleted.','info');}
 
 function renderWaterLogs(){
   let list=DB.g('waterLogs');
@@ -5263,7 +5445,7 @@ function renderWardStatus(){
 function tkBadge(s){const m={'Normal':'ws-safe','Low Level':'ss-action','High Pressure':'sev-high','Low Pressure':'ss-action','Offline':'ss-closed'};return`<span class="${m[s]||'ws-safe'}">${s}</span>`;}
 
 function openTankModal(id=null){
-  _editTank=id;
+  _editTank=id;captureEditSnapshot('waterTank',id);
   document.getElementById('mo-tank-title').textContent=id?'Edit Reading':'Log Tank Reading';
   if(!id){
     ['m-tk-name','m-tk-level','m-tk-psi','m-tk-flow','m-tk-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
@@ -5281,8 +5463,9 @@ function openTankModal(id=null){
 }
 
 function saveTankReading(){
+  if(checkEditConflict('waterTank',_editTank))return;
   const name=(document.getElementById('m-tk-name').value||'').trim();
-  if(!name){alert('Tank/Source Name is required.');return;}
+  if(!name){showToast('Tank/Source Name is required.','warning');return;}
   const list=DB.g('waterTank');
   const t={
     id:_editTank||DB.nid('waterTank'),
@@ -5295,10 +5478,10 @@ function saveTankReading(){
     remarks:document.getElementById('m-tk-remarks').value,
   };
   if(_editTank){const i=list.findIndex(x=>x.id===_editTank);list[i]=t;}else list.push(t);
-  DB.s('waterTank',list);closeModal('mo-tank');renderWaterTank();renderTankGauges();
+  DB.s('waterTank',list);closeModal('mo-tank');renderWaterTank();renderTankGauges();showToast('Tank reading saved.');
 }
 
-function delTankReading(id){if(!confirm('Delete this reading?'))return;DB.s('waterTank',DB.g('waterTank').filter(x=>x.id!==id));renderWaterTank();renderTankGauges();}
+async function delTankReading(id){if(!await confirmDialog('Delete this reading?'))return;DB.s('waterTank',DB.g('waterTank').filter(x=>x.id!==id));renderWaterTank();renderTankGauges();showToast('Reading deleted.','info');}
 
 // renderTankGauges removed — Current Levels panel removed
 function renderTankGauges(){ /* no-op: panel removed */ }
@@ -5338,7 +5521,7 @@ function mwNum(id){return'MW-'+String(id).padStart(4,'0');}
 function wwNum(id){return'WW-'+String(id).padStart(4,'0');}
 
 function openIssueEditModal(id){
-  _editIssuance=id;
+  _editIssuance=id;captureEditSnapshot('issuance',id);
   const log=DB.g('issuance').find(x=>x.id===id);if(!log)return;
   document.getElementById('mo-issue-title').textContent='Edit Issuance Record';
   document.getElementById('btn-iss-save').textContent='Save Changes';
@@ -5358,10 +5541,11 @@ function openIssueEditModal(id){
   openModal('mo-issue');
 }
 function saveIssuanceEdit(){
+  if(checkEditConflict('issuance',_editIssuance))return;
   // PATCH: issuance log edit support
   const qty=parseFloat(document.getElementById('m-iss-qty').value);
   const to=document.getElementById('m-iss-to').value.trim();
-  if(isNaN(qty)||qty<=0||!to){alert('Qty and Issued To are required.');return;}
+  if(isNaN(qty)||qty<=0||!to){showToast('Qty and Issued To are required.','warning');return;}
   const logs=DB.g('issuance');
   const inv=DB.g('inventory');
   const log=logs.find(x=>x.id===_editIssuance);if(!log)return;
@@ -5371,7 +5555,7 @@ function saveIssuanceEdit(){
   const item=inv.find(i=>i.id===log.invId);
   if(item){
     const newQty=parseFloat((item.qty-diff).toFixed(4));
-    if(newQty<0){alert('Adjusted quantity would exceed available stock. Check inventory levels.');return;}
+    if(newQty<0){showToast('Adjusted quantity would exceed available stock. Check inventory levels.','warning');return;}
     item.qty=newQty;
   }
   log.qtyIssued=qty;
@@ -5381,7 +5565,7 @@ function saveIssuanceEdit(){
   log.woRef=document.getElementById('m-iss-wo').value||'—';
   log.remarks=document.getElementById('m-iss-remarks').value;
   DB.s('inventory',inv);DB.s('issuance',logs);
-  closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();
+  closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance updated.');
 }
 
 // ═══════════════════════════════════════
@@ -5401,6 +5585,7 @@ function savePersonnel(){
   const total=Object.values(_memDB.personnel).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
   const lbl=document.getElementById('pers-total-label');
   if(lbl)lbl.textContent='Total: '+total+' personnel';
+  showToast('Personnel updated.');
 }
 function loadPersonnel(){
   const p=_memDB.personnel||{};
@@ -5419,11 +5604,11 @@ function importSafetyCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const hf=n=>header.findIndex(h=>['desc','description','issue'].some(a=>a===n?h.includes(a):false)||h===n);
     const idx={desc:header.findIndex(h=>h.includes('desc')||h.includes('issue')),sev:header.findIndex(h=>h.includes('sev')||h.includes('severity')),status:header.findIndex(h=>h==='status'),loc:header.findIndex(h=>h.includes('loc')||h.includes('room')||h.includes('location')),asset:header.findIndex(h=>h.includes('asset')),date:header.findIndex(h=>h.includes('date')||h==='datelogged'),by:header.findIndex(h=>h.includes('by')||h.includes('logged')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.desc<0){alert('CSV must have a "Description" or "Issue" column.');return;}
+    if(idx.desc<0){showToast('CSV must have a "Description" or "Issue" column.','warning');return;}
     const items=DB.g('safety');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -5433,7 +5618,7 @@ function importSafetyCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),description:desc,severity:gv(idx.sev)||'Low',status:gv(idx.status)||'Open',location:gv(idx.loc),linkedAsset:gv(idx.asset),dateLogged:gv(idx.date)||today(),loggedBy:gv(idx.by),remarks:gv(idx.remarks)});
       added++;
     }
-    DB.s('safety',items);alert(added+' safety issue(s) imported.');renderSafety();renderDash();
+    DB.s('safety',items);showToast(added+' safety issue(s) imported.','success');renderSafety();renderDash();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -5503,10 +5688,10 @@ function importWasteCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const idx={date:header.findIndex(h=>h.includes('date')),type:header.findIndex(h=>h.includes('type')||h.includes('waste')),vol:header.findIndex(h=>h.includes('vol')||h.includes('weight')||h.includes('kg')),contractor:header.findIndex(h=>h.includes('contractor')||h.includes('hauler')),emb:header.findIndex(h=>h.includes('emb')||h.includes('status')||h.includes('compliance')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.type<0||idx.vol<0){alert('CSV must have "Waste_Type" and "Volume_kg" columns.');return;}
+    if(idx.type<0||idx.vol<0){showToast('CSV must have "Waste_Type" and "Volume_kg" columns.','warning');return;}
     const items=DB.g('waste');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -5517,7 +5702,7 @@ function importWasteCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),type,volume:vol,contractor:gv(idx.contractor),emb:gv(idx.emb)||'OK',remarks:gv(idx.remarks),photo:null,createdAt:today()});
       added++;
     }
-    DB.s('waste',items);alert(added+' waste entry(ies) imported.');renderWaste();renderDash();
+    DB.s('waste',items);showToast(added+' waste entry(ies) imported.','success');renderWaste();renderDash();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -5587,10 +5772,10 @@ function importWaterLogCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const idx={date:header.findIndex(h=>h.includes('date')),ward:header.findIndex(h=>h.includes('ward')||h.includes('location')),testtype:header.findIndex(h=>h.includes('test')||h.includes('type')),result:header.findIndex(h=>h.includes('result')),bacteria:header.findIndex(h=>h.includes('bacteria')||h.includes('cfu')),chlorine:header.findIndex(h=>h.includes('chlorine')),mitigation:header.findIndex(h=>h.includes('mitigation')||h.includes('action')||h.includes('corrective')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.ward<0||idx.result<0){alert('CSV must have "Ward_Location" and "Result" columns.');return;}
+    if(idx.ward<0||idx.result<0){showToast('CSV must have "Ward_Location" and "Result" columns.','warning');return;}
     const items=DB.g('waterLogs');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -5600,7 +5785,7 @@ function importWaterLogCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),ward,testType:gv(idx.testtype)||'Bacteriological',result:gv(idx.result)||'Safe',bacteriaCount:gv(idx.bacteria),residualChlorine:gv(idx.chlorine),mitigation:gv(idx.mitigation),resultImage:null,remarks:gv(idx.remarks)});
       added++;
     }
-    DB.s('waterLogs',items);alert(added+' water log(s) imported.');renderWaterLogs();renderWardStatus();
+    DB.s('waterLogs',items);showToast(added+' water log(s) imported.','success');renderWaterLogs();renderWardStatus();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -5671,10 +5856,10 @@ function importProjectCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const idx={code:header.findIndex(h=>h.includes('code')),title:header.findIndex(h=>h.includes('title')||h.includes('name')||h.includes('project')),cat:header.findIndex(h=>h.includes('cat')||h.includes('category')),loc:header.findIndex(h=>h.includes('loc')||h.includes('location')),budget:header.findIndex(h=>h.includes('budget')||h.includes('cost')),funding:header.findIndex(h=>h.includes('fund')||h.includes('source')),person:header.findIndex(h=>h.includes('person')||h.includes('responsible')),start:header.findIndex(h=>h.includes('start')),target:header.findIndex(h=>h.includes('target')||h.includes('completion')),actual:header.findIndex(h=>h.includes('actual')),physical:header.findIndex(h=>h.includes('physical')||h.includes('phys')),financial:header.findIndex(h=>h.includes('financial')||h.includes('fin')),status:header.findIndex(h=>h==='status'),issues:header.findIndex(h=>h.includes('issue')||h.includes('remark'))};
-    if(idx.title<0){alert('CSV must have a "Title" or "Project_Name" column.');return;}
+    if(idx.title<0){showToast('CSV must have a "Title" or "Project_Name" column.','warning');return;}
     const items=DB.g('projects');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -5685,7 +5870,7 @@ function importProjectCSV(e){
       items.push({id:newId,code:gv(idx.code)||('PROJ-'+String(newId).padStart(4,'0')),title,category:gv(idx.cat)||'Infrastructure',location:gv(idx.loc),budget:parseFloat(gv(idx.budget))||null,funding:gv(idx.funding)||'GAA',responsible:gv(idx.person),startDate:gv(idx.start),targetCompletion:gv(idx.target),actualCompletion:gv(idx.actual),physicalPct:parseFloat(gv(idx.physical))||0,financialPct:parseFloat(gv(idx.financial))||0,status:gv(idx.status)||'Proposed',issues:gv(idx.issues)});
       added++;
     }
-    DB.s('projects',items);alert(added+' project(s) imported.');renderProjects();renderProjStats();renderDash();
+    DB.s('projects',items);showToast(added+' project(s) imported.','success');renderProjects();renderProjStats();renderDash();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -5806,7 +5991,7 @@ function effGetCustomParams(){
 // PATCH END: Effluent Custom Parameter Engine
 // ═══════════════════════════════════════════════════════
 function openEffluentModal(id=null){
-  _editEffluent=id;
+  _editEffluent=id;captureEditSnapshot('effluent',id);
   document.getElementById('mo-effluent-title').textContent=id?'Edit Effluent Reading':'Add Effluent Reading';
   // PATCH START: handle customParams on open
   window._effCustomParams = [];
@@ -5837,9 +6022,10 @@ function openEffluentModal(id=null){
 }
 
 function saveEffluent(){
+  if(checkEditConflict('effluent',_editEffluent))return;
   const date=document.getElementById('m-eff-date').value;
   const point=document.getElementById('m-eff-point').value.trim();
-  if(!date||!point){alert('Date and Sampling Point are required.');return;}
+  if(!date||!point){showToast('Date and Sampling Point are required.','warning');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   // PATCH START: collect custom params from live rows
   const customParams = effGetCustomParams();
@@ -5847,20 +6033,20 @@ function saveEffluent(){
   const items=DB.g('effluent');
   const o={id:_editEffluent||DB.nid('effluent'),date,samplingPoint:point,status:document.getElementById('m-eff-status').value,pH:gn('m-eff-ph'),BOD:gn('m-eff-bod'),COD:gn('m-eff-cod'),TSS:gn('m-eff-tss'),oilGrease:gn('m-eff-oil'),temperature:gn('m-eff-temp'),totalColiform:gn('m-eff-coliform'),fecalColiform:gn('m-eff-fecal'),dissolvedOxygen:gn('m-eff-do'),remarks:document.getElementById('m-eff-remarks').value,customParams};
   if(_editEffluent){const i=items.findIndex(x=>x.id===_editEffluent);items[i]=o;}else items.push(o);
-  DB.s('effluent',items);closeModal('mo-effluent');renderEffluent();
+  DB.s('effluent',items);closeModal('mo-effluent');renderEffluent();showToast('Effluent reading saved.');
 }
 
-function delEffluent(id){if(!confirm('Delete this reading?'))return;DB.s('effluent',DB.g('effluent').filter(x=>x.id!==id));renderEffluent();}
+async function delEffluent(id){if(!await confirmDialog('Delete this reading?'))return;DB.s('effluent',DB.g('effluent').filter(x=>x.id!==id));renderEffluent();showToast('Reading deleted.','info');}
 function importEffluentCSV(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const hf=k=>header.findIndex(h=>h.includes(k));
     const idx={date:hf('date'),point:hf('point')||hf('sampling'),status:hf('status')||hf('compli'),ph:hf('ph'),bod:hf('bod'),cod:hf('cod'),tss:hf('tss'),oil:hf('oil')||hf('grease'),temp:hf('temp'),coliform:hf('coliform'),fecal:hf('fecal'),do_:hf('do'),remarks:hf('remark')};
-    if(idx.point<0){alert('CSV must have a "Sampling_Point" column.');return;}
+    if(idx.point<0){showToast('CSV must have a "Sampling_Point" column.','warning');return;}
     const items=DB.g('effluent');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -5870,7 +6056,7 @@ function importEffluentCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),samplingPoint:point,status:gv(idx.status)||'Compliant',pH:gn(idx.ph),BOD:gn(idx.bod),COD:gn(idx.cod),TSS:gn(idx.tss),oilGrease:gn(idx.oil),temperature:gn(idx.temp),totalColiform:gn(idx.coliform),fecalColiform:gn(idx.fecal),dissolvedOxygen:gn(idx.do_),remarks:gv(idx.remarks)});
       added++;
     }
-    DB.s('effluent',items);alert(added+' reading(s) imported.');renderEffluent();
+    DB.s('effluent',items);showToast(added+' reading(s) imported.','success');renderEffluent();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -5990,7 +6176,7 @@ function calcMWUtil(){
   const el=document.getElementById('m-mw-util');if(el)el.value=util;
 }
 function openMedWasteModal(id=null){
-  _editMedWaste=id;
+  _editMedWaste=id;captureEditSnapshot('medWasteProd',id);
   document.getElementById('mo-medwaste-title').textContent=id?'Edit Med. Waste Log':'Log Med. Waste Treatment';
   if(!id){
     ['m-mw-input','m-mw-treated','m-mw-output','m-mw-ophrs','m-mw-downtime','m-mw-util','m-mw-remarks'].forEach(x=>document.getElementById(x).value='');
@@ -6008,26 +6194,27 @@ function openMedWasteModal(id=null){
   openModal('mo-medwaste');
 }
 function saveMedWaste(){
-  const date=document.getElementById('m-mw-date').value;if(!date){alert('Date is required.');return;}
+  if(checkEditConflict('medWasteProd',_editMedWaste))return;
+  const date=document.getElementById('m-mw-date').value;if(!date){showToast('Date is required.','warning');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('medWasteProd');
   const opHrs=gn('m-mw-ophrs');const downtime=gn('m-mw-downtime');
   const shiftHrs=8;const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),shiftHrs))*100)):null;
   const o={id:_editMedWaste||DB.nid('medWasteProd'),date,shift:document.getElementById('m-mw-shift').value,status:document.getElementById('m-mw-status').value,inputQty:gn('m-mw-input'),treatedQty:gn('m-mw-treated'),outputQty:gn('m-mw-output'),opHours:opHrs,downtime:downtime,utilizationPct:util,remarks:document.getElementById('m-mw-remarks').value};
   if(_editMedWaste){const i=items.findIndex(x=>x.id===_editMedWaste);items[i]=o;}else items.push(o);
-  DB.s('medWasteProd',items);closeModal('mo-medwaste');renderMedWaste();
+  DB.s('medWasteProd',items);closeModal('mo-medwaste');renderMedWaste();showToast('Medical waste log saved.');
 }
-function delMedWaste(id){if(!confirm('Delete this log?'))return;DB.s('medWasteProd',DB.g('medWasteProd').filter(x=>x.id!==id));renderMedWaste();}
+async function delMedWaste(id){if(!await confirmDialog('Delete this log?'))return;DB.s('medWasteProd',DB.g('medWasteProd').filter(x=>x.id!==id));renderMedWaste();showToast('Log deleted.','info');}
 function importMedWasteCSV(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const hf=k=>header.findIndex(h=>h.includes(k));
     const idx={date:hf('date'),shift:hf('shift'),status:hf('status'),input:hf('input'),treated:hf('treated'),output:hf('output'),ophrs:hf('op')||hf('hour'),downtime:hf('down'),remarks:hf('remark')};
-    if(idx.date<0){alert('CSV must have a "Date" column.');return;}
+    if(idx.date<0){showToast('CSV must have a "Date" column.','warning');return;}
     const items=DB.g('medWasteProd');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -6039,7 +6226,7 @@ function importMedWasteCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inputQty:gn(idx.input),treatedQty:gn(idx.treated),outputQty:gn(idx.output),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
       added++;
     }
-    DB.s('medWasteProd',items);alert(added+' log(s) imported.');renderMedWaste();
+    DB.s('medWasteProd',items);showToast(added+' log(s) imported.','success');renderMedWaste();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -6164,7 +6351,7 @@ function calcWWUtil(){
   const el=document.getElementById('m-ww-util');if(el)el.value=util;
 }
 function openWWProdModal(id=null){
-  _editWWProd=id;
+  _editWWProd=id;captureEditSnapshot('wwProd',id);
   document.getElementById('mo-wwprod-title').textContent=id?'Edit WW Treatment Log':'Log Wastewater Treatment';
   if(!id){
     ['m-ww-inflow','m-ww-treated','m-ww-outflow','m-ww-ophrs','m-ww-downtime','m-ww-util','m-ww-remarks'].forEach(x=>document.getElementById(x).value='');
@@ -6182,26 +6369,27 @@ function openWWProdModal(id=null){
   openModal('mo-wwprod');
 }
 function saveWWProd(){
-  const date=document.getElementById('m-ww-date').value;if(!date){alert('Date is required.');return;}
+  if(checkEditConflict('wwProd',_editWWProd))return;
+  const date=document.getElementById('m-ww-date').value;if(!date){showToast('Date is required.','warning');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('wwProd');
   const opHrs=gn('m-ww-ophrs');const downtime=gn('m-ww-downtime');
   const util=opHrs!=null?Math.min(100,Math.round((opHrs/Math.max((opHrs+(downtime||0)),24))*100)):null;
   const o={id:_editWWProd||DB.nid('wwProd'),date,shift:document.getElementById('m-ww-shift').value,status:document.getElementById('m-ww-status').value,inflow:gn('m-ww-inflow'),treated:gn('m-ww-treated'),outflow:gn('m-ww-outflow'),opHours:opHrs,downtime,utilizationPct:util,remarks:document.getElementById('m-ww-remarks').value};
   if(_editWWProd){const i=items.findIndex(x=>x.id===_editWWProd);items[i]=o;}else items.push(o);
-  DB.s('wwProd',items);closeModal('mo-wwprod');renderWWProd();
+  DB.s('wwProd',items);closeModal('mo-wwprod');renderWWProd();showToast('Wastewater log saved.');
 }
-function delWWProd(id){if(!confirm('Delete this log?'))return;DB.s('wwProd',DB.g('wwProd').filter(x=>x.id!==id));renderWWProd();}
+async function delWWProd(id){if(!await confirmDialog('Delete this log?'))return;DB.s('wwProd',DB.g('wwProd').filter(x=>x.id!==id));renderWWProd();showToast('Log deleted.','info');}
 function importWWProdCSV(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const hf=k=>header.findIndex(h=>h.includes(k));
     const idx={date:hf('date'),shift:hf('shift'),status:hf('status'),inflow:hf('inflow'),treated:hf('treated'),outflow:hf('out'),ophrs:hf('op')||hf('hour'),downtime:hf('down'),remarks:hf('remark')};
-    if(idx.date<0){alert('CSV must have a "Date" column.');return;}
+    if(idx.date<0){showToast('CSV must have a "Date" column.','warning');return;}
     const items=DB.g('wwProd');let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -6213,7 +6401,7 @@ function importWWProdCSV(e){
       items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inflow:gn(idx.inflow),treated:gn(idx.treated),outflow:gn(idx.outflow),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
       added++;
     }
-    DB.s('wwProd',items);alert(added+' log(s) imported.');renderWWProd();
+    DB.s('wwProd',items);showToast(added+' log(s) imported.','success');renderWWProd();
   };
   r.readAsText(f);e.target.value='';
 }
@@ -6358,7 +6546,7 @@ function calcTankConsumption(){
 saveTankReading=function(){
   const dt=document.getElementById('m-tk-dt').value;
   const name=document.getElementById('m-tk-name').value.trim();
-  if(!dt||!name){alert('Date/Time and Tank Name are required.');return;}
+  if(!dt||!name){showToast('Date/Time and Tank Name are required.','warning');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const tanks=DB.g('waterTank');
   const o={
@@ -6714,7 +6902,7 @@ function importWOCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const fi=k=>header.findIndex(h=>h.includes(k));
     const idx={
@@ -6727,7 +6915,7 @@ function importWOCSV(e){
       assigned: fi('assign'), remarks: fi('remark'),
       delayReason: fi('delay'),
     };
-    if(idx.desc<0&&idx.asset<0){alert('CSV must have a Description or Asset column.');return;}
+    if(idx.desc<0&&idx.asset<0){showToast('CSV must have a Description or Asset column.','warning');return;}
     const items=DB.g('wo'); let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
@@ -6757,7 +6945,7 @@ function importWOCSV(e){
       added++;
     }
     DB.s('wo',items);
-    alert(added+' work order(s) imported successfully.');
+    showToast(added+' work order(s) imported successfully.','success');
     renderWO(); renderDash();
   };
   r.readAsText(f); e.target.value='';
@@ -7088,6 +7276,7 @@ function saveCensus(count){
   if(idx>=0) log[idx].count=count;
   else log.push({date:d, count});
   DB.s('censusLog', log);
+  showToast('Census updated.');
 }
 
 /**
@@ -7121,6 +7310,7 @@ saveInpatient = function(){
     queueScalarSync('inpatientToday', v); // PATCHED: update only the inpatient field path
     saveCensus(v);             // stamped history
     scheduleFlush();
+    showToast('Inpatient count updated.');
   }
 };
 
@@ -7323,7 +7513,7 @@ calcTankConsumption = function(){
 saveTankReading = function(){
   const dt = document.getElementById('m-tk-dt').value;
   const name = document.getElementById('m-tk-name').value.trim();
-  if(!dt||!name){ alert('Date/Time and Tank/Source Name are required.'); return; }
+  if(!dt||!name){ showToast('Date/Time and Tank/Source Name are required.','warning'); return; }
 
   const gn = id=>{ const v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?null:v; };
   const tanks = DB.g('waterTank');
@@ -8262,18 +8452,18 @@ saveTankReading=function(){
   const linkedAsset=assetId?DB.g('assets').find(x=>x.id===assetId):null;
   const tankName=linkedAsset?.name||manualName;
 
-  if(!dt){alert('Date/Time is required.');return;}
-  if(isNaN(lvl)||lvl<0||lvl>100){alert('Water Level % is required (0–100).');return;}
-  if(!tankName){alert('Tank Name is required.');return;}
+  if(!dt){showToast('Date/Time is required.','warning');return;}
+  if(isNaN(lvl)||lvl<0||lvl>100){showToast('Water Level % is required (0\u2013100).','warning');return;}
+  if(!tankName){showToast('Tank Name is required.','warning');return;}
   const patRaw=parseInt(document.getElementById('m-tk-patients')?.value);
-  if(!patRaw||patRaw<1){alert('Inpatient Count is required for L/patient analytics.\nEnter 0 if ward is empty.');return;}
+  if(!patRaw||patRaw<1){showToast('Inpatient Count is required for L/patient analytics. Enter 0 if ward is empty.','warning');return;}
 
   const manualCap=parseFloat(document.getElementById('m-tk-cap')?.value)||null;
   const manualLowAlert=parseFloat(document.getElementById('m-tk-low-alert')?.value)||null;
   const cap=linkedAsset?.tankCapacityLiters||manualCap||null;
   const minAlert=linkedAsset?.minLevelAlertPct||manualLowAlert||null;
 
-  if(!assetId&&!cap){alert('Tank Capacity (L) is required.');return;}
+  if(!assetId&&!cap){showToast('Tank Capacity (L) is required.','warning');return;}
 
   const patCount=parseInt(document.getElementById('m-tk-patients')?.value)||getCensusForDate(dt.slice(0,10))||null;
 
@@ -8341,6 +8531,7 @@ saveTankReading=function(){
   renderTankGauges();
   renderTankTrends();
   renderTankKPIs();
+  showToast('Tank reading saved.');
   // PATCH START: render additional water panels after save
   setTimeout(()=>{
     if(typeof renderExpectedComparison==='function') renderExpectedComparison();
@@ -8355,12 +8546,13 @@ saveTankReading=function(){
 // ═══════════════════════════════════════════════════════════════
 // delTankReading — delete + recompute remaining same-tank sequence
 // ═══════════════════════════════════════════════════════════════
-delTankReading=function(id){
-  if(!confirm('Delete this reading?')) return;
+delTankReading=async function(id){
+  if(!await confirmDialog('Delete this reading?')) return;
   let tanks=DB.g('waterTank').filter(x=>x.id!==id);
   tanks=computeTankAnalytics(tanks); // recompute so next reading after deleted one is updated
   DB.s('waterTank',tanks);
   renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
+  showToast('Reading deleted.','info');
   setTimeout(()=>{
     if(typeof renderExpectedComparison==='function') renderExpectedComparison();
     if(typeof renderWaterAlarmPanel==='function')    renderWaterAlarmPanel();
@@ -8879,6 +9071,11 @@ function getWaterSettings(){
 function saveWaterSettings(obj){
   // PATCH: save to Firebase-backed DB only
   DB.s('waterSettings', [obj]);
+  showToast('Water settings saved.');
+}
+async function resetWaterSettingsDefaults(){
+  if(!await confirmDialog('Reset all water settings to system defaults?',{title:'Reset Settings',confirmText:'Reset'}))return;
+  saveWaterSettings({});loadWaterSettingsModal();wsetPreview();showToast('Settings reset to defaults.','info');
 }
 
 const WATER_SETTINGS_DEFAULT = {
@@ -9579,7 +9776,7 @@ function importWaterTankCSV(e){
   const r=new FileReader();
   r.onload=ev=>{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){alert('Empty file.');return;}
+    if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const fi=k=>header.findIndex(h=>h.includes(k));
 
@@ -9595,7 +9792,7 @@ function importWaterTankCSV(e){
       rem:  fi('remark')>=0?fi('remark'):fi('note'),
     };
 
-    if(idx.name<0){alert('CSV must have a Tank column (e.g. "Tank" or "Tank Name").');return;}
+    if(idx.name<0){showToast('CSV must have a Tank column (e.g. "Tank" or "Tank Name").','warning');return;}
 
     let items=DB.g('waterTank'); let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
@@ -9653,7 +9850,7 @@ function importWaterTankCSV(e){
     // Run compute engine on ALL records (import may add readings that affect earlier existing sequences)
     items=computeTankAnalytics(items);
     DB.s('waterTank',items);
-    alert(added+' tank reading(s) imported and recalculated.');
+    showToast(added+' tank reading(s) imported and recalculated.','success');
     renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
   };
   r.readAsText(f); e.target.value='';
@@ -9816,17 +10013,7 @@ async function confirmFactoryReset(){
     return;
   }
 
-  const confirmed = confirm(`This will permanently delete ALL data:
-• All Work Orders
-• All Assets
-• All Inventory
-• All Water Logs & Tank Readings
-• All Waste Records
-• All Safety & Project Records
-
-Firebase cloud data will also be erased.
-
-This CANNOT be undone. Continue?`);
+  const confirmed = await confirmDialog('This will permanently delete ALL data: Work Orders, Assets, Inventory, Water Logs, Tank Readings, Waste Records, Safety & Project Records. Firebase cloud data will also be erased. This CANNOT be undone.',{title:'Factory Reset',confirmText:'Reset Everything',confirmClass:'btn btn-danger'});
   if(!confirmed) return;
 
   showResetMsg('⏳ Resetting...','#7a5000');
@@ -10237,7 +10424,7 @@ function updateRoomDatalist(){
 
     </div>
     <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
-      <button class="btn btn-ghost" onclick="if(confirm('Reset all water settings to system defaults?')){saveWaterSettings({});loadWaterSettingsModal();wsetPreview();}">↺ Reset to Defaults</button>
+      <button class="btn btn-ghost" onclick="resetWaterSettingsDefaults()">↺ Reset to Defaults</button>
       <div style="display:flex;gap:8px;">
         <button class="btn btn-ghost" onclick="closeModal('mo-water-settings')">Cancel</button>
         <button class="btn btn-primary" onclick="applyWaterSettings()">✓ Save &amp; Apply</button>
@@ -10629,11 +10816,12 @@ function wsetFixtureDelete(id){
 }
 
 // ── Clear all fixture rows ─────────────────────────────────────────
-function wsetFixtureClearAll(){
-  if(!confirm('Clear all fixture entries? This cannot be undone until you click Cancel in the modal.')) return;
+async function wsetFixtureClearAll(){
+  if(!await confirmDialog('Clear all fixture entries?',{title:'Clear Fixtures',confirmText:'Clear All'})) return;
   window._wsetFixtureRows = [];
   wsetFixtureRenderTable();
   wsetPreview();
+  showToast('Fixture entries cleared.','info');
 }
 
 // ── Return current rows (for applyWaterSettings) ──────────────────
