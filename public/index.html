@@ -784,6 +784,11 @@ async function hammsLogin(){
     document.getElementById('login-password').value = '';
   }
 }
+async function hammsLogout(){
+  if(!window._FB?.signOut) return;
+  try { await window._FB.signOut(); } catch(e) { console.warn('Logout error:', e); }
+  showToast('Signed out.','info');
+}
 </script>
 <!-- ══ END LOGIN OVERLAY ══════════════════════════════════════════ -->
 
@@ -834,7 +839,10 @@ async function hammsLogin(){
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('reports')"><span class="ni-icon">🖨</span>Reports &amp; Export</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
   </nav>
-  <div class="sb-footer">General Services Division</div>
+  <div class="sb-footer">
+    <button type="button" id="btn-logout" onclick="hammsLogout()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:4px;padding:5px 14px;font-size:11px;cursor:pointer;width:100%;margin-bottom:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff';" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.7)';">⏻ Sign Out</button>
+    General Services Division
+  </div>
 </div>
 
 <!-- ══════════════════════ MAIN -->
