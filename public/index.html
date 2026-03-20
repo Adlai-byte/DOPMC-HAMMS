@@ -93,6 +93,9 @@ document.addEventListener('DOMContentLoaded',()=>{
         console.log('HAMMS: user authenticated');
         window._FB.uid   = user.uid;
         window._FB.email = user.email;
+        // Show logged-in user in sidebar
+        const userEl = document.getElementById('sb-user-email');
+        if (userEl) userEl.textContent = user.email || user.uid || '';
         // Hide login overlay, show app
         document.getElementById('hamms-login-overlay').style.display = 'none';
         document.getElementById('app').style.visibility = 'visible';
@@ -104,6 +107,8 @@ document.addEventListener('DOMContentLoaded',()=>{
         // Not logged in — show login overlay, hide app
         document.getElementById('hamms-login-overlay').style.display = 'flex';
         document.getElementById('app').style.visibility = 'hidden';
+        const userEl = document.getElementById('sb-user-email');
+        if (userEl) userEl.textContent = '';
       }
     });
 
@@ -236,7 +241,15 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .sb-footer{
   padding:12px 18px;border-top:1px solid rgba(10,168,130,0.3);flex-shrink:0;
   background:linear-gradient(160deg,#051524 0%,#0b2240 100%);
-  font-size:11px;color:rgba(255,255,255,0.5);line-height:1.8;text-align:center;
+  font-size:11px;color:rgba(255,255,255,0.5);line-height:1.6;text-align:center;
+}
+.sb-logout-btn{
+  display:block;width:100%;padding:8px 14px;font-size:12px;font-weight:600;
+  background:rgba(255,255,255,0.08);border:1.5px solid rgba(255,255,255,0.25);
+  color:rgba(255,255,255,0.85);border-radius:5px;cursor:pointer;
+  font-family:inherit;transition:all 0.2s;letter-spacing:0.3px;
+}
+.sb-logout-btn:hover{background:rgba(204,51,51,0.7);border-color:rgba(204,51,51,0.9);color:#fff;}
 }
 
 /* ── MAIN ───────────────────────────── */
@@ -887,8 +900,9 @@ async function hammsLogout(){
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
   </nav>
   <div class="sb-footer">
-    <button type="button" id="btn-logout" onclick="hammsLogout()" style="background:none;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.7);border-radius:4px;padding:5px 14px;font-size:11px;cursor:pointer;width:100%;margin-bottom:8px;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.1)';this.style.color='#fff';" onmouseout="this.style.background='none';this.style.color='rgba(255,255,255,0.7)';">⏻ Sign Out</button>
-    General Services Division
+    <div id="sb-user-email" style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"></div>
+    <button type="button" id="btn-logout" onclick="hammsLogout()" class="sb-logout-btn">⏻ Sign Out</button>
+    <div style="margin-top:6px;">General Services Division</div>
   </div>
 </div>
 
@@ -902,7 +916,7 @@ async function hammsLogout(){
       <span id="page-title">Dashboard</span>
     </div>
     <div class="tb-right">
-      <span class="tb-chip chip-connecting" id="storage-chip" onclick="showFirebaseStatus()" style="cursor:pointer;" title="Click for connection details">CONNECTING</span>
+      <span class="tb-chip chip-connecting" id="storage-chip" onclick="showFirebaseStatus()" style="cursor:pointer;" title="Click for connection details">Connecting…</span>
       <span class="tb-chip chip-alert" id="top-inv-alert" onclick="navigate('inventory')">⚠ Low Stock</span>
       <span class="tb-chip chip-date" id="today-chip"></span>
       <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
@@ -3412,18 +3426,18 @@ function setStorageChip(mode){
   const chip=document.getElementById('storage-chip');
   if(chip){
     const labels={
-      'firebase-loading':'CONNECTING',
-      'firebase-live':'LIVE',
-      'firebase-syncing':'SYNCING',
-      'firebase-offline':'OFFLINE',
-      'firebase-unavailable':'UNAVAILABLE'
+      'firebase-loading':'Connecting…',
+      'firebase-live':'Live',
+      'firebase-syncing':'Syncing',
+      'firebase-offline':'Offline',
+      'firebase-unavailable':'Offline'
     };
     const classes={
       'firebase-loading':'tb-chip chip-connecting',
       'firebase-live':'tb-chip chip-live',
       'firebase-syncing':'tb-chip chip-syncing',
       'firebase-offline':'tb-chip chip-offline',
-      'firebase-unavailable':'tb-chip chip-ls'
+      'firebase-unavailable':'tb-chip chip-offline'
     };
     chip.textContent=labels[mode]||'LIVE';
     chip.className=classes[mode]||'tb-chip chip-firebase';
@@ -3737,7 +3751,7 @@ function drawBarLineChart(containerId,labels,barData,lineData,barColor,lineColor
   const H=220,PL=54,PR=20,PT=16,PB=48;
   const cW=W-PL-PR,cH=H-PT-PB;
   const allVals=[...barData,...lineData].filter(v=>v!=null);
-  const maxV=allVals.length?Math.max(...allVals)*1.12:10;
+  const maxV=Math.max(allVals.length?Math.max(...allVals)*1.12:10, 1);
   const n=labels.length;
   const bW=Math.max(Math.floor((cW/n)*0.55),6);
   const x=i=>PL+(i+0.5)*(cW/n);
