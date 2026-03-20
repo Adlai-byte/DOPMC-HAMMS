@@ -15,8 +15,8 @@ service cloud.firestore {
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
-        && request.resource.data._updatedBy == request.auth.token.email;
-      // Update: same checks + writer must be the authenticated user
+        && request.resource.data._updatedBy == (request.auth.token.email != null ? request.auth.token.email : request.auth.uid);
+      // Update: same checks + writer must be the authenticated user (email or uid for anonymous)
       allow update: if request.auth != null
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
@@ -24,7 +24,7 @@ service cloud.firestore {
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
-        && request.resource.data._updatedBy == request.auth.token.email;
+        && request.resource.data._updatedBy == (request.auth.token.email != null ? request.auth.token.email : request.auth.uid);
       // Delete: authenticated user in a valid store
       allow delete: if request.auth != null
         && store in ['wo','assets','inventory','issuance','waste','safety',

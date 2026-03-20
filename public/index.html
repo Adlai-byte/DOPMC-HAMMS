@@ -837,7 +837,8 @@ async function hammsLogin(){
       'auth/too-many-requests':    '⚠ Too many attempts. Try again later.',
       'auth/network-request-failed':'⚠ No internet connection.',
     };
-    errEl.textContent = msgs[err.code] || '⚠ Login failed: ' + err.message;
+    errEl.textContent = msgs[err.code] || '⚠ Login failed. Please check your credentials and try again.';
+    console.warn('HAMMS login error:', err.code, err.message);
     errEl.style.display = 'block';
     errEl.style.animation = 'none';
     setTimeout(()=>errEl.style.animation='loginShake 0.35s ease', 10);
@@ -3316,7 +3317,10 @@ async function syncToFirebase(){ // PATCHED: per-batch retry, write-lock safety 
     if(_fbWriteInProgress){
       console.warn('HAMMS: Write lock safety timeout — releasing after 10s');
       _fbWriteInProgress=false;
+      setSavingState(false);
       setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
+      // Schedule one retry for stranded pending ops
+      setTimeout(syncToFirebase, 1000);
     }
   },10000);
   try{
@@ -3443,9 +3447,6 @@ function setStorageChip(mode){
     chip.className=classes[mode]||'tb-chip chip-firebase';
   }
 }
-function updateConnectBtn(){
-  return;
-}
 function showFirebaseStatus(){
   const net=navigator.onLine?'Online':'Offline';
   const statusMap={
@@ -3478,7 +3479,7 @@ async function reloadFromFirebase(){ // PATCHED: force a fresh read from record-
   }catch(e){
     console.warn('Firebase reload failed:', e);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-    showToast('Firebase reload failed: '+e.message,'error');
+    showToast('Data reload failed. Please check your connection and try again.','error');
   }finally{
     _fbRefreshInProgress=false;
     startFirebaseListener(); // PATCHED: reattach one stable listener set after manual reload succeeds or fails
@@ -3580,15 +3581,26 @@ if(navigator.serviceWorker){
 }
 
 // ═══ Debounce search inputs ═══════════
-// Wrap oninput handlers on search/filter text inputs with 300ms debounce
+// Map search input IDs to their render functions (avoids new Function / eval)
 (function(){
-  const searchIds=['wof-search','wof-loc','af-search','sf-search','sf-loc-filter','pj-search','wl-search','wt-search','inv-search','eff-search','iss-search','mw-search','ww-search'];
+  const searchRenderMap={
+    'wof-search':()=>renderWO(),'wof-loc':()=>renderWO(),
+    'af-search':()=>renderAssets(),
+    'sf-search':()=>renderSafety(),'sf-loc-filter':()=>renderSafety(),
+    'pj-search':()=>renderProjects(),
+    'wl-search':()=>renderWaterLogs(),
+    'wt-search':()=>renderWaterTank(),
+    'inv-search':()=>renderInventory(),
+    'eff-search':()=>renderEffluent(),
+    'iss-search':()=>renderIssuance(),
+    'mw-search':()=>renderMedWaste(),
+    'ww-search':()=>renderWWProd()
+  };
   window.addEventListener('DOMContentLoaded',()=>{
-    searchIds.forEach(id=>{
+    Object.entries(searchRenderMap).forEach(([id,renderFn])=>{
       const el=document.getElementById(id);
-      if(!el||!el.getAttribute('oninput'))return;
-      const origFn=new Function(el.getAttribute('oninput'));
-      const debouncedFn=debounce(origFn,300);
+      if(!el)return;
+      const debouncedFn=debounce(renderFn,300);
       el.removeAttribute('oninput');
       el.addEventListener('input',debouncedFn);
     });
@@ -4447,7 +4459,7 @@ function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, labe
     requiredCols.forEach(spec=>{
       const {key,match,required}=spec;
       colIdx[key]=header.findIndex(h=>match.some(m=>h.includes(m)));
-      if(required && colIdx[key]<0){showToast('CSV must have a "'+spec.label+'" column.','warning');return;}
+      if(required && colIdx[key]<0){showToast('CSV must have a "'+spec.label+'" column.','warning');}
     });
     if(requiredCols.some(s=>s.required && colIdx[s.key]<0))return;
     const items=DB.g(store);let added=0;
