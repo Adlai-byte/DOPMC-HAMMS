@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-PH">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -129,6 +129,17 @@ document.addEventListener('DOMContentLoaded',()=>{
 <style>
 /* Google Fonts loaded via <link> tags in <head> for faster non-blocking load */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+.skip-link{position:absolute;top:-100%;left:16px;background:var(--navy);color:#fff;padding:8px 16px;border-radius:0 0 6px 6px;z-index:100000;font-size:14px;font-weight:600;text-decoration:none;transition:top 0.2s;}
+.skip-link:focus{top:0;}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.field-error{font-size:11px;color:var(--red);margin-top:3px;display:none;}
+.loading-overlay{position:fixed;inset:0;z-index:99998;background:rgba(240,242,245,0.92);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;font-family:'IBM Plex Sans',sans-serif;transition:opacity 0.4s;}
+.loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.btn[disabled],.btn:disabled{opacity:0.5;cursor:not-allowed;pointer-events:none;}
+.skeleton-row{background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;height:38px;border-radius:4px;margin:4px 0;}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 :root{
   --teal:       #0f8c6e;
   --teal2:      #0aa882;
@@ -148,6 +159,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   --text:       #1c2a3a;
   --muted:      #5a6e84;
   --light:      #f5f7fa;
+  --danger-bg:  #fde8e8;
+  --danger-text:#6a0000;
+  --warning-bg: #fff0d0;
+  --warning-text:#5a3400;
+  --success-bg: #e6f5e6;
+  --success-text:#1a6b1a;
+  --info-bg:    #e8f0fb;
+  --info-text:  #0d4a8a;
+  --radius-sm:  4px;
+  --radius-md:  6px;
+  --radius-lg:  10px;
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   12px;
+  --space-lg:   16px;
+  --space-xl:   24px;
   --sb-w:       240px;
 }
 html,body{height:100%;}
@@ -252,12 +279,12 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .room-tag{font-size:11px;background:#f0f4ff;color:#2a4a8a;border:1px solid #c0d0f0;padding:1px 7px;border-radius:10px;white-space:nowrap;}
 /* ─── Safety Severity ─────────────────────────── */
 .sev-low{background:#e6f5e6;color:#1a6b1a;border:1px solid #a8d8a8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-.sev-moderate{background:#fff0d0;color:#7a4500;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-.sev-high{background:#fde8e8;color:#7a0000;border:1px solid #e08080;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.sev-moderate{background:#fff0d0;color:#5a3400;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.sev-high{background:#fde8e8;color:#6a0000;border:1px solid #e08080;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 .sev-critical{background:#cc3333;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 /* ─── Safety Status ───────────────────────────── */
-.ss-open{background:#fde8e8;color:#7a0000;border:1px solid #e08080;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-.ss-action{background:#fff0d0;color:#7a4500;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.ss-open{background:#fde8e8;color:#6a0000;border:1px solid #e08080;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.ss-action{background:#fff0d0;color:#5a3400;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 .ss-resolved{background:#e6f5e6;color:#1a6b1a;border:1px solid #a8d8a8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 .ss-verified{background:#e8f0fb;color:#0d4a8a;border:1px solid #a0c0f0;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 .ss-closed{background:#f0f2f5;color:#5a6e84;border:1px solid var(--border);padding:2px 8px;border-radius:10px;font-size:11px;}
@@ -270,7 +297,7 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .pj-closed{background:#f0f2f5;color:#5a6e84;border:1px solid var(--border);padding:2px 8px;border-radius:10px;font-size:11px;}
 /* ─── Water Safety ────────────────────────────── */
 .ws-safe{background:#e6f5e6;color:#1a6b1a;border:1px solid #a8d8a8;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
-.ws-warning{background:#fff0d0;color:#7a4500;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
+.ws-warning{background:#fff0d0;color:#5a3400;border:1px solid #f0c060;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 .ws-fail{background:#cc3333;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;}
 /* ─── Modal Tabs ──────────────────────────────── */
 .modal-tabs{display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:14px;overflow-x:auto;}
@@ -487,6 +514,13 @@ tr.row-warn td{background:#fffdf0;}
 }
 #sidebar-overlay.active{display:block;}
 
+@media(max-width:1024px){
+  #sidebar{width:200px;}
+  #content{padding:16px 18px;}
+  .stat-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
+  .filter-bar{flex-wrap:wrap;gap:6px;}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+}
 @media(max-width:768px){
 
   /* ── Root layout ── */
@@ -576,7 +610,7 @@ tr.row-warn td{background:#fffdf0;}
   }
 
   /* ── Buttons: larger touch targets ── */
-  .btn{min-height:38px;padding:8px 14px!important;font-size:13px!important;}
+  .btn{min-height:44px;padding:10px 14px!important;font-size:13px!important;}
   .btn-sm{min-height:32px;padding:5px 10px!important;}
 
   /* ── Filter bar: wrap on small screens ── */
@@ -615,8 +649,18 @@ tr.row-warn td{background:#fffdf0;}
 }
 
 @media print{
-  #sidebar,#app-footer,.btn,.filter-bar,.modal-overlay{display:none!important;}
-  body{display:block;}#app{display:block;}
+  #sidebar,#app-footer,.btn,.filter-bar,.modal-overlay,.toast-container,.tb-chip,#btn-menu-toggle,#btn-install-pwa,.install-help,#offline-banner,#app-loading-overlay,.skip-link,.sb-alert-pill{display:none!important;}
+  body{display:block;font-size:11pt;color:#000;background:#fff;}
+  #app{display:block;}
+  #main{width:100%;}
+  #topbar{border-bottom:2px solid #000;box-shadow:none;background:#fff!important;padding:8px 0!important;}
+  .page{page-break-after:auto;}
+  table{page-break-inside:auto;border-collapse:collapse;width:100%;}
+  tr{page-break-inside:avoid;page-break-after:auto;}
+  thead{display:table-header-group;}
+  th,td{border:1px solid #888!important;padding:4px 6px!important;font-size:10pt;}
+  .card{box-shadow:none!important;border:1px solid #ccc!important;page-break-inside:avoid;}
+  a{color:#000;text-decoration:none;}
 }
 
 /* ── Toast Notifications ─────────────────────────────── */
@@ -646,6 +690,8 @@ tr.row-warn td{background:#fffdf0;}
 </style>
 </head>
 <body>
+<a href="#content" class="skip-link">Skip to content</a>
+<div id="app-loading-overlay" class="loading-overlay"><div class="loading-spinner"></div><div style="font-size:13px;color:var(--muted);font-weight:500;">Loading HAMMS…</div></div>
 
 <!-- ══ HAMMS LOGIN OVERLAY ══════════════════════════════════════ -->
 <div id="hamms-login-overlay" style="
@@ -812,7 +858,7 @@ async function hammsLogout(){
     </div>
   </div>
   <div class="sb-alert-pill" id="sb-inv-alert">⚠ Critical Stock — Action Needed</div>
-  <nav>
+  <nav aria-label="Main navigation">
     <div class="nav-group-label">Overview</div>
     <div class="nav-item active" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('dashboard')"><span class="ni-icon">⊞</span>Dashboard</div>
     <div class="nav-group-label">Maintenance</div>
@@ -848,7 +894,7 @@ async function hammsLogout(){
 
 <!-- ══════════════════════ MAIN -->
 <div id="main">
-  <div id="topbar">
+  <header id="topbar" role="banner">
     <div class="tb-left">
       <button type="button" id="btn-menu-toggle" onclick="toggleSidebar()" aria-label="Open menu">☰</button>
       <span class="tb-bc">DOPMC / GSD</span>
@@ -861,13 +907,13 @@ async function hammsLogout(){
       <span class="tb-chip chip-date" id="today-chip"></span>
       <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
     </div>
-  </div>
+  </header>
   <!-- Storage banner -->
   <div class="storage-banner" id="storage-banner" style="display:none;">
     <span id="storage-banner-msg">HAMMS is live.</span>
   </div>
 
-  <div id="content">
+  <main id="content" role="main">
 
     <!-- ══════ DASHBOARD -->
     <div id="page-dashboard" class="page active">
@@ -908,14 +954,16 @@ async function hammsLogout(){
         <div class="card">
           <div class="card-header"><h3>Recent Work Orders</h3><button type="button" class="btn btn-sm btn-primary" onclick="navigate('workorders')">View All</button></div>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>WO #</th><th>Section</th><th>Asset</th><th>Status</th><th>Started</th></tr></thead>
+          <caption class="sr-only">Recent Work Orders</caption>
+            <thead><tr><th scope="col">WO #</th><th scope="col">Section</th><th scope="col">Asset</th><th scope="col">Status</th><th scope="col">Started</th></tr></thead>
             <tbody id="dash-wo-body"></tbody>
           </table></div>
         </div>
         <div class="card">
           <div class="card-header"><h3>Waste — This Week</h3><button type="button" class="btn btn-sm btn-outline" onclick="navigate('waste')">Log Waste</button></div>
           <div class="tbl-wrap"><table>
-            <thead><tr><th>Waste Type</th><th>Volume (kg)</th><th>EMB Status</th></tr></thead>
+          <caption class="sr-only">Recent Waste</caption>
+            <thead><tr><th scope="col">Waste Type</th><th scope="col">Volume (kg)</th><th scope="col">EMB Status</th></tr></thead>
             <tbody id="dash-waste-body"></tbody>
           </table></div>
         </div>
@@ -950,7 +998,8 @@ async function hammsLogout(){
       <!-- PATCH END -->
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>WO #</th><th>Section</th><th>Asset</th><th>Location</th><th>Description</th><th>Priority</th><th>Status</th><th>Date Started</th><th>Target Date</th><th>Date Completed</th><th>Duration</th><th>Assigned To</th><th>Materials Used</th><th>Service Report</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Work Orders</caption>
+          <thead><tr><th scope="col">WO #</th><th scope="col">Section</th><th scope="col">Asset</th><th scope="col">Location</th><th scope="col">Description</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Date Started</th><th scope="col">Target Date</th><th scope="col">Date Completed</th><th scope="col">Duration</th><th scope="col">Assigned To</th><th scope="col">Materials Used</th><th scope="col">Service Report</th><th scope="col">Actions</th></tr></thead>
           <tbody id="wo-tbody"></tbody>
         </table></div>
       </div>
@@ -975,7 +1024,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Asset Code</th><th>Asset Name</th><th>Category</th><th style="cursor:pointer;" title="Click a room to see all assets & repairs">Location/Room ↗</th><th>Qty</th><th>Brand / Model</th><th>Condition</th><th>PMS Status</th><th>Next PMS</th><th>kWh/mo</th><th>WOs</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Asset Registry</caption>
+          <thead><tr><th scope="col">Asset Code</th><th scope="col">Asset Name</th><th scope="col">Category</th><th scope="col" style="cursor:pointer;" title="Click a room to see all assets & repairs">Location/Room ↗</th><th scope="col">Qty</th><th scope="col">Brand / Model</th><th scope="col">Condition</th><th scope="col">PMS Status</th><th scope="col">Next PMS</th><th scope="col">kWh/mo</th><th scope="col">WOs</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="asset-tbody"></tbody>
         </table></div>
       </div>
@@ -1011,7 +1061,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Issue #</th><th>Severity</th><th>Description</th><th>Location / Room</th><th>Linked Asset</th><th>Status</th><th>Date Logged</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Safety Issues</caption>
+          <thead><tr><th scope="col">Issue #</th><th scope="col">Severity</th><th scope="col">Description</th><th scope="col">Location / Room</th><th scope="col">Linked Asset</th><th scope="col">Status</th><th scope="col">Date Logged</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="safety-tbody"></tbody>
         </table></div>
       </div>
@@ -1036,7 +1087,8 @@ async function hammsLogout(){
       <div class="stat-grid mb14" id="proj-stat-row"></div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Project Code</th><th>Title</th><th>Category</th><th>Location</th><th>Budget</th><th>Status</th><th>Physical %</th><th>Financial %</th><th>Target Completion</th><th>Responsible</th><th>Issues</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Projects</caption>
+          <thead><tr><th scope="col">Project Code</th><th scope="col">Title</th><th scope="col">Category</th><th scope="col">Location</th><th scope="col">Budget</th><th scope="col">Status</th><th scope="col">Physical %</th><th scope="col">Financial %</th><th scope="col">Target Completion</th><th scope="col">Responsible</th><th scope="col">Issues</th><th scope="col">Actions</th></tr></thead>
           <tbody id="projects-tbody"></tbody>
         </table></div>
       </div>
@@ -1065,7 +1117,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Log #</th><th>Date</th><th>Ward / Location</th><th>Test Type</th><th>Result</th><th>Bacteria Count</th><th>Mitigation</th><th>Result File</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Water Safety Logs</caption>
+          <thead><tr><th scope="col">Log #</th><th scope="col">Date</th><th scope="col">Ward / Location</th><th scope="col">Test Type</th><th scope="col">Result</th><th scope="col">Bacteria Count</th><th scope="col">Mitigation</th><th scope="col">Result File</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="water-log-tbody"></tbody>
         </table></div>
       </div>
@@ -1258,9 +1311,9 @@ async function hammsLogout(){
         </div>
         <div class="tbl-wrap" style="max-height:420px;overflow-y:auto;"><table>
           <thead><tr>
-            <th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">#</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Date / Time</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Tank</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Capacity (L)</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Level %</th>
-            <th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Volume (L)</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Demand (L)</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Rate (L/hr)</th>
-            <th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Δ hrs</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Pump Delivered (L)</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Excess/Deficit (L)</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">vs Pump</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Patients</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Tank Direction</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Hrs to Empty</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Status</th><th style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Actions</th>
+            <th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">#</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Date / Time</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Tank</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Capacity (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Level %</th>
+            <th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Volume (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Demand (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Rate (L/hr)</th>
+            <th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Δ hrs</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Pump Delivered (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Excess/Deficit (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">vs Pump</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Patients</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Tank Direction</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Hrs to Empty</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Status</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Actions</th>
           </tr></thead>
           <tbody id="watertank-tbody"></tbody>
         </table></div>
@@ -1279,7 +1332,8 @@ async function hammsLogout(){
       <div class="card">
         <div class="card-header"><h3>Open WO — Projected Completion</h3></div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>WO #</th><th>Section</th><th>Asset</th><th>Priority</th><th>Date Started</th><th>Target Date</th><th>Avg. Duration</th><th>Projected Completion</th><th>Forecast Status</th></tr></thead>
+          <caption class="sr-only">Work Order Forecast</caption>
+          <thead><tr><th scope="col">WO #</th><th scope="col">Section</th><th scope="col">Asset</th><th scope="col">Priority</th><th scope="col">Date Started</th><th scope="col">Target Date</th><th scope="col">Avg. Duration</th><th scope="col">Projected Completion</th><th scope="col">Forecast Status</th></tr></thead>
           <tbody id="fc-tbody"></tbody>
         </table></div>
       </div>
@@ -1302,7 +1356,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>ID</th><th>Description</th><th>Category</th><th>Unit</th><th>Stock Level</th><th>Qty On Hand</th><th>Min. Level</th><th>Alert Status</th><th>Last Issued To</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Materials Inventory</caption>
+          <thead><tr><th scope="col">ID</th><th scope="col">Description</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Stock Level</th><th scope="col">Qty On Hand</th><th scope="col">Min. Level</th><th scope="col">Alert Status</th><th scope="col">Last Issued To</th><th scope="col">Actions</th></tr></thead>
           <tbody id="inv-tbody"></tbody>
         </table></div>
       </div>
@@ -1321,7 +1376,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Log #</th><th>Date</th><th>Item</th><th>Category</th><th>Unit</th><th>Qty Issued</th><th>Issued To</th><th>WO Reference</th><th>Section</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Issuance Log</caption>
+          <thead><tr><th scope="col">Log #</th><th scope="col">Date</th><th scope="col">Item</th><th scope="col">Category</th><th scope="col">Unit</th><th scope="col">Qty Issued</th><th scope="col">Issued To</th><th scope="col">WO Reference</th><th scope="col">Section</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="issue-tbody"></tbody>
         </table></div>
       </div>
@@ -1350,7 +1406,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Entry #</th><th>Date</th><th>Waste Type</th><th>Volume (kg)</th><th>Contractor / Hauler</th><th>EMB Status</th><th>Photo</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Waste Management</caption>
+          <thead><tr><th scope="col">Entry #</th><th scope="col">Date</th><th scope="col">Waste Type</th><th scope="col">Volume (kg)</th><th scope="col">Contractor / Hauler</th><th scope="col">EMB Status</th><th scope="col">Photo</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="waste-tbody"></tbody>
         </table></div>
       </div>
@@ -1366,7 +1423,8 @@ async function hammsLogout(){
       <div class="card">
         <div class="card-header"><h3>Weekly Waste Summary — Last 8 Weeks</h3></div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Week</th><th>Infectious</th><th>Pathological</th><th>Chemical</th><th>Pharma</th><th>Sharps</th><th>General</th><th>Radioactive</th><th>Total (kg)</th></tr></thead>
+          <caption class="sr-only">Weekly Waste Summary</caption>
+          <thead><tr><th scope="col">Week</th><th scope="col">Infectious</th><th scope="col">Pathological</th><th scope="col">Chemical</th><th scope="col">Pharma</th><th scope="col">Sharps</th><th scope="col">General</th><th scope="col">Radioactive</th><th scope="col">Total (kg)</th></tr></thead>
           <tbody id="wfc-tbody"></tbody>
         </table></div>
       </div>
@@ -1377,7 +1435,8 @@ async function hammsLogout(){
           <span style="font-size:12px;color:var(--muted);">Delete individual entries here — updates forecast automatically</span>
         </div>
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Entry #</th><th>Date</th><th>Waste Type</th><th>Volume (kg)</th><th>Contractor</th><th>EMB Status</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Waste Forecast</caption>
+          <thead><tr><th scope="col">Entry #</th><th scope="col">Date</th><th scope="col">Waste Type</th><th scope="col">Volume (kg)</th><th scope="col">Contractor</th><th scope="col">EMB Status</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="wfc-entries-tbody"></tbody>
         </table></div>
       </div>
@@ -1472,7 +1531,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Reading #</th><th>Date</th><th>Sampling Point</th><th>pH</th><th>BOD (mg/L)</th><th>COD (mg/L)</th><th>TSS (mg/L)</th><th>Oil &amp; Grease</th><th>Total Coliform</th><th>Temp (°C)</th><th>Status</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Effluent Monitoring</caption>
+          <thead><tr><th scope="col">Reading #</th><th scope="col">Date</th><th scope="col">Sampling Point</th><th scope="col">pH</th><th scope="col">BOD (mg/L)</th><th scope="col">COD (mg/L)</th><th scope="col">TSS (mg/L)</th><th scope="col">Oil &amp; Grease</th><th scope="col">Total Coliform</th><th scope="col">Temp (°C)</th><th scope="col">Status</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="effluent-tbody"></tbody>
         </table></div>
       </div>
@@ -1501,7 +1561,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Log #</th><th>Date</th><th>Shift</th><th>Input (kg)</th><th>Treated (kg)</th><th>Output (kg)</th><th>Op. Hours</th><th>Downtime (hrs)</th><th>Utilization %</th><th>Machine Status</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Medical Waste Treatment</caption>
+          <thead><tr><th scope="col">Log #</th><th scope="col">Date</th><th scope="col">Shift</th><th scope="col">Input (kg)</th><th scope="col">Treated (kg)</th><th scope="col">Output (kg)</th><th scope="col">Op. Hours</th><th scope="col">Downtime (hrs)</th><th scope="col">Utilization %</th><th scope="col">Machine Status</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="medwaste-tbody"></tbody>
         </table></div>
       </div>
@@ -1530,7 +1591,8 @@ async function hammsLogout(){
       </div>
       <div class="card">
         <div class="tbl-wrap"><table>
-          <thead><tr><th>Log #</th><th>Date</th><th>Shift</th><th>Inflow (m³)</th><th>Treated (m³)</th><th>Outflow (m³)</th><th>Op. Hours</th><th>Downtime (hrs)</th><th>Utilization %</th><th>System Status</th><th>Remarks</th><th>Actions</th></tr></thead>
+          <caption class="sr-only">Wastewater Treatment</caption>
+          <thead><tr><th scope="col">Log #</th><th scope="col">Date</th><th scope="col">Shift</th><th scope="col">Inflow (m³)</th><th scope="col">Treated (m³)</th><th scope="col">Outflow (m³)</th><th scope="col">Op. Hours</th><th scope="col">Downtime (hrs)</th><th scope="col">Utilization %</th><th scope="col">System Status</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="wwprod-tbody"></tbody>
         </table></div>
       </div>
@@ -1621,8 +1683,8 @@ async function hammsLogout(){
           <div class="card-body" style="font-size:13px;line-height:2;">
             <table style="width:100%;border-collapse:collapse;">
               <thead><tr>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">Frequency</th>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">What to Do</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">Frequency</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">What to Do</th>
               </tr></thead>
               <tbody>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Daily</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Check that the topbar shows Firebase Live or Firebase Syncing during active use.</td></tr>
@@ -1667,8 +1729,8 @@ async function hammsLogout(){
               <div style="font-weight:700;color:var(--navy);font-size:14px;margin-bottom:6px;">🔧 PMS Alarm Status</div>
               <table style="width:100%;border-collapse:collapse;">
                 <thead><tr>
-                  <th style="text-align:left;padding:7px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Status</th>
-                  <th style="text-align:left;padding:7px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Condition</th>
+                  <th scope="col" style="text-align:left;padding:7px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Status</th>
+                  <th scope="col" style="text-align:left;padding:7px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Condition</th>
                 </tr></thead>
                 <tbody>
                   <tr><td style="padding:7px 10px;border-bottom:1px solid #edf0f5;"><span class="pm-normal">Normal</span></td><td style="padding:7px 10px;border-bottom:1px solid #edf0f5;">Next maintenance is more than 15 days away.</td></tr>
@@ -1699,8 +1761,8 @@ async function hammsLogout(){
               <div style="font-weight:600;color:var(--navy);margin-bottom:4px;">Auto-calculated fields:</div>
               <table style="width:100%;border-collapse:collapse;margin-bottom:12px;">
                 <thead><tr>
-                  <th style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Field</th>
-                  <th style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Formula</th>
+                  <th scope="col" style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Field</th>
+                  <th scope="col" style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Formula</th>
                 </tr></thead>
                 <tbody>
                   <tr style="border-bottom:1px solid #edf0f5;"><td style="padding:6px 10px;font-weight:600;">Volume (L)</td><td style="padding:6px 10px;">Capacity × Level% ÷ 100</td></tr>
@@ -1719,8 +1781,8 @@ async function hammsLogout(){
               <div style="font-weight:600;color:var(--navy);margin-bottom:4px;">Installed pump constants (hardcoded, not user-entered):</div>
               <table style="width:100%;border-collapse:collapse;">
                 <thead><tr>
-                  <th style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Parameter</th>
-                  <th style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Value</th>
+                  <th scope="col" style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Parameter</th>
+                  <th scope="col" style="text-align:left;padding:6px 10px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;">Value</th>
                 </tr></thead>
                 <tbody>
                   <tr style="border-bottom:1px solid #edf0f5;"><td style="padding:6px 10px;font-weight:600;">Runtime</td><td style="padding:6px 10px;">22 hrs/day · 7 days/week (continuous)</td></tr>
@@ -1760,8 +1822,8 @@ async function hammsLogout(){
           <div class="card-body" style="font-size:13px;line-height:2;">
             <table style="width:100%;border-collapse:collapse;">
               <thead><tr>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Rule</th>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Condition</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Rule</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Condition</th>
               </tr></thead>
               <tbody>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">WO — Overdue</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Status is not Closed/Completed and the current date is past the <strong>Target Completion Date</strong>. When overdue, a Reason for Delay field is shown and saved with the record.</td></tr>
@@ -1789,9 +1851,9 @@ async function hammsLogout(){
             <p style="margin-bottom:10px;">The Water Supply Monitoring module applies the following official standards automatically as system alerts.</p>
             <table style="width:100%;border-collapse:collapse;margin-bottom:14px;">
               <thead><tr>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Standard</th>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Value</th>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Source</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Standard</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Value</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Source</th>
               </tr></thead>
               <tbody>
                 <tr style="border-bottom:1px solid #edf0f5;"><td style="padding:8px 12px;font-weight:600;">Minimum water / inpatient / day</td><td style="padding:8px 12px;color:#1e6fb5;font-weight:700;">100 L</td><td style="padding:8px 12px;color:var(--muted);">WHO HCWM Guidelines</td></tr>
@@ -1836,8 +1898,8 @@ async function hammsLogout(){
           <div class="card-body" style="font-size:13px;line-height:2;">
             <table style="width:100%;border-collapse:collapse;">
               <thead><tr>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Item</th>
-                <th style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Detail</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Item</th>
+                <th scope="col" style="text-align:left;padding:8px 12px;background:var(--light);border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;">Detail</th>
               </tr></thead>
               <tbody>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Version</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;"><strong>HAMMS v2.6.0</strong> — single HTML file with Firebase-only live data mode.</td></tr>
@@ -1882,7 +1944,7 @@ async function hammsLogout(){
 
       </div>
     </div>
-  </div><!-- /content -->
+  </main><!-- /content -->
 </div><!-- /main -->
 </div><!-- /app -->
 
@@ -2242,12 +2304,12 @@ async function hammsLogout(){
         <div style="overflow-x:auto;">
           <table style="width:100%;min-width:500px;">
             <thead><tr style="background:#f0f2f5;">
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Asset Code</th>
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Name</th>
-              <th style="padding:7px 10px;font-size:12px;">Qty</th>
-              <th style="padding:7px 10px;font-size:12px;">Condition</th>
-              <th style="padding:7px 10px;font-size:12px;">PMS Status</th>
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Remarks</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Asset Code</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Name</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Qty</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Condition</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">PMS Status</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Remarks</th>
             </tr></thead>
             <tbody id="room-view-assets"></tbody>
           </table>
@@ -2260,14 +2322,14 @@ async function hammsLogout(){
         <div style="overflow-x:auto;">
           <table style="width:100%;min-width:500px;">
             <thead><tr style="background:#f0f2f5;">
-              <th style="padding:7px 10px;font-size:12px;">WO #</th>
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Asset</th>
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Description</th>
-              <th style="padding:7px 10px;font-size:12px;">Priority</th>
-              <th style="padding:7px 10px;font-size:12px;">Status</th>
-              <th style="padding:7px 10px;font-size:12px;">Started</th>
-              <th style="padding:7px 10px;font-size:12px;">Completed</th>
-              <th style="padding:7px 10px;font-size:12px;text-align:left;">Remarks</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">WO #</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Asset</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Description</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Priority</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Status</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Started</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Completed</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Remarks</th>
             </tr></thead>
             <tbody id="room-view-wos"></tbody>
           </table>
@@ -2352,7 +2414,8 @@ async function hammsLogout(){
     <div class="modal-header"><h3 id="mo-history-title">Repair History</h3><button type="button" class="modal-close" onclick="closeModal('mo-history')">×</button></div>
     <div class="modal-body" style="padding:0;">
       <div class="tbl-wrap"><table>
-        <thead><tr><th>WO #</th><th>Description</th><th>Priority</th><th>Status</th><th>Date Started</th><th>Date Completed</th><th>Duration</th><th>Assigned To</th></tr></thead>
+          <caption class="sr-only">Asset Repair History</caption>
+        <thead><tr><th scope="col">WO #</th><th scope="col">Description</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Date Started</th><th scope="col">Date Completed</th><th scope="col">Duration</th><th scope="col">Assigned To</th></tr></thead>
         <tbody id="history-tbody"></tbody>
       </table></div>
     </div>
@@ -2683,6 +2746,13 @@ window.addEventListener('unhandledrejection',function(e){
 function escapeHTML(s){
   if(s==null)return'';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function debounce(fn,ms){let t;return function(...a){clearTimeout(t);t=setTimeout(()=>fn.apply(this,a),ms);};}
+function showResultCount(el,shown,total){
+  if(!el)return;
+  let badge=el.querySelector('.filter-count');
+  if(!badge){badge=document.createElement('span');badge.className='filter-count';badge.style.cssText='font-size:11px;color:var(--muted);margin-left:8px;';el.appendChild(badge);}
+  badge.textContent=shown<total?'Showing '+shown+' of '+total:''+total+' total';
 }
 function stampRecord(rec){
   if(!rec||typeof rec!=='object')return rec;
@@ -3038,6 +3108,7 @@ async function refreshFromFirebaseSilently(reason='focus'){ // PATCHED: replace 
     await loadAllFirebaseData();
     _fbLoadedOnce=true;
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
+    {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     scheduleUiRefresh();
   }catch(e){
     console.warn(`Firebase refresh failed [${reason}]:`, e.message||e);
@@ -3094,6 +3165,7 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
   };
   const publishLiveUi=()=>{
     _fbLoadedOnce=true;
+    {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     // Determine status: LIVE if we got a server snapshot or are online with data loaded
     // OFFLINE only if navigator says offline; UNAVAILABLE if online but all snapshots are cached
     if(!navigator.onLine) setStorageChip('firebase-offline');
@@ -3199,7 +3271,10 @@ function scheduleFlush(){ // PATCHED: only explicit user edits queue collection/
   setStorageChip(navigator.onLine?'firebase-syncing':'firebase-offline');
   _saveTimer=setTimeout(flushAll,100); // reduced from 500ms — faster writes for multi-user safety
 }
-async function syncToFirebase(){ // PATCHED: write only changed records/metadata, never a whole shared dataset document
+let _fbSyncRetryCount=0;
+const _FB_MAX_RETRIES=3;
+let _fbWriteLockTimer=null;
+async function syncToFirebase(){ // PATCHED: per-batch retry, write-lock safety timeout, no silent data loss
   if(!window._FB?.enabled || !window._FB?.db){
     setStorageChip('firebase-unavailable');
     return;
@@ -3212,28 +3287,34 @@ async function syncToFirebase(){ // PATCHED: write only changed records/metadata
     return;
   }
   if(!navigator.onLine){
-    // Discard pending ops — do NOT queue offline writes. Queued offline writes would
-    // overwrite concurrent changes from other online users when this client reconnects,
-    // causing multi-user data collisions. Users must re-save when back online.
     _fbPendingStoreOps=Object.create(null);
     _fbPendingMetaMerge={};
     setStorageChip('firebase-offline');
     console.warn('HAMMS: Offline — unsaved changes were discarded to prevent multi-user collisions.');
-    // H-2 FIX: show user-facing notification instead of silent discard
     showToast('You are offline. Changes were not saved. Please reconnect and try again.','error',6000);
     return;
   }
   _fbWriteInProgress=true;
+  setSavingState(true);
+  // Safety timeout: release write lock after 10s to prevent deadlock
+  clearTimeout(_fbWriteLockTimer);
+  _fbWriteLockTimer=setTimeout(()=>{
+    if(_fbWriteInProgress){
+      console.warn('HAMMS: Write lock safety timeout — releasing after 10s');
+      _fbWriteInProgress=false;
+      setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
+    }
+  },10000);
   try{
     const { db, writeBatch, serverTimestamp } = window._FB;
     const ops=[];
     storesWithOps.forEach(store=>{
       const pending=_fbPendingStoreOps[store];
       Object.keys(pending.upserts).forEach(key=>{
-        ops.push({ type:'set', ref:getStoreDocRef(store, key), data:cloneForFirebase(pending.upserts[key]) });
+        ops.push({ type:'set', store, ref:getStoreDocRef(store, key), data:cloneForFirebase(pending.upserts[key]) });
       });
       pending.deletes.forEach(key=>{
-        ops.push({ type:'delete', ref:getStoreDocRef(store, key) });
+        ops.push({ type:'delete', store, ref:getStoreDocRef(store, key) });
       });
     });
     if(hasMetaOps){
@@ -3241,7 +3322,7 @@ async function syncToFirebase(){ // PATCHED: write only changed records/metadata
         updatedAt: serverTimestamp(),
         updatedBy: window._FB.email || window._FB.uid || 'unknown'
       });
-      ops.push({ type:'set-merge', ref:getMetaDocRef(), data:metaPayload });
+      ops.push({ type:'set-merge', store:'_meta', ref:getMetaDocRef(), data:metaPayload });
     }
     if(!ops.length){
       setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
@@ -3249,24 +3330,77 @@ async function syncToFirebase(){ // PATCHED: write only changed records/metadata
     }
     setStorageChip('firebase-syncing');
     const CHUNK_SIZE=450;
+    const committedStores=new Set();
+    let metaCommitted=false;
     for(let i=0;i<ops.length;i+=CHUNK_SIZE){
+      const chunk=ops.slice(i,i+CHUNK_SIZE);
       const batch=writeBatch(db);
-      ops.slice(i,i+CHUNK_SIZE).forEach(op=>{
+      chunk.forEach(op=>{
         if(op.type==='set') batch.set(op.ref, op.data);
         else if(op.type==='set-merge') batch.set(op.ref, op.data, { merge:true });
         else if(op.type==='delete') batch.delete(op.ref);
       });
-      await batch.commit();
+      try{
+        await batch.commit();
+        // Track which stores/meta were committed in this chunk
+        chunk.forEach(op=>{
+          if(op.store==='_meta') metaCommitted=true;
+          else committedStores.add(op.store);
+        });
+      }catch(batchErr){
+        console.warn('HAMMS: Batch commit failed (chunk '+Math.floor(i/CHUNK_SIZE)+'):', batchErr.message||batchErr);
+        // Only clear ops for successfully committed stores/meta
+        committedStores.forEach(store=>{ delete _fbPendingStoreOps[store]; });
+        if(metaCommitted) _fbPendingMetaMerge={};
+        // Failed ops remain in _fbPendingStoreOps for retry
+        _fbSyncRetryCount++;
+        if(_fbSyncRetryCount<=_FB_MAX_RETRIES){
+          const delay=Math.min(1000*Math.pow(2,_fbSyncRetryCount-1),4000);
+          console.warn('HAMMS: Retrying sync in '+delay+'ms (attempt '+_fbSyncRetryCount+'/'+_FB_MAX_RETRIES+')');
+          setStorageChip('firebase-syncing');
+          _fbWriteInProgress=false;
+          clearTimeout(_fbWriteLockTimer);
+          clearTimeout(_fbSyncTimer);
+          _fbSyncTimer=setTimeout(syncToFirebase, delay);
+          startFirebaseListener();
+          return;
+        }else{
+          _fbSyncRetryCount=0;
+          showToast('Some changes failed to save. Please try again.','error',6000);
+          setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
+          _fbWriteInProgress=false;
+          clearTimeout(_fbWriteLockTimer);
+          startFirebaseListener();
+          return;
+        }
+      }
     }
+    // All batches succeeded
     storesWithOps.forEach(store=>{ delete _fbPendingStoreOps[store]; });
     _fbPendingMetaMerge={};
+    _fbSyncRetryCount=0;
     setStorageChip('firebase-live');
   }catch(e){
     console.warn('Firebase sync failed:', e.message||e);
+    // Don't clear pending ops — they'll be retried
+    _fbSyncRetryCount++;
+    if(_fbSyncRetryCount<=_FB_MAX_RETRIES){
+      const delay=Math.min(1000*Math.pow(2,_fbSyncRetryCount-1),4000);
+      _fbWriteInProgress=false;
+      clearTimeout(_fbWriteLockTimer);
+      clearTimeout(_fbSyncTimer);
+      _fbSyncTimer=setTimeout(syncToFirebase, delay);
+      startFirebaseListener();
+      return;
+    }
+    _fbSyncRetryCount=0;
+    showToast('Changes failed to save after multiple attempts. Please retry.','error',6000);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
   }finally{
     _fbWriteInProgress=false;
-    startFirebaseListener(); // PATCHED: ensure stable live listeners remain attached after save attempts
+    setSavingState(false);
+    clearTimeout(_fbWriteLockTimer);
+    startFirebaseListener();
   }
 }
 function scheduleFBSync(){
@@ -3367,8 +3501,23 @@ async function disconnectFile(){ showFirebaseStatus(); }
 function updateOnlineChip(){
   return;
 }
-window.addEventListener('online',  () => { updateOnlineChip(); _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
-window.addEventListener('offline', () => { updateOnlineChip(); setStorageChip('firebase-offline'); });
+function setOfflineBanner(offline){
+  let banner=document.getElementById('offline-banner');
+  if(offline){
+    if(!banner){
+      banner=document.createElement('div');
+      banner.id='offline-banner';
+      banner.style.cssText='background:#f5c518;color:#333;text-align:center;padding:6px 12px;font-size:12px;font-weight:600;position:sticky;top:0;z-index:9999;';
+      banner.textContent="You're offline. Changes won't be saved until you reconnect.";
+      const main=document.getElementById('main');
+      if(main)main.prepend(banner);
+    }
+  }else{
+    if(banner)banner.remove();
+  }
+}
+window.addEventListener('online',  () => { updateOnlineChip(); _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); setOfflineBanner(false); showToast('Connection restored.','success'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
+window.addEventListener('offline', () => { updateOnlineChip(); setStorageChip('firebase-offline'); setOfflineBanner(true); });
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
 let _installPrompt = null;
@@ -3408,6 +3557,29 @@ window.addEventListener('appinstalled', () => {
   if(btn) btn.style.display = 'none';
   if(help) help.style.display = 'none';
 });
+
+// ═══ PWA Update Notification ═══════════
+if(navigator.serviceWorker){
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    showToast('New version available — refresh to update.','info',10000);
+  });
+}
+
+// ═══ Debounce search inputs ═══════════
+// Wrap oninput handlers on search/filter text inputs with 300ms debounce
+(function(){
+  const searchIds=['wof-search','wof-loc','af-search','sf-search','sf-loc-filter','pj-search','wl-search','wt-search','inv-search','eff-search','iss-search','mw-search','ww-search'];
+  window.addEventListener('DOMContentLoaded',()=>{
+    searchIds.forEach(id=>{
+      const el=document.getElementById(id);
+      if(!el||!el.getAttribute('oninput'))return;
+      const origFn=new Function(el.getAttribute('oninput'));
+      const debouncedFn=debounce(origFn,300);
+      el.removeAttribute('oninput');
+      el.addEventListener('input',debouncedFn);
+    });
+  });
+})();
 
 // ═══════════════════════════════════════
 //  NAVIGATION
@@ -3559,6 +3731,8 @@ function matchMonthYear(dateStr,prefix){
 function drawBarLineChart(containerId,labels,barData,lineData,barColor,lineColor,yLabel){
   const container=document.getElementById(containerId);
   if(!container)return;
+  container.setAttribute('role','img');
+  container.setAttribute('aria-label','Chart: '+yLabel+' — '+labels.length+' data points, max value '+(barData.length?Math.max(...barData.filter(v=>v!=null)):0));
   const W=Math.max(container.clientWidth||560,420);
   const H=220,PL=54,PR=20,PT=16,PB=48;
   const cW=W-PL-PR,cH=H-PT-PB;
@@ -3610,6 +3784,8 @@ function drawBarLineChart(containerId,labels,barData,lineData,barColor,lineColor
 
 function drawDoubleBarChart(containerId,labels,seriesA,seriesB,labelA,labelB,yLabel){
   const el=document.getElementById(containerId); if(!el) return;
+  el.setAttribute('role','img');
+  el.setAttribute('aria-label','Chart: '+labelA+' vs '+labelB+' ('+yLabel+') — '+labels.length+' data points');
   const max=Math.max(...seriesA,...seriesB,1); const w=el.clientWidth||560, h=240;
   const left=44, right=12, top=12, bottom=34, plotW=w-left-right, plotH=h-top-bottom;
   const groupW=plotW/Math.max(labels.length,1); const barW=Math.max(10, Math.min(22, groupW/3.2));
@@ -3730,6 +3906,24 @@ function updateInvAlerts(){
 // ═══════════════════════════════════════
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');if(!el._bdClick){el._bdClick=true;el.addEventListener('click',e=>{if(e.target===el)closeModal(id);});}}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+function openModalForRecord(modalId,titleElId,store,id,fieldMap,editLabel,addLabel){
+  // Generic modal opener: sets title, populates or clears fields, opens modal
+  const titleEl=document.getElementById(titleElId);
+  if(titleEl)titleEl.textContent=id?editLabel:addLabel;
+  clearAllFieldErrors(modalId);
+  if(!id){
+    Object.keys(fieldMap).forEach(elId=>{const el=document.getElementById(elId);if(!el)return;if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
+  }else{
+    const rec=DB.g(store).find(x=>x.id===id);if(!rec)return null;
+    Object.entries(fieldMap).forEach(([elId,recKey])=>{
+      const el=document.getElementById(elId);if(!el)return;
+      el.value=rec[recKey]!=null?rec[recKey]:'';
+    });
+    return rec;
+  }
+  openModal(modalId);
+  return null;
+}
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { const open = document.querySelector('.modal-overlay.open'); if (open) closeModal(open.id); }
 });
@@ -3750,6 +3944,46 @@ function showToast(msg, type, duration){
   c.appendChild(t);
   let timer=setTimeout(dismiss, duration);
   function dismiss(){clearTimeout(timer);if(!t.parentNode)return;t.classList.add('removing');setTimeout(()=>{try{t.remove();}catch(e){}},300);}
+}
+
+// ── Inline Field Validation ─────────────
+function showFieldError(inputId, msg){
+  const el=document.getElementById(inputId);
+  if(!el)return;
+  el.setAttribute('aria-invalid','true');
+  el.style.borderColor='var(--red)';
+  let err=el.parentElement.querySelector('.field-error');
+  if(!err){
+    err=document.createElement('div');
+    err.className='field-error';
+    err.setAttribute('role','alert');
+    el.parentElement.appendChild(err);
+  }
+  err.textContent=msg;
+  err.style.display='block';
+  el.addEventListener('input',function handler(){clearFieldError(inputId);el.removeEventListener('input',handler);},{once:true});
+}
+function clearFieldError(inputId){
+  const el=document.getElementById(inputId);
+  if(!el)return;
+  el.removeAttribute('aria-invalid');
+  el.style.borderColor='';
+  const err=el.parentElement.querySelector('.field-error');
+  if(err) err.style.display='none';
+}
+function clearAllFieldErrors(modalId){
+  const modal=document.getElementById(modalId);
+  if(!modal)return;
+  modal.querySelectorAll('[aria-invalid]').forEach(el=>{el.removeAttribute('aria-invalid');el.style.borderColor='';});
+  modal.querySelectorAll('.field-error').forEach(el=>el.style.display='none');
+}
+
+// ── Save Button State Management ────────
+function setSavingState(saving){
+  document.querySelectorAll('.modal-overlay.open .btn-primary, .modal-overlay.open .btn[onclick*="save"]').forEach(btn=>{
+    if(saving){btn.dataset.origText=btn.textContent;btn.textContent='Saving…';btn.disabled=true;}
+    else{btn.textContent=btn.dataset.origText||btn.textContent;btn.disabled=false;delete btn.dataset.origText;}
+  });
 }
 
 // ── Confirm Dialog ──────────────────────
@@ -3952,7 +4186,11 @@ function saveWO(){
   if(checkEditConflict('wo',_editWO))return;
   const sec=document.getElementById('m-wo-section').value;
   const desc=document.getElementById('m-wo-desc').value.trim();
-  if(!sec||!desc){showToast('Section and Description are required.','warning');return;}
+  clearAllFieldErrors('mo-wo');
+  let _hasErr=false;
+  if(!sec){showFieldError('m-wo-section','Section is required.');_hasErr=true;}
+  if(!desc){showFieldError('m-wo-desc','Description is required.');_hasErr=true;}
+  if(_hasErr)return;
   const inv=DB.g('inventory');
   for(const m of _woMaterials){
     if(!m.invId){showToast('Please select an item for all material rows, or remove empty rows.','warning');return;}
@@ -3964,7 +4202,7 @@ function saveWO(){
   // Restore old deductions if editing
   if(_editWO){
     const old=wos.find(x=>x.id===_editWO);
-    if(old?.materials){old.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item)item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));});}
+    if(old?.materials){old.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});}
   }
   // FIX: get next issuance ID once, increment manually to avoid collision
   const issuanceLog=DB.g('issuance');
@@ -3973,6 +4211,7 @@ function saveWO(){
     const item=inv.find(i=>i.id===m.invId);
     if(item){
       item.qty=parseFloat((item.qty-m.qty).toFixed(4));
+      stampRecord(item);
       issuanceLog.push({id:generateUniqueNumericId(_issUsed),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:'WO-'+String(_editWO||DB.nid('wo')).padStart(4,'0'),remarks:'Auto-deducted via Work Order'});
     }
   });
@@ -3997,12 +4236,13 @@ function saveWO(){
   if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wo');return;}wos[idx]=o;}else wos.push(o);
   DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
-async function delWO(id){if(!await confirmDialog('Delete this Work Order?'))return;DB.s('wo',DB.g('wo').filter(x=>x.id!==id));renderWO();renderDash();showToast('Work order deleted.','info');}
+async function delRecord(store,id,label,...renderFns){if(!await confirmDialog('Delete this '+label+'? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;DB.s(store,DB.g(store).filter(x=>x.id!==id));renderFns.forEach(fn=>fn?.());showToast(label+' deleted.','info');}
+async function delWO(id){return delRecord('wo',id,'work order',renderWO,renderDash);}
 
 // ── ASSET ─────────────────────────────
 
 
-async function delAsset(id){if(!await confirmDialog('Delete this asset?'))return;DB.s('assets',DB.g('assets').filter(x=>x.id!==id));renderAssets();showToast('Asset deleted.','info');}
+async function delAsset(id){return delRecord('assets',id,'asset',renderAssets);}
 function viewHistory(idOrName){
   let name=idOrName;
   if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);name=a?a.name:'';}
@@ -4031,14 +4271,14 @@ function saveInvItem(){
   const cat=document.getElementById('m-i-cat').value;
   const qty=parseFloat(document.getElementById('m-i-qty').value);
   const min=parseFloat(document.getElementById('m-i-min').value)||0;
-  if(!desc||!cat||isNaN(qty)){showToast('Description, Category, and Qty are required.','warning');return;}
+  clearAllFieldErrors('mo-inv');{let _e=false;if(!desc){showFieldError('m-i-desc','Required.');_e=true;}if(!cat){showFieldError('m-i-cat','Required.');_e=true;}if(isNaN(qty)){showFieldError('m-i-qty','Required.');_e=true;}if(_e)return;}
   const inv=DB.g('inventory');
   const existing=_editInv?inv.find(x=>x.id===_editInv):null;
   const item={id:_editInv||DB.nid('inventory'),description:desc,category:cat,unit:document.getElementById('m-i-unit').value,qty,minLevel:min,originalQty:_editInv?(existing?.originalQty||qty):qty};
   if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-inv');return;}inv[idx]=item;}else inv.push(item);
   DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
-async function delInvItem(id){if(!await confirmDialog('Delete this inventory item?'))return;DB.s('inventory',DB.g('inventory').filter(x=>x.id!==id));renderInventory();updateInvAlerts();showToast('Inventory item deleted.','info');}
+async function delInvItem(id){return delRecord('inventory',id,'inventory item',renderInventory,updateInvAlerts);}
 
 // ── MANUAL ISSUE ──────────────────────
 function openIssueModal(){
@@ -4071,6 +4311,7 @@ function saveManualIssue(){
   if(!item){showToast('Item not found.','warning');return;}
   if(qty>item.qty){showToast(`Insufficient stock. Available: ${item.qty} ${item.unit||''}`,'warning');return;}
   item.qty=parseFloat((item.qty-qty).toFixed(4));
+  stampRecord(item);
   DB.s('inventory',inv);
   const log=DB.g('issuance');
   log.push({id:DB.nid('issuance'),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:document.getElementById('m-iss-section').value,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
@@ -4079,26 +4320,17 @@ function saveManualIssue(){
 
 // ── CSV UPLOAD ────────────────────────
 function importInventoryCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split('\n').filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase());
-    const idx={desc:header.findIndex(h=>h.includes('description')),cat:header.findIndex(h=>h.includes('category')),unit:header.findIndex(h=>h.includes('unit')),qty:header.findIndex(h=>h.includes('qty')||h.includes('quantity')),min:header.findIndex(h=>h.includes('min')),issued:header.findIndex(h=>h.includes('issued'))};
-    if(idx.desc<0||idx.qty<0){showToast('CSV must have at least "Description" and "Qty_On_Hand" columns.','warning');return;}
-    const inv=DB.g('inventory');let added=0;
-    const _usedIds=new Set(inv.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const c=lines[i].split(',').map(v=>v.trim().replace(/^"|"$/g,''));
-      const desc=(c[idx.desc]||'').trim();if(!desc)continue;
-      const qty=parseFloat(c[idx.qty])||0;const min=parseFloat(c[idx.min])||0;
-      const item={id:generateUniqueNumericId(_usedIds),description:desc,category:idx.cat>=0?c[idx.cat]||'General':'General',unit:idx.unit>=0?c[idx.unit]||'piece':'piece',qty,originalQty:qty,minLevel:min};
-      inv.push(item);added++;
-    }
-    DB.s('inventory',inv);showToast(`${added} item(s) imported successfully.`,'success');renderInventory();updateInvAlerts();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'inventory',[
+    {key:'desc',match:['description'],label:'Description',required:true},
+    {key:'cat',match:['category'],label:'Category'},
+    {key:'unit',match:['unit'],label:'Unit'},
+    {key:'qty',match:['qty','quantity'],label:'Qty_On_Hand',required:true},
+    {key:'min',match:['min'],label:'Min_Stock_Level'}
+  ],(gv,id)=>{
+    const desc=gv('desc');if(!desc)return null;
+    const qty=parseFloat(gv('qty'))||0;
+    return{id,description:desc,category:gv('cat')||'General',unit:gv('unit')||'piece',qty,originalQty:qty,minLevel:parseFloat(gv('min'))||0};
+  },[renderInventory,updateInvAlerts],'item');
 }
 function downloadInvTemplate(){
   const rows=[
@@ -4187,6 +4419,36 @@ function parseCSVLine(line){
   }
   result.push(current.trim());
   return result;
+}
+
+// ── Generic CSV Importer ────────────────
+function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, label){
+  const f=e.target.files[0];if(!f)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const lines=ev.target.result.split('\n').filter(l=>l.trim());
+    if(!lines.length){showToast('Empty file.','warning');return;}
+    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
+    const colIdx=Object.create(null);
+    requiredCols.forEach(spec=>{
+      const {key,match,required}=spec;
+      colIdx[key]=header.findIndex(h=>match.some(m=>h.includes(m)));
+      if(required && colIdx[key]<0){showToast('CSV must have a "'+spec.label+'" column.','warning');return;}
+    });
+    if(requiredCols.some(s=>s.required && colIdx[s.key]<0))return;
+    const items=DB.g(store);let added=0;
+    const _usedIds=new Set(items.map(x=>String(x.id||'')));
+    for(let i=1;i<lines.length;i++){
+      const row=parseCSVLine(lines[i]);
+      const gv=key=>colIdx[key]>=0?(row[colIdx[key]]||'').trim():'';
+      const rec=recordBuilder(gv,generateUniqueNumericId(_usedIds));
+      if(!rec)continue;
+      items.push(rec);added++;
+    }
+    DB.s(store,items);showToast(added+' '+(label||'record')+'(s) imported.','success');
+    (Array.isArray(renderFns)?renderFns:[renderFns]).forEach(fn=>fn?.());
+  };
+  reader.readAsText(f);e.target.value='';
 }
 
 function importAssetCSV(e){
@@ -4322,20 +4584,14 @@ function saveWaste(){
   const date=document.getElementById('m-w-date').value;
   const type=document.getElementById('m-w-type').value;
   const vol=parseFloat(document.getElementById('m-w-vol').value);
-  if(!date||!type||isNaN(vol)){showToast('Date, Type, and Volume are required.','warning');return;}
+  clearAllFieldErrors('mo-waste');{let _e=false;if(!date){showFieldError('m-w-date','Required.');_e=true;}if(!type){showFieldError('m-w-type','Required.');_e=true;}if(isNaN(vol)){showFieldError('m-w-vol','Required.');_e=true;}if(_e)return;}
   const w=DB.g('waste');
   w.push({id:DB.nid('waste'),date,type,volume:vol,contractor:document.getElementById('m-w-contractor').value,emb:document.getElementById('m-w-emb').value,remarks:document.getElementById('m-w-remarks').value,photo:document._wPhoto||null,createdAt:today()});
   DB.s('waste',w);closeModal('mo-waste');renderWaste();renderDash();showToast('Waste entry saved.');
 }
-async function delWaste(id){if(!await confirmDialog('Delete this entry?'))return;DB.s('waste',DB.g('waste').filter(x=>x.id!==id));renderWaste();showToast('Waste entry deleted.','info');}
+async function delWaste(id){return delRecord('waste',id,'waste entry',renderWaste);}
 // PATCH START: delWasteFromFcast — delete from forecast page, update both views
-async function delWasteFromFcast(id){
-  if(!await confirmDialog('Delete this waste entry? This will update the forecast.'))return;
-  DB.s('waste',DB.g('waste').filter(x=>x.id!==id));
-  renderWasteFcast();
-  renderDash();
-  showToast('Waste entry deleted.','info');
-}
+async function delWasteFromFcast(id){return delRecord('waste',id,'waste entry',renderWasteFcast,renderDash);}
 // PATCH END
 
 // ═══════════════════════════════════════
@@ -4950,7 +5206,7 @@ function saveAsset(){
   if(checkEditConflict('assets',_editAsset))return;
   const name=(document.getElementById('m-a-name').value||'').trim();
   const sec=document.getElementById('m-a-section').value;
-  if(!name||!sec){showToast('Asset Name and Section are required.','warning');return;}
+  clearAllFieldErrors('mo-asset');{let _e=false;if(!name){showFieldError('m-a-name','Required.');_e=true;}if(!sec){showFieldError('m-a-section','Required.');_e=true;}if(_e)return;}
 
   const gv=fid=>{const el=document.getElementById(fid);return el?el.value:''};
   const gn=fid=>{const v=parseFloat(document.getElementById(fid)?.value);return isNaN(v)?null:v;};
@@ -5084,15 +5340,35 @@ function renderAssets(){
         <button type="button" class="btn btn-sm btn-danger" onclick="delAsset(${a.id})">Del</button>
       </td>
     </tr>`;
-  }).join(''):'<tr><td colspan="13" class="empty">No assets found.</td></tr>';
+  }).join(''):'<tr><td colspan="13" class="empty">No assets found. Click <strong>+ Register Asset</strong> or import a CSV to get started.</td></tr>';
 }
 
 // ═══════════════════════════════════════
 // NEW: ENHANCED renderDash
 // ═══════════════════════════════════════
+let _dashCache=null,_dashCacheKey='';
+function getDashCacheKey(){return[DB.g('wo').length,DB.g('assets').length,DB.g('waste').length,DB.g('inventory').length,DB.g('safety').length,DB.g('projects').length,JSON.stringify(DB.g('wo').slice(-1)),JSON.stringify(DB.g('assets').slice(-1))].join('|');}
 function renderDash(){
   const wos=DB.g('wo'),wastes=DB.g('waste'),inv=DB.g('inventory'),assets=DB.g('assets');
   const safety=DB.g('safety'),projects=DB.g('projects');
+
+  // Memoize heavy asset calculations (PMS & kWh)
+  const cacheKey=getDashCacheKey();
+  if(cacheKey!==_dashCacheKey){
+    _dashCacheKey=cacheKey;
+    const pmsMap={due:0,overdue:0,noSched:0,upcoming:0};
+    let totalKwh=0;
+    assets.forEach(a=>{
+      const s=getPMSStatus(a);
+      if(s==='Due Today')pmsMap.due++;
+      else if(s==='Overdue'||s==='Critical Overdue')pmsMap.overdue++;
+      else if(s==='No Schedule')pmsMap.noSched++;
+      else if(s==='Upcoming')pmsMap.upcoming++;
+      totalKwh+=calcAssetKwh(a);
+    });
+    _dashCache={pmsMap,totalKwh};
+  }
+
   const open=wos.filter(w=>w.status==='Open'||w.status==='In Progress').length;
   const closed=wos.filter(w=>w.status==='Closed'||w.status==='Completed').length;
   const ovr=wos.filter(w=>overdue(w)).length;
@@ -5107,12 +5383,9 @@ function renderDash(){
     <div class="stat-card s-waste"><div class="stat-label">Critical Waste Flags</div><div class="stat-val">${crit}</div><div class="stat-sub">EMB flagged entries</div></div>
     <div class="stat-card s-inv"><div class="stat-label">Low Stock Items</div><div class="stat-val">${lowInv}</div><div class="stat-sub">needs replenishment</div></div>`;
 
-  // NEW: Row 2 — PMS, Energy, Safety, Projects, Water, Inpatient
-  const pmsDue=assets.filter(a=>getPMSStatus(a)==='Due Today').length;
-  const pmsOver=assets.filter(a=>{const s=getPMSStatus(a);return s==='Overdue'||s==='Critical Overdue';}).length;
-  const pmsNone=assets.filter(a=>getPMSStatus(a)==='No Schedule').length;
-  const pmsUpcoming=assets.filter(a=>getPMSStatus(a)==='Upcoming').length;
-  const totalKwh=assets.reduce((sum,a)=>{const k=calcAssetKwh(a);return sum+k;},0);
+  // Row 2 — PMS, Energy, Safety, Projects (uses memoized _dashCache)
+  const {pmsMap,totalKwh}=_dashCache;
+  const pmsDue=pmsMap.due,pmsOver=pmsMap.overdue,pmsNone=pmsMap.noSched,pmsUpcoming=pmsMap.upcoming;
   const openSafety=safety.filter(s=>s.status==='Open').length;
   const critSafety=safety.filter(s=>s.severity==='Critical'&&s.status!=='Closed').length;
   const ongoingProj=projects.filter(p=>p.status==='Ongoing').length;
@@ -5214,7 +5487,7 @@ function saveSafety(){
   if(checkEditConflict('safety',_editSafety))return;
   const desc=(document.getElementById('m-sf-desc').value||'').trim();
   const sev=document.getElementById('m-sf-sev').value;
-  if(!desc||!sev){showToast('Description and Severity are required.','warning');return;}
+  clearAllFieldErrors('mo-safety');{let _e=false;if(!desc){showFieldError('m-sf-desc','Required.');_e=true;}if(!sev){showFieldError('m-sf-sev','Required.');_e=true;}if(_e)return;}
   const list=DB.g('safety');
   const s={
     id:_editSafety||DB.nid('safety'),
@@ -5230,7 +5503,7 @@ function saveSafety(){
   DB.s('safety',list);closeModal('mo-safety');renderSafety();renderDash();showToast('Safety issue saved.');
 }
 
-async function delSafety(id){if(!await confirmDialog('Delete this safety issue?'))return;DB.s('safety',DB.g('safety').filter(x=>x.id!==id));renderSafety();renderDash();showToast('Safety issue deleted.','info');}
+async function delSafety(id){return delRecord('safety',id,'safety issue',renderSafety,renderDash);}
 
 function renderSafety(){
   let list=DB.g('safety');
@@ -5295,7 +5568,7 @@ function saveProject(){
   if(checkEditConflict('projects',_editProject))return;
   const code=(document.getElementById('m-pj-code').value||'').trim();
   const title=(document.getElementById('m-pj-title').value||'').trim();
-  if(!code||!title){showToast('Project Code and Title are required.','warning');return;}
+  clearAllFieldErrors('mo-project');{let _e=false;if(!code){showFieldError('m-pj-code','Required.');_e=true;}if(!title){showFieldError('m-pj-title','Required.');_e=true;}if(_e)return;}
   const list=DB.g('projects');
   const p={
     id:_editProject||DB.nid('projects'),code,title,
@@ -5316,7 +5589,7 @@ function saveProject(){
   DB.s('projects',list);closeModal('mo-project');renderProjects();renderProjStats();renderDash();showToast('Project saved.');
 }
 
-async function delProject(id){if(!await confirmDialog('Delete this project?'))return;DB.s('projects',DB.g('projects').filter(x=>x.id!==id));renderProjects();renderProjStats();renderDash();showToast('Project deleted.','info');}
+async function delProject(id){return delRecord('projects',id,'project',renderProjects,renderProjStats,renderDash);}
 
 function renderProjects(){
   let list=DB.g('projects');
@@ -5396,7 +5669,7 @@ function saveWaterLog(){
   if(checkEditConflict('waterLogs',_editWaterLog))return;
   const ward=(document.getElementById('m-wl-ward').value||'').trim();
   const date=document.getElementById('m-wl-date').value;
-  if(!ward||!date){showToast('Ward/Location and Date are required.','warning');return;}
+  clearAllFieldErrors('mo-waterlog');{let _e=false;if(!ward){showFieldError('m-wl-ward','Required.');_e=true;}if(!date){showFieldError('m-wl-date','Required.');_e=true;}if(_e)return;}
   const list=DB.g('waterLogs');
   const l={
     id:_editWaterLog||DB.nid('waterLogs'),date,ward,
@@ -5413,7 +5686,7 @@ function saveWaterLog(){
   DB.s('waterLogs',list);closeModal('mo-waterlog');renderWaterLogs();renderWardStatus();showToast('Water log saved.');
 }
 
-async function delWaterLog(id){if(!await confirmDialog('Delete this water log?'))return;DB.s('waterLogs',DB.g('waterLogs').filter(x=>x.id!==id));renderWaterLogs();renderWardStatus();showToast('Water log deleted.','info');}
+async function delWaterLog(id){return delRecord('waterLogs',id,'water log',renderWaterLogs,renderWardStatus);}
 
 function renderWaterLogs(){
   let list=DB.g('waterLogs');
@@ -5494,7 +5767,7 @@ function openTankModal(id=null){
 function saveTankReading(){
   if(checkEditConflict('waterTank',_editTank))return;
   const name=(document.getElementById('m-tk-name').value||'').trim();
-  if(!name){showToast('Tank/Source Name is required.','warning');return;}
+  clearAllFieldErrors('mo-tankreading');if(!name){showFieldError('m-tk-name','Required.');return;}
   const list=DB.g('waterTank');
   const t={
     id:_editTank||DB.nid('waterTank'),
@@ -5510,7 +5783,7 @@ function saveTankReading(){
   DB.s('waterTank',list);closeModal('mo-tank');renderWaterTank();renderTankGauges();showToast('Tank reading saved.');
 }
 
-async function delTankReading(id){if(!await confirmDialog('Delete this reading?'))return;DB.s('waterTank',DB.g('waterTank').filter(x=>x.id!==id));renderWaterTank();renderTankGauges();showToast('Reading deleted.','info');}
+async function delTankReading(id){return delRecord('waterTank',id,'reading',renderWaterTank,renderTankGauges);}
 
 // renderTankGauges removed — Current Levels panel removed
 function renderTankGauges(){ /* no-op: panel removed */ }
@@ -5631,27 +5904,19 @@ function loadPersonnel(){
 // PATCH: CSV import for safety management
 // ═══════════════════════════════════════
 function importSafetyCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const hf=n=>header.findIndex(h=>['desc','description','issue'].some(a=>a===n?h.includes(a):false)||h===n);
-    const idx={desc:header.findIndex(h=>h.includes('desc')||h.includes('issue')),sev:header.findIndex(h=>h.includes('sev')||h.includes('severity')),status:header.findIndex(h=>h==='status'),loc:header.findIndex(h=>h.includes('loc')||h.includes('room')||h.includes('location')),asset:header.findIndex(h=>h.includes('asset')),date:header.findIndex(h=>h.includes('date')||h==='datelogged'),by:header.findIndex(h=>h.includes('by')||h.includes('logged')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.desc<0){showToast('CSV must have a "Description" or "Issue" column.','warning');return;}
-    const items=DB.g('safety');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';
-      const desc=gv(idx.desc).trim();if(!desc)continue;
-      items.push({id:generateUniqueNumericId(_usedIds),description:desc,severity:gv(idx.sev)||'Low',status:gv(idx.status)||'Open',location:gv(idx.loc),linkedAsset:gv(idx.asset),dateLogged:gv(idx.date)||today(),loggedBy:gv(idx.by),remarks:gv(idx.remarks)});
-      added++;
-    }
-    DB.s('safety',items);showToast(added+' safety issue(s) imported.','success');renderSafety();renderDash();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'safety',[
+    {key:'desc',match:['desc','issue'],label:'Description',required:true},
+    {key:'sev',match:['sev','severity'],label:'Severity'},
+    {key:'status',match:['status'],label:'Status'},
+    {key:'loc',match:['loc','room','location'],label:'Location'},
+    {key:'asset',match:['asset'],label:'Asset'},
+    {key:'date',match:['date','datelogged'],label:'Date'},
+    {key:'by',match:['by','logged'],label:'Logged By'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const desc=gv('desc');if(!desc)return null;
+    return{id,description:desc,severity:gv('sev')||'Low',status:gv('status')||'Open',location:gv('loc'),linkedAsset:gv('asset'),dateLogged:gv('date')||today(),loggedBy:gv('by'),remarks:gv('remarks')};
+  },[renderSafety,renderDash],'safety issue');
 }
 function downloadSafetyTemplate(){
   const rows=[
@@ -5715,27 +5980,18 @@ function downloadSafetyTemplate(){
 // PATCH: CSV import for waste management
 // ═══════════════════════════════════════
 function importWasteCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const idx={date:header.findIndex(h=>h.includes('date')),type:header.findIndex(h=>h.includes('type')||h.includes('waste')),vol:header.findIndex(h=>h.includes('vol')||h.includes('weight')||h.includes('kg')),contractor:header.findIndex(h=>h.includes('contractor')||h.includes('hauler')),emb:header.findIndex(h=>h.includes('emb')||h.includes('status')||h.includes('compliance')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.type<0||idx.vol<0){showToast('CSV must have "Waste_Type" and "Volume_kg" columns.','warning');return;}
-    const items=DB.g('waste');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';
-      const type=gv(idx.type).trim();const vol=parseFloat(gv(idx.vol));
-      if(!type||isNaN(vol))continue;
-      items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),type,volume:vol,contractor:gv(idx.contractor),emb:gv(idx.emb)||'OK',remarks:gv(idx.remarks),photo:null,createdAt:today()});
-      added++;
-    }
-    DB.s('waste',items);showToast(added+' waste entry(ies) imported.','success');renderWaste();renderDash();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'waste',[
+    {key:'type',match:['type','waste'],label:'Waste_Type',required:true},
+    {key:'vol',match:['vol','weight','kg'],label:'Volume_kg',required:true},
+    {key:'date',match:['date'],label:'Date'},
+    {key:'contractor',match:['contractor','hauler'],label:'Contractor'},
+    {key:'emb',match:['emb','status','compliance'],label:'EMB Status'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const type=gv('type');const vol=parseFloat(gv('vol'));
+    if(!type||isNaN(vol))return null;
+    return{id,date:gv('date')||today(),type,volume:vol,contractor:gv('contractor'),emb:gv('emb')||'OK',remarks:gv('remarks'),photo:null,createdAt:today()};
+  },[renderWaste,renderDash],'waste entry');
 }
 function downloadWasteTemplate(){
   const rows=[
@@ -5799,26 +6055,19 @@ function downloadWasteTemplate(){
 // PATCH: CSV import for water safety log
 // ═══════════════════════════════════════
 function importWaterLogCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const idx={date:header.findIndex(h=>h.includes('date')),ward:header.findIndex(h=>h.includes('ward')||h.includes('location')),testtype:header.findIndex(h=>h.includes('test')||h.includes('type')),result:header.findIndex(h=>h.includes('result')),bacteria:header.findIndex(h=>h.includes('bacteria')||h.includes('cfu')),chlorine:header.findIndex(h=>h.includes('chlorine')),mitigation:header.findIndex(h=>h.includes('mitigation')||h.includes('action')||h.includes('corrective')),remarks:header.findIndex(h=>h.includes('remark'))};
-    if(idx.ward<0||idx.result<0){showToast('CSV must have "Ward_Location" and "Result" columns.','warning');return;}
-    const items=DB.g('waterLogs');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';
-      const ward=gv(idx.ward).trim();if(!ward)continue;
-      items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),ward,testType:gv(idx.testtype)||'Bacteriological',result:gv(idx.result)||'Safe',bacteriaCount:gv(idx.bacteria),residualChlorine:gv(idx.chlorine),mitigation:gv(idx.mitigation),resultImage:null,remarks:gv(idx.remarks)});
-      added++;
-    }
-    DB.s('waterLogs',items);showToast(added+' water log(s) imported.','success');renderWaterLogs();renderWardStatus();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'waterLogs',[
+    {key:'ward',match:['ward','location'],label:'Ward_Location',required:true},
+    {key:'result',match:['result'],label:'Result',required:true},
+    {key:'date',match:['date'],label:'Date'},
+    {key:'testtype',match:['test','type'],label:'Test_Type'},
+    {key:'bacteria',match:['bacteria','cfu'],label:'Bacteria'},
+    {key:'chlorine',match:['chlorine'],label:'Chlorine'},
+    {key:'mitigation',match:['mitigation','action','corrective'],label:'Mitigation'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const ward=gv('ward');if(!ward)return null;
+    return{id,date:gv('date')||today(),ward,testType:gv('testtype')||'Bacteriological',result:gv('result')||'Safe',bacteriaCount:gv('bacteria'),residualChlorine:gv('chlorine'),mitigation:gv('mitigation'),resultImage:null,remarks:gv('remarks')};
+  },[renderWaterLogs,renderWardStatus],'water log');
 }
 function downloadWaterLogTemplate(){
   const rows=[
@@ -5883,27 +6132,25 @@ function downloadWaterLogTemplate(){
 // PATCH: CSV upload for project monitoring
 // ═══════════════════════════════════════
 function importProjectCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const idx={code:header.findIndex(h=>h.includes('code')),title:header.findIndex(h=>h.includes('title')||h.includes('name')||h.includes('project')),cat:header.findIndex(h=>h.includes('cat')||h.includes('category')),loc:header.findIndex(h=>h.includes('loc')||h.includes('location')),budget:header.findIndex(h=>h.includes('budget')||h.includes('cost')),funding:header.findIndex(h=>h.includes('fund')||h.includes('source')),person:header.findIndex(h=>h.includes('person')||h.includes('responsible')),start:header.findIndex(h=>h.includes('start')),target:header.findIndex(h=>h.includes('target')||h.includes('completion')),actual:header.findIndex(h=>h.includes('actual')),physical:header.findIndex(h=>h.includes('physical')||h.includes('phys')),financial:header.findIndex(h=>h.includes('financial')||h.includes('fin')),status:header.findIndex(h=>h==='status'),issues:header.findIndex(h=>h.includes('issue')||h.includes('remark'))};
-    if(idx.title<0){showToast('CSV must have a "Title" or "Project_Name" column.','warning');return;}
-    const items=DB.g('projects');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';
-      const title=gv(idx.title).trim();if(!title)continue;
-      const newId=generateUniqueNumericId(_usedIds);
-      items.push({id:newId,code:gv(idx.code)||('PROJ-'+String(newId).padStart(4,'0')),title,category:gv(idx.cat)||'Infrastructure',location:gv(idx.loc),budget:parseFloat(gv(idx.budget))||null,funding:gv(idx.funding)||'GAA',responsible:gv(idx.person),startDate:gv(idx.start),targetCompletion:gv(idx.target),actualCompletion:gv(idx.actual),physicalPct:parseFloat(gv(idx.physical))||0,financialPct:parseFloat(gv(idx.financial))||0,status:gv(idx.status)||'Proposed',issues:gv(idx.issues)});
-      added++;
-    }
-    DB.s('projects',items);showToast(added+' project(s) imported.','success');renderProjects();renderProjStats();renderDash();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'projects',[
+    {key:'title',match:['title','name','project'],label:'Title',required:true},
+    {key:'code',match:['code'],label:'Code'},
+    {key:'cat',match:['cat','category'],label:'Category'},
+    {key:'loc',match:['loc','location'],label:'Location'},
+    {key:'budget',match:['budget','cost'],label:'Budget'},
+    {key:'funding',match:['fund','source'],label:'Funding'},
+    {key:'person',match:['person','responsible'],label:'Responsible'},
+    {key:'start',match:['start'],label:'Start Date'},
+    {key:'target',match:['target','completion'],label:'Target'},
+    {key:'actual',match:['actual'],label:'Actual'},
+    {key:'physical',match:['physical','phys'],label:'Physical %'},
+    {key:'financial',match:['financial','fin'],label:'Financial %'},
+    {key:'status',match:['status'],label:'Status'},
+    {key:'issues',match:['issue','remark'],label:'Issues'}
+  ],(gv,id)=>{
+    const title=gv('title');if(!title)return null;
+    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:gv('start'),targetCompletion:gv('target'),actualCompletion:gv('actual'),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
+  },[renderProjects,renderProjStats,renderDash],'project');
 }
 function downloadProjectTemplate(){
   const rows=[
@@ -6056,7 +6303,7 @@ function saveEffluent(){
   if(checkEditConflict('effluent',_editEffluent))return;
   const date=document.getElementById('m-eff-date').value;
   const point=document.getElementById('m-eff-point').value.trim();
-  if(!date||!point){showToast('Date and Sampling Point are required.','warning');return;}
+  clearAllFieldErrors('mo-effluent');{let _e=false;if(!date){showFieldError('m-eff-date','Required.');_e=true;}if(!point){showFieldError('m-eff-point','Required.');_e=true;}if(_e)return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   // PATCH START: collect custom params from live rows
   const customParams = effGetCustomParams();
@@ -6067,29 +6314,27 @@ function saveEffluent(){
   DB.s('effluent',items);closeModal('mo-effluent');renderEffluent();showToast('Effluent reading saved.');
 }
 
-async function delEffluent(id){if(!await confirmDialog('Delete this reading?'))return;DB.s('effluent',DB.g('effluent').filter(x=>x.id!==id));renderEffluent();showToast('Reading deleted.','info');}
+async function delEffluent(id){return delRecord('effluent',id,'reading',renderEffluent);}
 function importEffluentCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const hf=k=>header.findIndex(h=>h.includes(k));
-    const idx={date:hf('date'),point:hf('point')||hf('sampling'),status:hf('status')||hf('compli'),ph:hf('ph'),bod:hf('bod'),cod:hf('cod'),tss:hf('tss'),oil:hf('oil')||hf('grease'),temp:hf('temp'),coliform:hf('coliform'),fecal:hf('fecal'),do_:hf('do'),remarks:hf('remark')};
-    if(idx.point<0){showToast('CSV must have a "Sampling_Point" column.','warning');return;}
-    const items=DB.g('effluent');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';const gn=j=>{const v=parseFloat(gv(j));return isNaN(v)?null:v;};
-      const point=gv(idx.point).trim();if(!point)continue;
-      items.push({id:generateUniqueNumericId(_usedIds),date:gv(idx.date)||today(),samplingPoint:point,status:gv(idx.status)||'Compliant',pH:gn(idx.ph),BOD:gn(idx.bod),COD:gn(idx.cod),TSS:gn(idx.tss),oilGrease:gn(idx.oil),temperature:gn(idx.temp),totalColiform:gn(idx.coliform),fecalColiform:gn(idx.fecal),dissolvedOxygen:gn(idx.do_),remarks:gv(idx.remarks)});
-      added++;
-    }
-    DB.s('effluent',items);showToast(added+' reading(s) imported.','success');renderEffluent();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'effluent',[
+    {key:'point',match:['point','sampling'],label:'Sampling_Point',required:true},
+    {key:'date',match:['date'],label:'Date'},
+    {key:'status',match:['status','compli'],label:'Status'},
+    {key:'ph',match:['ph'],label:'pH'},
+    {key:'bod',match:['bod'],label:'BOD'},
+    {key:'cod',match:['cod'],label:'COD'},
+    {key:'tss',match:['tss'],label:'TSS'},
+    {key:'oil',match:['oil','grease'],label:'Oil_Grease'},
+    {key:'temp',match:['temp'],label:'Temperature'},
+    {key:'coliform',match:['coliform'],label:'Coliform'},
+    {key:'fecal',match:['fecal'],label:'Fecal'},
+    {key:'do_',match:['do'],label:'DO'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const point=gv('point');if(!point)return null;
+    const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
+    return{id,date:gv('date')||today(),samplingPoint:point,status:gv('status')||'Compliant',pH:gn('ph'),BOD:gn('bod'),COD:gn('cod'),TSS:gn('tss'),oilGrease:gn('oil'),temperature:gn('temp'),totalColiform:gn('coliform'),fecalColiform:gn('fecal'),dissolvedOxygen:gn('do_'),remarks:gv('remarks')};
+  },[renderEffluent],'reading');
 }
 function downloadEffluentTemplate(){
   const rows=[
@@ -6226,7 +6471,7 @@ function openMedWasteModal(id=null){
 }
 function saveMedWaste(){
   if(checkEditConflict('medWasteProd',_editMedWaste))return;
-  const date=document.getElementById('m-mw-date').value;if(!date){showToast('Date is required.','warning');return;}
+  const date=document.getElementById('m-mw-date').value;clearAllFieldErrors('mo-medwaste');if(!date){showFieldError('m-mw-date','Required.');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('medWasteProd');
   const opHrs=gn('m-mw-ophrs');const downtime=gn('m-mw-downtime');
@@ -6235,31 +6480,25 @@ function saveMedWaste(){
   if(_editMedWaste){const i=items.findIndex(x=>x.id===_editMedWaste);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-medwaste');return;}items[i]=o;}else items.push(o);
   DB.s('medWasteProd',items);closeModal('mo-medwaste');renderMedWaste();showToast('Medical waste log saved.');
 }
-async function delMedWaste(id){if(!await confirmDialog('Delete this log?'))return;DB.s('medWasteProd',DB.g('medWasteProd').filter(x=>x.id!==id));renderMedWaste();showToast('Log deleted.','info');}
+async function delMedWaste(id){return delRecord('medWasteProd',id,'log',renderMedWaste);}
 function importMedWasteCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const hf=k=>header.findIndex(h=>h.includes(k));
-    const idx={date:hf('date'),shift:hf('shift'),status:hf('status'),input:hf('input'),treated:hf('treated'),output:hf('output'),ophrs:hf('op')||hf('hour'),downtime:hf('down'),remarks:hf('remark')};
-    if(idx.date<0){showToast('CSV must have a "Date" column.','warning');return;}
-    const items=DB.g('medWasteProd');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';const gn=j=>{const v=parseFloat(gv(j));return isNaN(v)?null:v;};
-      const date=gv(idx.date).trim();if(!date)continue;
-      const opHrs=gn(idx.ophrs);const downtime=gn(idx.downtime);
-      const mwcDenom=Math.max((opHrs||0)+(downtime||0),8);const util=opHrs!=null&&mwcDenom>0?Math.min(100,Math.round((opHrs/mwcDenom)*100)):null;
-      items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inputQty:gn(idx.input),treatedQty:gn(idx.treated),outputQty:gn(idx.output),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
-      added++;
-    }
-    DB.s('medWasteProd',items);showToast(added+' log(s) imported.','success');renderMedWaste();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'medWasteProd',[
+    {key:'date',match:['date'],label:'Date',required:true},
+    {key:'shift',match:['shift'],label:'Shift'},
+    {key:'status',match:['status'],label:'Status'},
+    {key:'input',match:['input'],label:'Input'},
+    {key:'treated',match:['treated'],label:'Treated'},
+    {key:'output',match:['output'],label:'Output'},
+    {key:'ophrs',match:['op','hour'],label:'Op Hours'},
+    {key:'downtime',match:['down'],label:'Downtime'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const date=gv('date');if(!date)return null;
+    const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
+    const opHrs=gn('ophrs');const dt=gn('downtime');
+    const denom=Math.max((opHrs||0)+(dt||0),8);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
+    return{id,date,shift:gv('shift')||'AM Shift',status:gv('status')||'Normal',inputQty:gn('input'),treatedQty:gn('treated'),outputQty:gn('output'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
+  },[renderMedWaste],'log');
 }
 function downloadMedWasteTemplate(){
   const rows=[
@@ -6401,7 +6640,7 @@ function openWWProdModal(id=null){
 }
 function saveWWProd(){
   if(checkEditConflict('wwProd',_editWWProd))return;
-  const date=document.getElementById('m-ww-date').value;if(!date){showToast('Date is required.','warning');return;}
+  const date=document.getElementById('m-ww-date').value;clearAllFieldErrors('mo-wwprod');if(!date){showFieldError('m-ww-date','Required.');return;}
   const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
   const items=DB.g('wwProd');
   const opHrs=gn('m-ww-ophrs');const downtime=gn('m-ww-downtime');
@@ -6410,31 +6649,25 @@ function saveWWProd(){
   if(_editWWProd){const i=items.findIndex(x=>x.id===_editWWProd);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wwprod');return;}items[i]=o;}else items.push(o);
   DB.s('wwProd',items);closeModal('mo-wwprod');renderWWProd();showToast('Wastewater log saved.');
 }
-async function delWWProd(id){if(!await confirmDialog('Delete this log?'))return;DB.s('wwProd',DB.g('wwProd').filter(x=>x.id!==id));renderWWProd();showToast('Log deleted.','info');}
+async function delWWProd(id){return delRecord('wwProd',id,'log',renderWWProd);}
 function importWWProdCSV(e){
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
-    if(!lines.length){showToast('Empty file.','warning');return;}
-    const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
-    const hf=k=>header.findIndex(h=>h.includes(k));
-    const idx={date:hf('date'),shift:hf('shift'),status:hf('status'),inflow:hf('inflow'),treated:hf('treated'),outflow:hf('out'),ophrs:hf('op')||hf('hour'),downtime:hf('down'),remarks:hf('remark')};
-    if(idx.date<0){showToast('CSV must have a "Date" column.','warning');return;}
-    const items=DB.g('wwProd');let added=0;
-    const _usedIds=new Set(items.map(x=>String(x.id||'')));
-    for(let i=1;i<lines.length;i++){
-      const row=parseCSVLine(lines[i]);
-      const gv=j=>j>=0?row[j]||'':'';const gn=j=>{const v=parseFloat(gv(j));return isNaN(v)?null:v;};
-      const date=gv(idx.date).trim();if(!date)continue;
-      const opHrs=gn(idx.ophrs);const downtime=gn(idx.downtime);
-      const wwcDenom=Math.max((opHrs||0)+(downtime||0),24);const util=opHrs!=null&&wwcDenom>0?Math.min(100,Math.round((opHrs/wwcDenom)*100)):null;
-      items.push({id:generateUniqueNumericId(_usedIds),date,shift:gv(idx.shift)||'AM Shift',status:gv(idx.status)||'Normal',inflow:gn(idx.inflow),treated:gn(idx.treated),outflow:gn(idx.outflow),opHours:opHrs,downtime,utilizationPct:util,remarks:gv(idx.remarks)});
-      added++;
-    }
-    DB.s('wwProd',items);showToast(added+' log(s) imported.','success');renderWWProd();
-  };
-  r.readAsText(f);e.target.value='';
+  genericCSVImport(e,'wwProd',[
+    {key:'date',match:['date'],label:'Date',required:true},
+    {key:'shift',match:['shift'],label:'Shift'},
+    {key:'status',match:['status'],label:'Status'},
+    {key:'inflow',match:['inflow'],label:'Inflow'},
+    {key:'treated',match:['treated'],label:'Treated'},
+    {key:'outflow',match:['out'],label:'Outflow'},
+    {key:'ophrs',match:['op','hour'],label:'Op Hours'},
+    {key:'downtime',match:['down'],label:'Downtime'},
+    {key:'remarks',match:['remark'],label:'Remarks'}
+  ],(gv,id)=>{
+    const date=gv('date');if(!date)return null;
+    const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
+    const opHrs=gn('ophrs');const dt=gn('downtime');
+    const denom=Math.max((opHrs||0)+(dt||0),24);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
+    return{id,date,shift:gv('shift')||'AM Shift',status:gv('status')||'Normal',inflow:gn('inflow'),treated:gn('treated'),outflow:gn('outflow'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
+  },[renderWWProd],'log');
 }
 function downloadWWProdTemplate(){
   const rows=[
@@ -7090,7 +7323,7 @@ function renderWO(){
     const lateAlert=isLateCmp?`<div style="font-size:10px;color:#b06000;font-weight:700;margin-top:3px;">&#9201; Late Completed</div>`:'';
     const rowBg=isOvr?' style="background:#fff8f8;"':isLateCmp?' style="background:#fffbf0;"':'';
     return`<tr${rowBg}><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
-  }).join(''):'<tr><td colspan="15" class="empty">No work orders found.</td></tr>';
+  }).join(''):'<tr><td colspan="15" class="empty">No work orders found. Click <strong>+ New Work Order</strong> to create one.</td></tr>';
   if(!_woShowAll&&totalWOs>50){
     document.getElementById('wo-tbody').innerHTML+=
       `<tr><td colspan="15" style="text-align:center;padding:12px;">
@@ -7752,11 +7985,11 @@ renderTankTrends = function(){
     } else {
       spikeEl.innerHTML=`<table style="width:100%;font-size:12px;border-collapse:collapse;">
         <thead><tr style="border-bottom:2px solid var(--border);">
-          <th style="text-align:left;padding:4px 8px;">Date</th>
-          <th style="text-align:right;padding:4px 8px;">Consumption (L)</th>
-          <th style="text-align:right;padding:4px 8px;">7-Day Avg</th>
-          <th style="text-align:right;padding:4px 8px;">Spike Ratio</th>
-          <th style="padding:4px 8px;">Flag</th>
+          <th scope="col" style="text-align:left;padding:4px 8px;">Date</th>
+          <th scope="col" style="text-align:right;padding:4px 8px;">Consumption (L)</th>
+          <th scope="col" style="text-align:right;padding:4px 8px;">7-Day Avg</th>
+          <th scope="col" style="text-align:right;padding:4px 8px;">Spike Ratio</th>
+          <th scope="col" style="padding:4px 8px;">Flag</th>
         </tr></thead>
         <tbody>${spikeRows.map(s=>`<tr style="border-bottom:1px solid var(--border);">
           <td style="padding:4px 8px;">${s.date}</td>
@@ -9520,14 +9753,14 @@ function renderExpectedComparison(){
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="background:#f4f6f9;">
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Date</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Actual (L)</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Expected (L)</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Variance (L)</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Var %</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Est. WWTP (L)</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Status</th>
-        <th style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Activity</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Date</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Actual (L)</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Expected (L)</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Variance (L)</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Var %</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Est. WWTP (L)</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Status</th>
+        <th scope="col" style="padding:5px 8px;text-align:left;font-size:11px;color:var(--muted);">Activity</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
@@ -9780,10 +10013,10 @@ renderTankKPIs=function(){
         <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;font-size:12px;">
           <thead><tr style="background:#f4f6f9;">
-            <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Date</th>
-            <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Total Demand</th>
-            <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Inpatients</th>
-            <th style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">L/pt/day</th>
+            <th scope="col" style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Date</th>
+            <th scope="col" style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Total Demand</th>
+            <th scope="col" style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">Inpatients</th>
+            <th scope="col" style="padding:4px 8px;text-align:left;font-size:11px;color:var(--muted);font-weight:600;">L/pt/day</th>
           </tr></thead>
           <tbody>${rows}</tbody>
         </table></div>`;
@@ -10722,13 +10955,13 @@ function wsetFixtureRenderTable(){
   <table style="width:100%;border-collapse:collapse;font-size:12px;">
     <thead>
       <tr style="background:var(--light);">
-        <th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:22%;">Fixture Name</th>
-        <th style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:9%;">Qty</th>
-        <th style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:12%;">L / Use</th>
-        <th style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:12%;">Uses / Day</th>
-        <th style="padding:7px 8px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--teal);border-bottom:2px solid var(--border);width:13%;">L / Day</th>
-        <th style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);">Notes</th>
-        <th style="padding:7px 4px;border-bottom:2px solid var(--border);width:32px;"></th>
+        <th scope="col" style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:22%;">Fixture Name</th>
+        <th scope="col" style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:9%;">Qty</th>
+        <th scope="col" style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:12%;">L / Use</th>
+        <th scope="col" style="padding:7px 8px;text-align:center;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);width:12%;">Uses / Day</th>
+        <th scope="col" style="padding:7px 8px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--teal);border-bottom:2px solid var(--border);width:13%;">L / Day</th>
+        <th scope="col" style="padding:7px 8px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);border-bottom:2px solid var(--border);">Notes</th>
+        <th scope="col" style="padding:7px 4px;border-bottom:2px solid var(--border);width:32px;"></th>
       </tr>
     </thead>
     <tbody>`;
