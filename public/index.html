@@ -225,8 +225,9 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .tb-right{display:flex;align-items:center;gap:8px;}
 .tb-chip{padding:4px 11px;border-radius:3px;font-size:11px;font-weight:600;letter-spacing:0.3px;}
 .chip-date{background:#e8f0fb;color:var(--blue);}
-.chip-offline{background:var(--teal-light);color:var(--teal);}
-.chip-firebase{background:#FF6F00;color:#fff;font-weight:700;}
+.chip-offline{background:#e8e8e8;color:#666;font-weight:700;}
+.chip-connecting{background:#FF6F00;color:#fff;font-weight:700;animation:chip-pulse 1.2s ease-in-out infinite;}
+.chip-live{background:#0f8c6e;color:#fff;font-weight:700;}
 .chip-syncing{background:#1565C0;color:#fff;font-weight:700;animation:chip-pulse 1.2s ease-in-out infinite;}
 @keyframes chip-pulse{0%,100%{opacity:1}50%{opacity:.6}}
 .chip-file{background:#e6f5e6;color:#1a6b1a;font-weight:700;}
@@ -855,7 +856,7 @@ async function hammsLogout(){
       <span id="page-title">Dashboard</span>
     </div>
     <div class="tb-right">
-      <span class="tb-chip chip-firebase" id="storage-chip">CONNECTING</span>
+      <span class="tb-chip chip-connecting" id="storage-chip" onclick="showFirebaseStatus()" style="cursor:pointer;" title="Click for connection details">CONNECTING</span>
       <span class="tb-chip chip-alert" id="top-inv-alert" onclick="navigate('inventory')">⚠ Low Stock</span>
       <span class="tb-chip chip-date" id="today-chip"></span>
       <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
@@ -3093,7 +3094,11 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
   };
   const publishLiveUi=()=>{
     _fbLoadedOnce=true;
-    setStorageChip(navigator.onLine && !_fbAllFromCache ? 'firebase-live' : 'firebase-offline'); // PATCHED: respect Firestore connectivity, not just navigator.onLine
+    // Determine status: LIVE if we got a server snapshot or are online with data loaded
+    // OFFLINE only if navigator says offline; UNAVAILABLE if online but all snapshots are cached
+    if(!navigator.onLine) setStorageChip('firebase-offline');
+    else if(_fbAllFromCache) setStorageChip('firebase-unavailable');
+    else setStorageChip('firebase-live');
     scheduleUiRefresh();
   };
   try{
@@ -3109,9 +3114,8 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     STORES.forEach(store=>{
       _fbUnsubscribe.push(window._FB.onSnapshot(getStoreCollectionRef(store), snap=>{
         if(shouldIgnoreCacheSnapshot(snap)) return;
-        // PATCHED: track Firestore connectivity — fromCache while navigator.onLine means real connection lost
-        if(snap.metadata.fromCache && navigator.onLine){ _fbAllFromCache=true; }
-        else if(!snap.metadata.fromCache){ _fbAllFromCache=false; }
+        // Track Firestore connectivity — any non-cache snapshot means we have a live connection
+        if(!snap.metadata.fromCache){ _fbAllFromCache=false; }
         if(_fbWriteInProgress || hasPendingStoreOps(store)){
           mergeListenerSnapshot(store, snap);
           publishLiveUi();
@@ -3281,8 +3285,8 @@ function setStorageChip(mode){
       'firebase-unavailable':'UNAVAILABLE'
     };
     const classes={
-      'firebase-loading':'tb-chip chip-firebase',
-      'firebase-live':'tb-chip chip-firebase',
+      'firebase-loading':'tb-chip chip-connecting',
+      'firebase-live':'tb-chip chip-live',
       'firebase-syncing':'tb-chip chip-syncing',
       'firebase-offline':'tb-chip chip-offline',
       'firebase-unavailable':'tb-chip chip-ls'
@@ -3363,7 +3367,7 @@ async function disconnectFile(){ showFirebaseStatus(); }
 function updateOnlineChip(){
   return;
 }
-window.addEventListener('online',  () => { updateOnlineChip(); _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); }); // PATCHED: reset _fbAllFromCache on reconnect; always do a fresh load — never flush stale offline ops (prevents multi-user collision)
+window.addEventListener('online',  () => { updateOnlineChip(); _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
 window.addEventListener('offline', () => { updateOnlineChip(); setStorageChip('firebase-offline'); });
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
