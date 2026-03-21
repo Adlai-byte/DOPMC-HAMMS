@@ -1,7 +1,7 @@
-// HAMMS Service Worker v2.7.1
+// HAMMS Service Worker v2.7.3
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-7-1';
+const CACHE_NAME = 'hamms-v2-7-3';
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -14,9 +14,8 @@ self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
       return cache.addAll(SHELL_FILES);
-    })
+    }).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 // Activate: remove old caches
@@ -26,9 +25,8 @@ self.addEventListener('activate', event => {
       Promise.all(
         keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
       )
-    )
+    ).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Fetch: serve from cache first (offline-first strategy)
@@ -55,6 +53,7 @@ self.addEventListener('fetch', event => {
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
+        return new Response('', {status: 503, statusText: 'Offline'});
       });
     })
   );
