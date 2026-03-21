@@ -3300,6 +3300,7 @@ function pruneWaterTankDemoEntries(dbLike){
 // Debounce writes so rapid saves don't hammer Firebase
 function scheduleFlush(){ // PATCHED: only explicit user edits queue collection/meta sync
   clearTimeout(_saveTimer);
+  _fbSyncRetryCount=0; // FIX: reset retry count on new user action so stale failures don't inflate delays
   setStorageChip(navigator.onLine?'firebase-syncing':'firebase-offline');
   _saveTimer=setTimeout(flushAll,100); // reduced from 500ms — faster writes for multi-user safety
 }
@@ -4773,7 +4774,8 @@ async function deleteIssuanceLog(id){
     if(item){item.qty=parseFloat((item.qty+entry.qtyIssued).toFixed(4));stampRecord(item);DB.s('inventory',inv);}
   }
   if(isAutoWO){
-    showToast('Note: This was auto-deducted from a Work Order. Edit the Work Order to adjust materials.','info',5000);
+    showToast('This entry was auto-deducted from a Work Order. Edit the Work Order to adjust materials.','warning',5000);
+    return; // FIX: don't delete auto-WO issuance records — they are managed by saveWO/delWO
   }
   DB.s('issuance',DB.g('issuance').filter(l=>l.id!==id));
   renderIssuance();
@@ -5152,7 +5154,7 @@ function calcAssetKwh(a){
   if(!w&&a.hp)w=parseFloat(a.hp)*746;
   const hrs=parseFloat(a.opHoursDay||0);
   const days=parseFloat(a.opDaysMonth||0);
-  const df=parseFloat(a.demandFactor||0.80)||0.80;
+  const df=(a.demandFactor!=null&&a.demandFactor!=='')?parseFloat(a.demandFactor)||0.80:0.80;
   return(w/1000)*hrs*days*df;
 }
 
@@ -7979,7 +7981,7 @@ renderTankTrends = function(){
   const avg30 = rollingAvg(daily2, 30);
   const withPt = tanks.filter(t=>t.patientCount>0 && t.estimatedConsumption>0);
   const perCapita = withPt.length
-    ? withPt.reduce((s,t)=>s+t.litersPerPatient||t.estimatedConsumption/t.patientCount,0)/withPt.length
+    ? withPt.reduce((s,t)=>s+(t.litersPerPatient||t.estimatedConsumption/t.patientCount),0)/withPt.length
     : null;
   const lowDays = tanks.filter(t=>(t.tankLevel||100)<30).length;
   const spikes2 = detectSpikes(daily2);
