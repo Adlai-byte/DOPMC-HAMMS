@@ -366,7 +366,7 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .card-body{padding:17px;}
 
 /* ── TABLES ─────────────────────────── */
-.tbl-wrap{overflow-x:auto;overflow-y:auto;max-height:480px;}
+.tbl-wrap{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 220px);}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 thead th{background:var(--light);position:sticky;top:0;z-index:2;box-shadow:0 1px 0 var(--border);color:var(--navy);font-weight:700;padding:9px 12px;text-align:left;border-bottom:2px solid var(--border);font-size:11px;text-transform:uppercase;letter-spacing:0.8px;white-space:nowrap;}
 tbody td{padding:9px 12px;border-bottom:1px solid #edf0f5;vertical-align:middle;}
@@ -482,6 +482,7 @@ tr.row-warn td{background:#fffdf0;}
 
 /* ── MISC ───────────────────────────── */
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.two-col .tbl-wrap{max-height:320px;}
 .section-overview-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;width:100%;min-width:0;}
 .dashboard-top-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px;flex-wrap:wrap;}
 .dashboard-top-left{display:flex;align-items:center;gap:16px;flex-wrap:wrap;min-width:0;flex:1 1 760px;}
@@ -532,7 +533,7 @@ tr.row-warn td{background:#fffdf0;}
   #content{padding:16px 18px;}
   .stat-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
   .filter-bar{flex-wrap:wrap;gap:6px;}
-  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;max-height:calc(100vh - 180px);}
 }
 @media(max-width:768px){
 
@@ -1323,7 +1324,7 @@ async function hammsLogout(){
             <button type="button" class="btn btn-sm btn-outline" onclick="exportCSV('watertank-assumptions')" title="Export full assumption snapshot for audit">📋 Assumptions</button>
           </div>
         </div>
-        <div class="tbl-wrap" style="max-height:420px;overflow-y:auto;"><table>
+        <div class="tbl-wrap"><table>
           <thead><tr>
             <th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">#</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Date / Time</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Tank</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Capacity (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Level %</th>
             <th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Volume (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Demand (L)</th><th scope="col" style="position:sticky;top:0;z-index:1;background:#f4f6f9;">Rate (L/hr)</th>
