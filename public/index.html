@@ -866,10 +866,6 @@ async function hammsLogout(){
     <div class="sb-logo"><span class="hl">H</span>AMM<span class="hl">S</span></div>
     <div class="sb-logo-sub">Hospital Asset Maintenance Monitoring System</div>
     <div class="sb-divider"></div>
-    <div style="font-size:9px;color:rgba(255,255,255,0.5);line-height:1.65;letter-spacing:0.4px;font-weight:500;position:relative;z-index:2;text-align:center;">
-      DAVAO ORIENTAL PROVINCIAL<br>MEDICAL CENTER<br>
-      <span style="color:#0de8b0;font-weight:700;letter-spacing:0.8px;font-size:9.5px;">General Services Division</span>
-    </div>
   </div>
   <nav aria-label="Main navigation">
     <div class="sb-alert-pill" id="sb-inv-alert">⚠ Critical Stock — Action Needed</div>
@@ -3211,7 +3207,7 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
         if(shouldIgnoreCacheSnapshot(snap)) return;
         // Track Firestore connectivity — any non-cache snapshot means we have a live connection
         if(!snap.metadata.fromCache){ _fbAllFromCache=false; }
-        if(_fbWriteInProgress || hasPendingStoreOps(store) || isRecentlyFlushed(store)){
+        if(_fbWriteInProgress || hasPendingStoreOps(store) || isRecentlyFlushed(store) || snap.metadata.hasPendingWrites){
           mergeListenerSnapshot(store, snap);
           publishLiveUi();
           return;
@@ -3427,8 +3423,8 @@ async function syncToFirebase(){ // PATCHED: per-batch retry, write-lock safety 
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
   }finally{
     _fbWriteInProgress=false;
-    setSavingState(false);
     clearTimeout(_fbWriteLockTimer);
+    if(!_fbSyncTimer){setSavingState(false);} // Don't clear saving UI if retry is scheduled
     startFirebaseListener();
   }
 }
@@ -3540,7 +3536,7 @@ function setOfflineBanner(offline){
     if(banner)banner.remove();
   }
 }
-window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip(_fbLoadedOnce?'firebase-live':'firebase-loading'); setOfflineBanner(false); showToast('Connection restored.','success'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
+window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
 window.addEventListener('offline', () => { setStorageChip('firebase-offline'); setOfflineBanner(true); });
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
@@ -3621,18 +3617,21 @@ if(navigator.serviceWorker){
 // ═══════════════════════════════════════
 const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment'}; // PATCH: effluent monitoring + production tabs
 let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null; // PATCH: issuance log edit support
-let _editSnapshot=null; // { store, id, _v } — optimistic concurrency
+const _editSnapshots=new Map(); // Map<store, {store, id, _v}> — optimistic concurrency per store
 function captureEditSnapshot(store,id){
-  if(!id){_editSnapshot=null;return;}
+  if(!id){_editSnapshots.delete(store);return;}
   const rec=(DB.g(store)||[]).find(x=>x.id===id);
-  _editSnapshot=rec?{store,id,_v:rec._v||0}:null;
+  if(rec)_editSnapshots.set(store,{store,id,_v:rec._v||0});
+  else _editSnapshots.delete(store);
 }
 function checkEditConflict(store,editId){
-  if(!editId||!_editSnapshot||_editSnapshot.store!==store||_editSnapshot.id!==editId)return false;
+  if(!editId)return false;
+  const snap=_editSnapshots.get(store);
+  if(!snap||snap.id!==editId)return false;
   const cur=(DB.g(store)||[]).find(x=>x.id===editId);
   if(!cur)return false;
   const curV=cur._v||0;
-  if(curV>_editSnapshot._v){
+  if(curV>snap._v){
     const who=cur._updatedBy||'another user';
     const when=cur._updatedAt?new Date(cur._updatedAt).toLocaleString():'unknown time';
     showToast(`Conflict: This record was modified by ${who} at ${when}. Your changes were NOT saved. Please close, review, and retry.`,'error',8000);
@@ -4273,7 +4272,20 @@ function saveWO(){
   DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
 async function delRecord(store,id,label,...renderFns){if(!await confirmDialog('Delete this '+label+'? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;DB.s(store,DB.g(store).filter(x=>x.id!==id));renderFns.forEach(fn=>fn?.());showToast(label+' deleted.','info');}
-async function delWO(id){return delRecord('wo',id,'work order',renderWO,renderDash);}
+async function delWO(id){
+  const w=DB.g('wo').find(x=>x.id===id);
+  if(!await confirmDialog('Delete this work order? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;
+  // Restore inventory and remove auto-issuance if WO had materials
+  if(w?.materials?.length){
+    const inv=DB.g('inventory').map(i=>({...i}));
+    const woRef='WO-'+String(id).padStart(4,'0');
+    w.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});
+    DB.s('inventory',inv);
+    DB.s('issuance',DB.g('issuance').filter(l=>!(l.woRef===woRef&&l.remarks==='Auto-deducted via Work Order')));
+  }
+  DB.s('wo',DB.g('wo').filter(x=>x.id!==id));
+  renderWO();renderDash();renderIssuance();renderInventory();updateInvAlerts();showToast('Work order deleted.','info');
+}
 
 // ── ASSET ─────────────────────────────
 
@@ -4719,8 +4731,14 @@ function renderIssuance(){
 }
 async function deleteIssuanceLog(id){
   if(!await confirmDialog('Delete this issuance log? This cannot be undone.')) return;
-  const log=DB.g('issuance').filter(l=>l.id!==id);
-  DB.s('issuance',log);
+  const entry=DB.g('issuance').find(l=>l.id===id);
+  // Restore inventory quantity before removing the issuance record
+  if(entry&&entry.invId&&entry.qtyIssued>0){
+    const inv=DB.g('inventory').map(i=>({...i}));
+    const item=inv.find(i=>i.id===entry.invId);
+    if(item){item.qty=parseFloat((item.qty+entry.qtyIssued).toFixed(4));stampRecord(item);DB.s('inventory',inv);}
+  }
+  DB.s('issuance',DB.g('issuance').filter(l=>l.id!==id));
   renderIssuance();
   renderInventory();
   updateInvAlerts();
@@ -5468,7 +5486,7 @@ function renderDash(){
   const recent=[...wos].sort((a,b)=>b.id-a.id).slice(0,8);
   document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
   const ws=getWeekStart(today());const ww=wastes.filter(w=>w.date>=ws);const bt={};ww.forEach(w=>{if(!bt[w.type])bt[w.type]={v:0,s:[]};bt[w.type].v+=w.volume;bt[w.type].s.push(w.emb);});
-  document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${t}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
+  document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${escapeHTML(t)}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
   const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping'];
   document.getElementById('section-overview').innerHTML=secs.map(s=>{const sw=wos.filter(w=>w.section===s);const o=sw.filter(w=>w.status==='Open'||w.status==='In Progress').length;const c=sw.filter(w=>w.status==='Closed'||w.status==='Completed').length;const ov=sw.filter(w=>overdue(w)).length;const lc=sw.filter(w=>lateCompleted(w)).length;return`<div class="sec-mini"><div class="sec-mini-title">${secTag(s)}</div><div class="sec-mini-stats"><div class="sec-mini-stat"><div class="sms-label">Open</div><div class="sms-val sms-open">${o}</div></div><div class="sec-mini-stat"><div class="sms-label">Closed</div><div class="sms-val sms-closed">${c}</div></div><div class="sec-mini-stat"><div class="sms-label">Overdue</div><div class="sms-val sms-over">${ov}</div></div>${lc?`<div class="sec-mini-stat"><div class="sms-label" style="color:#b06000;">Late Cmp</div><div class="sms-val" style="color:#b06000;">${lc}</div></div>`:''}</div></div>`;}).join('');
   // Backup export reminder
@@ -5801,24 +5819,7 @@ function openTankModal(id=null){
   openModal('mo-tank');
 }
 
-function saveTankReading(){
-  if(checkEditConflict('waterTank',_editTank))return;
-  const name=(document.getElementById('m-tk-name').value||'').trim();
-  clearAllFieldErrors('mo-tankreading');if(!name){showFieldError('m-tk-name','Required.');return;}
-  const list=DB.g('waterTank');
-  const t={
-    id:_editTank||DB.nid('waterTank'),
-    datetime:document.getElementById('m-tk-dt').value,
-    tankName:name,
-    levelPct:parseFloat(document.getElementById('m-tk-level').value)||null,
-    pressurePsi:parseFloat(document.getElementById('m-tk-psi').value)||null,
-    flowRate:parseFloat(document.getElementById('m-tk-flow').value)||null,
-    status:document.getElementById('m-tk-status').value,
-    remarks:document.getElementById('m-tk-remarks').value,
-  };
-  if(_editTank){const i=list.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}list[i]=t;}else list.push(t);
-  DB.s('waterTank',list);closeModal('mo-tank');renderWaterTank();renderTankGauges();showToast('Tank reading saved.');
-}
+// saveTankReading — defined later in the water tank compute engine section (line ~8762)
 
 async function delTankReading(id){return delRecord('waterTank',id,'reading',renderWaterTank,renderTankGauges);}
 
@@ -5922,7 +5923,6 @@ function savePersonnel(){
     date:today()
   };
   queueScalarSync('personnel', _memDB.personnel); // PATCHED: save only the personnel object path
-  scheduleFlush();
   const total=Object.values(_memDB.personnel).filter(v=>typeof v==='number').reduce((a,b)=>a+b,0);
   const lbl=document.getElementById('pers-total-label');
   if(lbl)lbl.textContent='Total: '+total+' personnel';
@@ -6268,7 +6268,7 @@ function effRenderCustomParams(){
   }
   wrap.innerHTML = rows.map((p,i)=>`
     <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:8px;align-items:center;margin-bottom:8px;" id="eff-cp-${i}">
-      <input type="text" value="${(p.name||'').replace(/"/g,'&quot;')}"
+      <input type="text" value="${escapeHTML(p.name||'')}"
         style="border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:12px;font-family:inherit;"
         placeholder="Parameter name (e.g. Ammonia, Turbidity)"
         oninput="window._effCustomParams[${i}].name=this.value">
@@ -6276,7 +6276,7 @@ function effRenderCustomParams(){
         style="border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:12px;font-family:inherit;text-align:right;"
         placeholder="Value"
         oninput="window._effCustomParams[${i}].value=this.value===''?null:parseFloat(this.value)">
-      <input type="text" value="${(p.unit||'').replace(/"/g,'&quot;')}"
+      <input type="text" value="${escapeHTML(p.unit||'')}"
         style="border:1px solid var(--border);border-radius:3px;padding:5px 8px;font-size:12px;font-family:inherit;"
         placeholder="Unit (mg/L, NTU…)"
         oninput="window._effCustomParams[${i}].unit=this.value">
@@ -6840,37 +6840,7 @@ function calcTankConsumption(){
   }else result.textContent='—';
 }
 
-// ═══════════════════════════════════════
-// PATCH: patch saveTankReading + renderWaterTank for new fields
-// ═══════════════════════════════════════
-// PATCH: water tank trend + pump calculation — override saveTankReading
-saveTankReading=function(){
-  const dt=document.getElementById('m-tk-dt').value;
-  const name=document.getElementById('m-tk-name').value.trim();
-  if(!dt||!name){showToast('Date/Time and Tank Name are required.','warning');return;}
-  const gn=id=>{const v=parseFloat(document.getElementById(id)?.value);return isNaN(v)?null:v;};
-  const tanks=DB.g('waterTank');
-  const o={
-    id:_editTank||DB.nid('waterTank'),
-    dateTime:dt,tankName:name,
-    tankLevel:gn('m-tk-level'),
-    tankVolume:gn('m-tk-vol'),      // PATCH: water tank trend
-    refillVolume:gn('m-tk-refill'),
-    estimatedConsumption:gn('m-tk-consumption'),
-    pressurePsi:gn('m-tk-psi'),
-    flowRate:gn('m-tk-flow'),
-    patientCount:gn('m-tk-patients'), // PATCH: pump runtime calculation
-    status:document.getElementById('m-tk-status').value,
-    remarks:document.getElementById('m-tk-remarks').value
-  };
-  // PATCH: auto-calc consumption if not entered
-  if(o.estimatedConsumption==null&&o.tankVolume!=null&&o.refillVolume!=null){
-    const prev=tanks.filter(t=>t.tankName===name&&t.id!==o.id).sort((a,b)=>b.id-a.id)[0];
-    if(prev?.tankVolume!=null){o.estimatedConsumption=Math.max(0,parseFloat(((prev.tankVolume+o.refillVolume-o.tankVolume).toFixed(0))));}
-  }
-  if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}tanks[i]=o;}else tanks.push(o);
-  DB.s('waterTank',tanks);closeModal('mo-tank');renderWaterTank();renderTankGauges();renderTankTrends();
-};
+// (dead saveTankReading override removed — consolidated into compute engine section)
 
 function renderTankTrends(){
   const tanks=DB.g('waterTank');
@@ -7808,110 +7778,7 @@ calcTankConsumption = function(){
   });
 })();
 
-// ═══════════════════════════════════════════════════════════════
-// OVERRIDE: saveTankReading — full hydraulic schema + factor tags
-// ═══════════════════════════════════════════════════════════════
-saveTankReading = function(){
-  const dt = document.getElementById('m-tk-dt').value;
-  const name = document.getElementById('m-tk-name').value.trim();
-  if(!dt||!name){ showToast('Date/Time and Tank/Source Name are required.','warning'); return; }
-
-  const gn = id=>{ const v=parseFloat(document.getElementById(id)?.value); return isNaN(v)?null:v; };
-  const tanks = DB.g('waterTank');
-
-  // Get previous reading for this tank (for hydraulic calc)
-  const prevRec = tanks.filter(t=>t.tankName===name && t.id!==_editTank)
-                         .sort((a,b)=>(b.dateTime||b.date||'').localeCompare(a.dateTime||a.date||''))[0] || null;
-
-  // Linked asset
-  const linkedAssetId = window._tkLinkedAssetId || null;
-  const linkedAsset = linkedAssetId ? DB.g('assets').find(x=>x.id===linkedAssetId) : null;
-  const tankCapacityL = gn('m-tk-vol') || linkedAsset?.tankCapacityLiters || null;
-
-  // Operational factors
-  const operationalFactors = [...document.querySelectorAll('#tk-factor-tags input:checked')].map(c=>c.value);
-
-  // Hydraulic inputs
-  const ratedGpm = gn('m-tk-gpm');
-  const pumpRuntimeMin = gn('m-tk-runtime');
-  const pipelineLengthM = gn('m-tk-pipelen');
-  const headDifferenceM = gn('m-tk-head');
-  const manualLossPct = gn('m-tk-loss');
-
-  // Build record
-  const o = {
-    id: _editTank || DB.nid('waterTank'),
-    dateTime: dt,
-    tankName: name,
-    linkedAssetId,
-    tankCapacityL: linkedAsset?.tankCapacityLiters || null,
-    tankLevel: gn('m-tk-level'),
-    tankVolume: gn('m-tk-vol'),
-    refillVolume: gn('m-tk-refill'),
-    estimatedConsumption: gn('m-tk-consumption'),
-    pressurePsi: gn('m-tk-psi'),
-    flowRate: gn('m-tk-flow'),
-    patientCount: gn('m-tk-patients'),
-    status: document.getElementById('m-tk-status').value,
-    remarks: document.getElementById('m-tk-remarks').value,
-    // Hydraulic inputs
-    ratedGpm, pumpRuntimeMin, pipelineLengthM, headDifferenceM, manualLossPct,
-    operationalFactors,
-  };
-
-  // === HYDRAULIC COMPUTATION ===
-  const hyd = computeHydraulics(o, prevRec, linkedAsset);
-  o.isBaseline = hyd.isBaseline;
-  o.anomalyNotes = hyd.notes;
-  o.estimatedInflowL = hyd.estimatedInflow;
-  o.estimatedOutflowL = hyd.estimatedOutflow;
-  o.isNegativeOutflow = hyd.isNegativeOutflow;
-  o.volumeFromPct = hyd.isVolumeFromPct;
-
-  // If consumption still null, derive from hydraulics
-  if(o.estimatedConsumption == null && hyd.estimatedOutflow != null && hyd.estimatedOutflow > 0){
-    o.estimatedConsumption = hyd.estimatedOutflow;
-  }
-  // If consumption still null but volume model available
-  if(o.estimatedConsumption == null && hyd.prevVolumeUsed != null && hyd.currentVolumeUsed != null){
-    const inflow = o.refillVolume || o.estimatedInflowL || 0;
-    o.estimatedConsumption = Math.max(0, Math.round(hyd.prevVolumeUsed + inflow - hyd.currentVolumeUsed));
-  }
-
-  // Liters per patient
-  if(o.estimatedConsumption > 0 && o.patientCount > 0)
-    o.litersPerPatient = Math.round(o.estimatedConsumption / o.patientCount);
-
-  // Hydraulic efficiency (effective vs rated)
-  if(ratedGpm && pumpRuntimeMin){
-    const hflow = computeEffectiveFlow(ratedGpm, pipelineLengthM||0, headDifferenceM||0, manualLossPct);
-    if(hflow){
-      o.estimatedPumpDeliveryL = computeEstimatedInflow(hflow.effectiveLpm, pumpRuntimeMin);
-      o.effectiveFlowLpm = hflow.effectiveLpm;
-      o.lossPct = hflow.lossPct;
-    }
-  }
-
-  if(_editTank){ const i=tanks.findIndex(x=>x.id===_editTank); if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;} tanks[i]=o; } else tanks.push(o);
-  DB.s('waterTank', tanks);
-  // P4: Remember last used tank name for next log entry
-  if(tankName) sessionStorage.setItem('_hamms_lastTankName', tankName);
-  closeModal('mo-tank');
-  renderWaterTank();
-  renderTankGauges();
-  renderTankTrends();
-  renderTankKPIs();
-  updateTankFormulaBox(); // P5: refresh formula examples
-  // PATCH START: render all water analytics panels after save
-  setTimeout(()=>{
-    if(typeof renderExpectedComparison==='function') renderExpectedComparison();
-    if(typeof renderWaterAlarmPanel==='function')    renderWaterAlarmPanel();
-    if(typeof renderCalcBasisPanel==='function')     renderCalcBasisPanel();
-    if(typeof renderWaterFixturePanel==='function')  renderWaterFixturePanel();
-    if(typeof renderDash==='function')               renderDash();
-  }, 60);
-  // PATCH END
-};
+// (dead saveTankReading override removed — consolidated into compute engine section)
 
 // ═══════════════════════════════════════════════════════════════
 // OVERRIDE: renderWaterTank — extended table with new columns
@@ -8745,6 +8612,7 @@ openTankModal=function(id=null){
 // saveTankReading — store RAW observation, then run compute engine
 // ═══════════════════════════════════════════════════════════════
 saveTankReading=function(){
+  if(checkEditConflict('waterTank',_editTank))return;
   const dt=document.getElementById('m-tk-dt').value;
   const lvlRaw=document.getElementById('m-tk-level')?.value;
   const lvl=parseFloat(lvlRaw);
@@ -11016,7 +10884,7 @@ function wsetFixtureRenderTable(){
         <td style="padding:5px 6px;">
           <div style="display:flex;align-items:center;gap:5px;">
             <span style="font-size:14px;">${escapeHTML(r.icon||'⚙️')}</span>
-            <input type="text" value="${r.name.replace(/"/g,'&quot;')}"
+            <input type="text" value="${escapeHTML(r.name||'')}"
               style="border:1px solid var(--border);border-radius:3px;padding:4px 7px;font-size:12px;width:100%;font-family:inherit;"
               oninput="wsetFixtureField('${r.id}','name',this.value)"
               placeholder="Fixture name">
@@ -11044,7 +10912,7 @@ function wsetFixtureRenderTable(){
                 id="wset-fx-daily-${r.id}">${daily.toLocaleString()}</span>
         </td>
         <td style="padding:5px 4px;">
-          <input type="text" value="${(r.notes||'').replace(/"/g,'&quot;')}"
+          <input type="text" value="${escapeHTML(r.notes||'')}"
             style="border:1px solid var(--border);border-radius:3px;padding:4px 7px;font-size:11px;width:100%;font-family:inherit;color:var(--muted);"
             oninput="wsetFixtureField('${r.id}','notes',this.value)"
             placeholder="Optional notes">

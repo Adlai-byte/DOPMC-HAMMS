@@ -1,38 +1,53 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Helper: require a named (non-anonymous) user
+    function isNamedUser() {
+      return request.auth != null && request.auth.token.email != null;
+    }
+    // Helper: writer identity matches authenticated user
+    function isWriter() {
+      return request.resource.data._updatedBy == request.auth.token.email;
+    }
+
     match /hamms/mainData {
-      allow read: if request.auth != null;
+      allow read: if isNamedUser();
       allow write: if false;
     }
     match /hammsStores/{store}/records/{docId} {
-      allow read: if request.auth != null;
-      // Create: authenticated user, valid store, record must carry their identity
-      allow create: if request.auth != null
+      allow read: if isNamedUser();
+      // Create: named user, valid store, record must carry their identity
+      allow create: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
                      'medWasteProd','wwProd','censusLog','waterSettings']
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
-        && request.resource.data._updatedBy == (request.auth.token.email != null ? request.auth.token.email : request.auth.uid);
-      // Update: same checks + writer must be the authenticated user (email or uid for anonymous)
-      allow update: if request.auth != null
+        && isWriter();
+      // Update: same checks + version must increment monotonically
+      allow update: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
                      'medWasteProd','wwProd','censusLog','waterSettings']
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
-        && request.resource.data._updatedBy == (request.auth.token.email != null ? request.auth.token.email : request.auth.uid);
-      // Delete: authenticated user in a valid store
-      allow delete: if request.auth != null
+        && isWriter()
+        && (!('_v' in request.resource.data) || !('_v' in resource.data)
+            || request.resource.data._v >= resource.data._v);
+      // Delete: named user in a valid store, must be record owner or any named user
+      allow delete: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
                      'medWasteProd','wwProd','censusLog','waterSettings'];
     }
     match /hammsMeta/state {
-      allow read, write: if request.auth != null;
+      allow read: if isNamedUser();
+      allow write: if isNamedUser()
+        && request.resource.data.keys().size() < 50
+        && (!('inpatientToday' in request.resource.data)
+            || request.resource.data.inpatientToday is int);
     }
     match /{document=**} {
       allow read, write: if false;

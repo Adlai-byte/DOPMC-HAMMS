@@ -1,7 +1,7 @@
-// HAMMS Service Worker v2.7.4
+// HAMMS Service Worker v2.7.5
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-7-4';
+const CACHE_NAME = 'hamms-v2-7-5';
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -34,6 +34,8 @@ self.addEventListener('fetch', event => {
   // Skip Firebase API calls — let them go to network
   if (event.request.url.includes('firestore.googleapis.com') ||
       event.request.url.includes('identitytoolkit.googleapis.com') ||
+      event.request.url.includes('securetoken.googleapis.com') ||
+      event.request.url.includes('firebaseinstallations.googleapis.com') ||
       event.request.url.includes('firebasejs')) {
     return; // let browser handle Firebase requests normally
   }
