@@ -7938,7 +7938,7 @@ renderTankTrends = function(){
       const maxCount = entries[0][1];
       factorEl.innerHTML=`<div style="margin-bottom:8px;font-size:11px;color:var(--muted);">Frequency of operational factors across all readings:</div>`
         + entries.map(([f,c])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
-          <div style="width:130px;font-size:11px;">${FACTOR_LABELS[f]||f}</div>
+          <div style="width:130px;font-size:11px;">${FACTOR_LABELS[f]||escapeHTML(f)}</div>
           <div style="flex:1;background:#e8edf3;border-radius:3px;height:14px;">
             <div style="width:${Math.round(c/maxCount*100)}%;background:var(--blue);height:14px;border-radius:3px;"></div>
           </div>
