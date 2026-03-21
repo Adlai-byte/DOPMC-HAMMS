@@ -850,6 +850,19 @@ async function hammsLogout(){
   try { await window._FB.signOut(); } catch(e) { console.warn('Logout error:', e); }
   showToast('Signed out.','info');
 }
+// FIX: auto-logout after 30 minutes of inactivity (shared hospital workstations)
+let _idleTimer=null;
+function resetIdleTimer(){
+  clearTimeout(_idleTimer);
+  _idleTimer=setTimeout(()=>{
+    if(window._FB?.email){
+      showToast('Session expired due to inactivity. Please sign in again.','warning',6000);
+      hammsLogout();
+    }
+  }, 30*60*1000); // 30 minutes
+}
+['click','keydown','scroll','touchstart'].forEach(e=>document.addEventListener(e,resetIdleTimer,{passive:true}));
+resetIdleTimer();
 </script>
 <!-- ══ END LOGIN OVERLAY ══════════════════════════════════════════ -->
 
@@ -1976,7 +1989,7 @@ async function hammsLogout(){
         <div class="form-group"><label>Section *</label>
           <select id="m-wo-section" onchange="fillAssetDrop()"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select></div>
         <div class="form-group"><label>Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(filter assets by room)</span></label>
-          <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Select section first, then type room…" oninput="fillAssetDrop(document.getElementById('m-wo-asset').value)" autocomplete="off"></div>
+          <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Select section first, then type room…" oninput="clearTimeout(window._fadTimer);window._fadTimer=setTimeout(()=>fillAssetDrop(document.getElementById('m-wo-asset').value),200)" autocomplete="off"></div>
         <div class="form-group"><label>Asset</label>
           <select id="m-wo-asset"><option value="">Select section first…</option></select>
           <div class="form-hint" id="wo-asset-hint" style="margin-top:3px;"></div></div>
@@ -3546,7 +3559,7 @@ function setOfflineBanner(offline){
     if(banner)banner.remove();
   }
 }
-window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; refreshFromFirebaseSilently('online'); });
+window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; clearTimeout(window._onlineDebounce); window._onlineDebounce=setTimeout(()=>refreshFromFirebaseSilently('online'), 2000); });
 window.addEventListener('offline', () => { setStorageChip('firebase-offline'); setOfflineBanner(true); });
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
@@ -4714,11 +4727,14 @@ function renderInventory(){
   if(q)inv=inv.filter(i=>(i.description||'').toLowerCase().includes(q));
   inv.sort((a,b)=>a.description.localeCompare(b.description));
   const issuanceLogs=DB.g('issuance');
+  // FIX: pre-build last-issued map to avoid O(n²) scan
+  const lastIssuedMap=Object.create(null);
+  issuanceLogs.forEach(l=>{if(l.invId&&l.issuedTo&&l.issuedTo!=='—'){if(!lastIssuedMap[l.invId]||l.id>lastIssuedMap[l.invId].id)lastIssuedMap[l.invId]=l;}});
   document.getElementById('inv-tbody').innerHTML=inv.length?inv.map(item=>{
     const s=invStockStatus(item);
     const pct=item.originalQty>0?Math.round((item.qty/item.originalQty)*100):100;
     const barClass=s==='Critical'?'sb-crit':s==='Warning'?'sb-warn':'sb-ok';
-    const lastIssued=issuanceLogs.filter(l=>l.invId===item.id&&l.issuedTo&&l.issuedTo!=='—').sort((a,b)=>b.id-a.id)[0];
+    const lastIssued=lastIssuedMap[item.id]||null;
     const rowClass=s==='Critical'?'row-crit':s==='Warning'?'row-warn':'';
     return`<tr class="${rowClass}"><td>${invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="10" class="empty">No inventory items. Upload CSV or add manually.</td></tr>';
@@ -5387,8 +5403,11 @@ function renderAssets(){
   if(q)assets=assets.filter(a=>(a.name||'').toLowerCase().includes(q)||(a.location||a.roomNumber||'').toLowerCase().includes(q)||(a.assetCode||'').toLowerCase().includes(q));
   assets.sort((a,b)=>b.id-a.id);
   const wos=DB.g('wo');
+  // FIX: pre-build WO count map to avoid O(n²) scan
+  const woCntMap=Object.create(null);
+  wos.forEach(w=>{if(w.asset){woCntMap[w.asset]=(woCntMap[w.asset]||0)+1;}});
   document.getElementById('asset-tbody').innerHTML=assets.length?assets.map(a=>{
-    const cnt=wos.filter(w=>w.asset===a.name).length;
+    const cnt=woCntMap[a.name]||0;
     const pms=getPMSStatus(a);
     const loc=[a.roomName,a.roomNumber,a.building].filter(Boolean).join(' · ')||a.location||'—';
     const catDisplay=[a.mainCategory,a.assetClass].filter(Boolean).join(' / ')||a.section||'—';
@@ -7300,12 +7319,16 @@ function renderWO(){
   // PATCH START: Work Orders KPI computation
   (()=>{
     const allWOs = DB.g('wo');
-    const open   = allWOs.filter(w=>w.status==='Open').length;
-    const inprog = allWOs.filter(w=>w.status==='In Progress').length;
-    const closed = allWOs.filter(w=>w.status==='Closed'||w.status==='Completed').length;
-    const ovr    = allWOs.filter(w=>overdue(w)).length;
-    const lateComp = allWOs.filter(w=>lateCompleted(w)).length;
-    const emrg   = allWOs.filter(w=>w.priority==='Emergency'&&(w.status==='Open'||w.status==='In Progress')).length;
+    // FIX: single-pass KPI computation instead of 6 separate .filter() scans
+    let open=0,inprog=0,closed=0,ovr=0,lateComp=0,emrg=0;
+    allWOs.forEach(w=>{
+      if(w.status==='Open')open++;
+      else if(w.status==='In Progress')inprog++;
+      if(w.status==='Closed'||w.status==='Completed')closed++;
+      if(overdue(w))ovr++;
+      if(lateCompleted(w))lateComp++;
+      if(w.priority==='Emergency'&&(w.status==='Open'||w.status==='In Progress'))emrg++;
+    });
     const sr = document.getElementById('wo-stat-row');
     if(sr) sr.innerHTML = `
       <div class="stat-card s-open"><div class="stat-label">Open</div><div class="stat-val">${open}</div><div class="stat-sub">${inprog} in progress</div></div>

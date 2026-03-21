@@ -1,7 +1,7 @@
-// HAMMS Service Worker v2.7.5
+// HAMMS Service Worker v2.7.7
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-7-6';
+const CACHE_NAME = 'hamms-v2-7-7';
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -29,6 +29,13 @@ self.addEventListener('activate', event => {
   );
 });
 
+// Listen for skipWaiting message from client
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Fetch: serve from cache first (offline-first strategy)
 self.addEventListener('fetch', event => {
   // Skip Firebase API calls — let them go to network
@@ -47,7 +54,13 @@ self.addEventListener('fetch', event => {
         // Cache successful GET responses
         if (response && response.status === 200 && event.request.method === 'GET') {
           const clone = response.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, clone);
+            // Limit dynamic cache to 100 entries
+            cache.keys().then(keys => {
+              if (keys.length > 100) cache.delete(keys[0]);
+            });
+          });
         }
         return response;
       }).catch(() => {
