@@ -4579,8 +4579,8 @@ function importAssetCSV(e){
         location:loc,roomNumber:loc,roomName:loc,building:'',floor:'',
         brand:gv(idx.brand),serialNumber:gv(idx.serialno),serial:gv(idx.propertyno),
         condition:gv(idx.condition)||'Good',
-        qty,acquired:gv(idx.acquired),
-        lastMaint:gv(idx.lastmaint),lastMaintDate:gv(idx.lastmaint),
+        qty,acquired:normYMD(gv(idx.acquired)),
+        lastMaint:normYMD(gv(idx.lastmaint)),lastMaintDate:normYMD(gv(idx.lastmaint)),
         nextMaintDate:'',remarks:gv(idx.remarks),
         assetCode:null,maintFrequency:freqVal,
         ratedWatts:effectiveWatts,hp:hp||null,
@@ -5973,7 +5973,7 @@ function importSafetyCSV(e){
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
     const desc=gv('desc');if(!desc)return null;
-    return{id,description:desc,severity:gv('sev')||'Low',status:gv('status')||'Open',location:gv('loc'),linkedAsset:gv('asset'),dateLogged:gv('date')||today(),loggedBy:gv('by'),remarks:gv('remarks')};
+    return{id,description:desc,severity:gv('sev')||'Low',status:gv('status')||'Open',location:gv('loc'),linkedAsset:gv('asset'),date:normYMD(gv('date'))||today(),loggedBy:gv('by'),remarks:gv('remarks')};
   },[renderSafety,renderDash],'safety issue');
 }
 function downloadSafetyTemplate(){
@@ -6048,7 +6048,7 @@ function importWasteCSV(e){
   ],(gv,id)=>{
     const type=gv('type');const vol=parseFloat(gv('vol'));
     if(!type||isNaN(vol))return null;
-    return{id,date:gv('date')||today(),type,volume:vol,contractor:gv('contractor'),emb:gv('emb')||'OK',remarks:gv('remarks'),photo:null,createdAt:today()};
+    return{id,date:normYMD(gv('date'))||today(),type,volume:vol,contractor:gv('contractor'),emb:gv('emb')||'OK',remarks:gv('remarks'),photo:null,createdAt:today()};
   },[renderWaste,renderDash],'waste entry');
 }
 function downloadWasteTemplate(){
@@ -6124,7 +6124,7 @@ function importWaterLogCSV(e){
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
     const ward=gv('ward');if(!ward)return null;
-    return{id,date:gv('date')||today(),ward,testType:gv('testtype')||'Bacteriological',result:gv('result')||'Safe',bacteriaCount:gv('bacteria'),residualChlorine:gv('chlorine'),mitigation:gv('mitigation'),resultImage:null,remarks:gv('remarks')};
+    return{id,date:normYMD(gv('date'))||today(),ward,testType:gv('testtype')||'Bacteriological',result:gv('result')||'Safe',bacteriaCount:gv('bacteria'),residualChlorine:gv('chlorine'),mitigation:gv('mitigation'),resultImage:null,remarks:gv('remarks')};
   },[renderWaterLogs,renderWardStatus],'water log');
 }
 function downloadWaterLogTemplate(){
@@ -6207,7 +6207,7 @@ function importProjectCSV(e){
     {key:'issues',match:['issue','remark'],label:'Issues'}
   ],(gv,id)=>{
     const title=gv('title');if(!title)return null;
-    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:gv('start'),targetCompletion:gv('target'),actualCompletion:gv('actual'),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
+    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:normYMD(gv('start')),targetCompletion:normYMD(gv('target')),actualCompletion:gv('actual'),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
   },[renderProjects,renderProjStats,renderDash],'project');
 }
 function downloadProjectTemplate(){
@@ -6391,7 +6391,7 @@ function importEffluentCSV(e){
   ],(gv,id)=>{
     const point=gv('point');if(!point)return null;
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
-    return{id,date:gv('date')||today(),samplingPoint:point,status:gv('status')||'Compliant',pH:gn('ph'),BOD:gn('bod'),COD:gn('cod'),TSS:gn('tss'),oilGrease:gn('oil'),temperature:gn('temp'),totalColiform:gn('coliform'),fecalColiform:gn('fecal'),dissolvedOxygen:gn('do_'),remarks:gv('remarks')};
+    return{id,date:normYMD(gv('date'))||today(),samplingPoint:point,status:gv('status')||'Compliant',pH:gn('ph'),BOD:gn('bod'),COD:gn('cod'),TSS:gn('tss'),oilGrease:gn('oil'),temperature:gn('temp'),totalColiform:gn('coliform'),fecalColiform:gn('fecal'),dissolvedOxygen:gn('do_'),remarks:gv('remarks')};
   },[renderEffluent],'reading');
 }
 function downloadEffluentTemplate(){
@@ -6551,7 +6551,7 @@ function importMedWasteCSV(e){
     {key:'downtime',match:['down'],label:'Downtime'},
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
-    const date=gv('date');if(!date)return null;
+    const date=normYMD(gv('date'));if(!date)return null;
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
     const opHrs=gn('ophrs');const dt=gn('downtime');
     const denom=Math.max((opHrs||0)+(dt||0),8);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
@@ -6658,7 +6658,7 @@ function renderMedWaste(){
   // Util bars
   const last6=all.slice(-6);
   const maxU=Math.max(...last6.map(r=>r.utilizationPct||0),1);
-  document.getElementById('mw-util-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${r.date.substring(5)} ${r.shift.substring(0,2)}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.utilizationPct||0)/maxU)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.utilizationPct||0}%</span></div>`).join('')||'<div class="empty">No data yet.</div>';
+  document.getElementById('mw-util-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${escapeHTML((r.date||'').substring(5))} ${escapeHTML((r.shift||'').substring(0,2))}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.utilizationPct||0)/maxU)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.utilizationPct||0}%</span></div>`).join('')||'<div class="empty">No data yet.</div>';
   document.getElementById('medwaste-tbody').innerHTML=items.length?items.map(r=>`<tr>
     <td>${mwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
     <td class="mono">${r.inputQty!=null?r.inputQty.toFixed(2):'—'}</td><td class="mono">${r.treatedQty!=null?r.treatedQty.toFixed(2):'—'}</td><td class="mono">${r.outputQty!=null?r.outputQty.toFixed(2):'—'}</td>
@@ -6720,7 +6720,7 @@ function importWWProdCSV(e){
     {key:'downtime',match:['down'],label:'Downtime'},
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
-    const date=gv('date');if(!date)return null;
+    const date=normYMD(gv('date'));if(!date)return null;
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
     const opHrs=gn('ophrs');const dt=gn('downtime');
     const denom=Math.max((opHrs||0)+(dt||0),24);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
@@ -6828,7 +6828,7 @@ function renderWWProd(){
   // Op hours bars
   const last6=all.slice(-6);
   const maxH=Math.max(...last6.map(r=>r.opHours||0),1);
-  document.getElementById('ww-hrs-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${r.date.substring(5)}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.opHours||0)/maxH)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.opHours||0}h</span></div>`).join('')||'<div class="empty">No data yet.</div>';
+  document.getElementById('ww-hrs-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${escapeHTML((r.date||'').substring(5))}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.opHours||0)/maxH)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.opHours||0}h</span></div>`).join('')||'<div class="empty">No data yet.</div>';
   document.getElementById('wwprod-tbody').innerHTML=items.length?items.map(r=>`<tr>
     <td>${wwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
     <td class="mono">${r.inflow!=null?r.inflow.toFixed(2):'—'}</td><td class="mono">${r.treated!=null?r.treated.toFixed(2):'—'}</td><td class="mono">${r.outflow!=null?r.outflow.toFixed(2):'—'}</td>
@@ -7217,9 +7217,9 @@ function importWOCSV(e){
         description: desc||'Imported work order',
         priority: gv(idx.priority)||'Medium',
         status:   st,
-        dateStart:gv(idx.dateStart)||today(),
-        targetCompletionDate: gv(idx.targetCompletion)||null,
-        dateEnd:  gv(idx.dateEnd)||'',
+        dateStart:normYMD(gv(idx.dateStart))||today(),
+        targetCompletionDate: normYMD(gv(idx.targetCompletion))||null,
+        dateEnd:  normYMD(gv(idx.dateEnd))||'',
         assigned: gv(idx.assigned),
         remarks:  gv(idx.remarks),
         delayReason: gv(idx.delayReason)||null,
@@ -10021,9 +10021,7 @@ function importWaterTankCSV(e){
       items.push(rec); added++;
     }
 
-    // Run compute engine on ALL records (import may add readings that affect earlier existing sequences)
-    items=computeTankAnalytics(items);
-    DB.s('waterTank',items);
+    DB.s('waterTank',items); // computeTankAnalytics runs inside prepareStoreArray
     showToast(added+' tank reading(s) imported and recalculated.','success');
     renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
   };
