@@ -3294,23 +3294,33 @@ let _fbSyncRetryCount=0;
 const _FB_MAX_RETRIES=3;
 let _fbWriteLockTimer=null;
 async function syncToFirebase(){ // PATCHED: per-batch retry, write-lock safety timeout, no silent data loss
+  _fbSyncTimer=null; // FIX: clear stale handle — setTimeout returns a truthy int that persists after firing
   if(!window._FB?.enabled || !window._FB?.db){
     setStorageChip('firebase-unavailable');
     return;
   }
-  if(_fbWriteInProgress) return;
+  if(_fbWriteInProgress){
+    // FIX: schedule a retry so new pending ops don't get stranded
+    clearTimeout(_fbSyncTimer);
+    _fbSyncTimer=setTimeout(syncToFirebase, 500);
+    return;
+  }
   const storesWithOps=Object.keys(_fbPendingStoreOps).filter(store=>hasPendingStoreOps(store));
   const hasMetaOps=Object.keys(_fbPendingMetaMerge).length>0;
   if(!storesWithOps.length && !hasMetaOps){
     setStorageChip(navigator.onLine ? (_fbLoadedOnce?'firebase-live':'firebase-loading') : 'firebase-offline');
     return;
   }
+  // FIX: don't discard pending ops based on unreliable navigator.onLine
+  // Instead, preserve pending ops and schedule a retry.
+  // Note: _fbWriteInProgress and _fbWriteLockTimer have NOT been set yet at
+  // this point (they're set at line 3316), so no cleanup needed for them.
   if(!navigator.onLine){
-    _fbPendingStoreOps=Object.create(null);
-    _fbPendingMetaMerge={};
     setStorageChip('firebase-offline');
-    console.warn('HAMMS: Offline — unsaved changes were discarded to prevent multi-user collisions.');
-    showToast('You are offline. Changes were not saved. Please reconnect and try again.','error',6000);
+    showToast('You appear to be offline. Will retry when connection is restored.','warning',4000);
+    // Schedule retry — don't destroy pending ops
+    clearTimeout(_fbSyncTimer);
+    _fbSyncTimer=setTimeout(syncToFirebase, 5000);
     return;
   }
   _fbWriteInProgress=true;
@@ -3678,7 +3688,7 @@ function navigate(p, _noPush){
   const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
-  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();renderTankKPIs();},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();}}; // PATCH: added medwaste
+  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();}}; // PATCH: added medwaste
   if(r[p])r[p]();
 }
 window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
@@ -4240,7 +4250,12 @@ function saveWO(){
   }
   // FIX: get WO ID and issuance ID once to avoid double-generation
   const newWoId = _editWO || DB.nid('wo');
-  const issuanceLog=DB.g('issuance');
+  let issuanceLog=DB.g('issuance');
+  // FIX: remove old auto-issuance records for this WO before regenerating
+  if(_editWO){
+    const woRef='WO-'+String(newWoId).padStart(4,'0');
+    issuanceLog=issuanceLog.filter(l=>!(l.woRef===woRef&&l.remarks==='Auto-deducted via Work Order'));
+  }
   const _issUsed=new Set(issuanceLog.map(i=>String(i.id||'')));
   _woMaterials.forEach(m=>{
     const item=inv.find(i=>i.id===m.invId);
@@ -4732,11 +4747,17 @@ function renderIssuance(){
 async function deleteIssuanceLog(id){
   if(!await confirmDialog('Delete this issuance log? This cannot be undone.')) return;
   const entry=DB.g('issuance').find(l=>l.id===id);
-  // Restore inventory quantity before removing the issuance record
-  if(entry&&entry.invId&&entry.qtyIssued>0){
+  // FIX: only restore inventory for manual issuances — auto-WO issuances are
+  // managed by saveWO() which handles its own restore/re-deduct cycle.
+  // Restoring here AND in saveWO() causes double-count inventory inflation.
+  const isAutoWO=entry?.remarks==='Auto-deducted via Work Order';
+  if(!isAutoWO && entry&&entry.invId&&entry.qtyIssued>0){
     const inv=DB.g('inventory').map(i=>({...i}));
     const item=inv.find(i=>i.id===entry.invId);
     if(item){item.qty=parseFloat((item.qty+entry.qtyIssued).toFixed(4));stampRecord(item);DB.s('inventory',inv);}
+  }
+  if(isAutoWO){
+    showToast('Note: This was auto-deducted from a Work Order. Edit the Work Order to adjust materials.','info',5000);
   }
   DB.s('issuance',DB.g('issuance').filter(l=>l.id!==id));
   renderIssuance();
@@ -5115,7 +5136,7 @@ function calcAssetKwh(a){
   if(!w&&a.hp)w=parseFloat(a.hp)*746;
   const hrs=parseFloat(a.opHoursDay||0);
   const days=parseFloat(a.opDaysMonth||0);
-  const df=parseFloat(a.demandFactor||1)||1;
+  const df=parseFloat(a.demandFactor||0.80)||0.80;
   return(w/1000)*hrs*days*df;
 }
 
@@ -5312,7 +5333,7 @@ function saveAsset(){
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
     // Location — single field (m-a-loc) is the canonical location
-    building,floor,roomNumber:gv('m-a-loc'),roomName:gv('m-a-loc'),
+    building,floor,roomNumber:roomNo,roomName:gv('m-a-loc'),
     department:gv('m-a-dept'),roomType:gv('m-a-roomtype'),
     // PMS
     maintFrequency:freqVal,lastMaintDate:lastMaint,nextMaintDate:nextMaint,
@@ -7121,14 +7142,7 @@ exportCSV=function(type){
 // ═══════════════════════════════════════
 // PATCH: extend navigate to call new render functions
 // ═══════════════════════════════════════
-const _origNavigate=navigate;
-navigate=function(p){
-  _origNavigate(p);
-  if(p==='effluent')renderEffluent();
-  else if(p==='medwaste')renderMedWaste();
-  else if(p==='wwprod')renderWWProd();
-  else if(p==='watertank')renderTankTrends();
-};
+// REMOVED: navigate patch 1 — render calls consolidated into base navigate render map (line 3681)
 
 // ═══════════════════════════════════════
 // PATCH: openTankModal — populate new fields  
@@ -8144,17 +8158,7 @@ function renderTankKPIs(){
 // ═══════════════════════════════════════════════════════════════
 // HOOK: extend watertank page navigation to render KPIs
 // ═══════════════════════════════════════════════════════════════
-(function(){
-  const origNav2 = window._navHandlers ? window._navHandlers['watertank'] : null;
-  // The navigate function calls the render map — patch it safely
-  const _origNavigate = navigate;
-  navigate = function(page){
-    _origNavigate(page);
-    if(page==='watertank'){
-      setTimeout(()=>{ renderTankKPIs(); renderTankTrends(); }, 50);
-    }
-  };
-})();
+// REMOVED: navigate patch 2 — render calls consolidated into base navigate render map (line 3681)
 
 /* ── TEST CASE REFERENCE (embedded in comments) ──────────────────
   TEST 1: GPM→LPM conversion
@@ -8343,6 +8347,7 @@ function computeTankAnalytics(allRecords){
         pumpDeliveredL=Math.round(pumpLph*dHrs);          // total pumped in during the interval
         const volumeDelta=vol-prev.volumeL;               // + rising, – falling
         demandL=Math.round(pumpDeliveredL-volumeDelta);   // actual consumption
+        if(demandL<0) demandL=0; // FIX: negative consumption is meaningless — external fill event
         demandRateLph=parseFloat((demandL/dHrs).toFixed(1));
         excessSupplyL=Math.round(volumeDelta);            // + reserve built, – deficit
         demandExceededPump=demandRateLph>pumpLph;         // true = demand rate exceeded available pump delivery
@@ -8414,16 +8419,14 @@ function computeTankAnalytics(allRecords){
 
 // ── Helper: recompute + persist all records for a specific tank name
 function recomputeTank(tankName, linkedAssetId){
-  let all=DB.g('waterTank');
-  all=computeTankAnalytics(all);
-  DB.s('waterTank',all);
+  const all=DB.g('waterTank');
+  DB.s('waterTank',all); // computeTankAnalytics runs inside prepareStoreArray
 }
 
 // ── Helper: recompute ALL tanks, persist, refresh UI
 function recomputeAll(skipNav){
-  let all=DB.g('waterTank');
-  all=computeTankAnalytics(all);
-  DB.s('waterTank',all);
+  const all=DB.g('waterTank');
+  DB.s('waterTank',all); // computeTankAnalytics runs inside prepareStoreArray
   if(!skipNav){
     renderWaterTank();
     renderTankTrends();
@@ -8690,8 +8693,7 @@ saveTankReading=function(){
   let tanks=DB.g('waterTank');
   if(_editTank){const i=tanks.findIndex(x=>x.id===_editTank);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-tank');return;}tanks[i]=o;} else tanks.push(o);
 
-  // Run compute engine on all records (edit of one reading can affect subsequent same-tank readings)
-  tanks=computeTankAnalytics(tanks);
+  // computeTankAnalytics runs automatically inside DB.s() via prepareStoreArray
   DB.s('waterTank',tanks);
 
   if(tankName) sessionStorage.setItem('_hamms_lastTankName',tankName);
@@ -8717,9 +8719,8 @@ saveTankReading=function(){
 // ═══════════════════════════════════════════════════════════════
 delTankReading=async function(id){
   if(!await confirmDialog('Delete this reading?')) return;
-  let tanks=DB.g('waterTank').filter(x=>x.id!==id);
-  tanks=computeTankAnalytics(tanks); // recompute so next reading after deleted one is updated
-  DB.s('waterTank',tanks);
+  const tanks=DB.g('waterTank').filter(x=>x.id!==id);
+  DB.s('waterTank',tanks); // computeTankAnalytics runs inside prepareStoreArray
   renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
   showToast('Reading deleted.','info');
   setTimeout(()=>{
@@ -10146,17 +10147,7 @@ setTimeout(()=>{
 // ═══════════════════════════════════════════════════════════════
 // Navigate patch — refresh all on watertank page open
 // ═══════════════════════════════════════════════════════════════
-(function(){
-  const _orig=navigate;
-  navigate=function(page){
-    _orig(page);
-    if(page==='watertank'){
-      setTimeout(()=>{
-        renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
-      },60);
-    }
-  };
-})();
+// REMOVED: navigate patch 3 — render calls consolidated into base navigate render map (line 3681)
 
 </script>
 

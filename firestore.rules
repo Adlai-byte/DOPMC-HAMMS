@@ -35,7 +35,7 @@ service cloud.firestore {
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
         && isWriter()
         && (!('_v' in request.resource.data) || !('_v' in resource.data)
-            || request.resource.data._v >= resource.data._v);
+            || request.resource.data._v > resource.data._v);
       // Delete: named user in a valid store, must be record owner or any named user
       allow delete: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
