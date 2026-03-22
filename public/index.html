@@ -4977,29 +4977,24 @@ function switchAssetTab(name,btn){
 // ═══════════════════════════════════════
 // PATCH: asset auto-code format — LocationAbv-AssetAbv-SectionAbv (e.g. RM101-AC-MECH)
 const SEC_ABV={'CMW':'CMW','Electrical':'ELEC','Plumbing':'PLBG','Mechanical':'MECH','Housekeeping':'HSKP','General':'GEN','':'GEN'};
-const CLASS_ABV={'Aircon':'AC','Ventilation':'VN','Exhaust Fan':'XF','Faucet':'FT','Lavatory':'LV','Water Closet':'TB','Shower':'SH','Floor Drain':'FD','Pump':'PM','Tank':'TK','Lighting':'LT','LED Bulb':'LT','LED Panel Light':'LT','Fluorescent Lamp':'LT','Outlet / Receptacle':'OT','Switch':'SW','Circuit Breaker':'CB','Fire Extinguisher':'FE','Safety Signage':'SG','Exit Sign':'ES','Fire Alarm':'FA','Fire Hose':'FH','Door':'DR','Window':'WN','Ceiling':'CL','Flooring':'FL','Generator':'GN','Panel Board':'PB','Smoke Detector':'SD'};
+const CLASS_ABV={'Aircon':'AC','Ventilation':'VN','Exhaust Fan':'XF','Faucet':'FT','Lavatory':'LV','Water Closet':'WC','Shower':'SH','Floor Drain':'FD','Pump':'PM','Tank':'TK','Lighting':'LT','Light Bulb':'LB','LED Bulb':'LB','LED Panel Light':'LP','Fluorescent Lamp':'FL','Outlet / Receptacle':'OR','Switch':'SW','Circuit Breaker':'CB','Fire Extinguisher':'FE','Safety Signage':'SG','Exit Sign':'ES','Fire Alarm':'FA','Fire Hose':'FH','Door':'DR','Window':'WN','Ceiling':'CL','Flooring':'FG','Generator':'GN','Panel Board':'PB','Smoke Detector':'SD','Motor':'MT','Compressor':'CP','Boiler':'BL','Transformer':'TF','UPS':'UP','AVR':'AV','Water Heater':'WH','Mop':'MP','Broom':'BR','Vacuum':'VC','Scrubber':'SC'};
 
 function generateAssetCode(mainCategory,building,floor,roomNo,overrideId){
-  // PATCH: asset auto-code format
-  const locPart=buildLocAbv(building,floor,roomNo);
-  // Asset abbreviation — will be filled from class/type at save time; use category fallback
-  const CAT_ABV={'HVAC / Refrigeration':'AC','Plumbing / Sanitary':'PL','Electrical':'EL','Civil / Architectural':'AR','Mechanical':'MC','Safety / Fire Protection':'SF','Environmental / Waste':'EV','Energy-Consuming Asset':'EN','Other':'OT','':'OT'};
-  const assetAbv=CAT_ABV[mainCategory]||'OT';
-  const sec=DB.g('assets').filter(a=>(a.assetCode||'').startsWith(locPart+'-'+assetAbv)).length;
-  const seq=String((overrideId||sec)+1).padStart(4,'0');
-  return locPart+'-'+assetAbv+'-'+seq;
+  // Legacy fallback — delegates to generateAssetCodeFull with partial data
+  return generateAssetCodeFull({mainCategory,building,floor,roomNumber:roomNo,section:'',assetClass:'',assetType:''});
 }
 
 function generateAssetCodeFull(a){
-  // Full code from complete asset record: LocationAbv-AssetAbv-SectionAbv
-  const locAbv=buildLocAbv(a.building,a.floor,a.roomNumber||a.roomNo);
+  // Format: [AssetClass]-[Section]-[Location]-[No.]
+  // Example: LB-ELEC-RM119CR-01
   const assetAbv=CLASS_ABV[a.assetClass]||CLASS_ABV[a.assetType]||getTypeAbv(a.mainCategory)||'OT';
   const secAbv=SEC_ABV[a.section]||'GEN';
-  // Avoid collision: count existing codes with same prefix
-  const prefix=locAbv+'-'+assetAbv+'-'+secAbv;
+  const locAbv=buildLocAbv(a.building,a.floor,a.roomNumber||a.roomNo);
+  const prefix=assetAbv+'-'+secAbv+'-'+locAbv;
+  // Sequential number: count existing assets with same prefix + 1
   const existing=DB.g('assets').filter(x=>x.id!==a.id&&(x.assetCode||'').startsWith(prefix));
-  if(existing.length===0)return prefix;
-  return prefix+'-'+String(existing.length+1).padStart(2,'0');
+  const seq=String(existing.length+1).padStart(2,'0');
+  return prefix+'-'+seq;
 }
 
 function getTypeAbv(mainCategory){
