@@ -3201,8 +3201,9 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     _fbLoadedOnce=true;
     {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     // FIX: determine status from Firestore snapshot metadata, not navigator.onLine
-    if(_fbAllFromCache) setStorageChip('firebase-offline');
-    else setStorageChip('firebase-live');
+    // Don't flip to offline on cached snapshots — Firestore always fires cache first, then server
+    if(!_fbAllFromCache || _fbLastServerSnapshot>0) setStorageChip('firebase-live');
+    else setStorageChip('firebase-offline');
     scheduleUiRefresh();
   };
   try{
@@ -3563,24 +3564,28 @@ function setOfflineBanner(offline){
 }
 window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; clearTimeout(window._onlineDebounce); window._onlineDebounce=setTimeout(()=>refreshFromFirebaseSilently('online'), 2000); });
 window.addEventListener('offline', () => { _fbAllFromCache=true; setStorageChip('firebase-offline'); setOfflineBanner(true); });
-// FIX: periodic connectivity heartbeat — detect real offline state even when navigator.onLine lies
+// FIX: periodic connectivity heartbeat — probe network when chip state may be wrong
 setInterval(()=>{
   if(!_fbLoadedOnce || _fbWriteInProgress || _fbRefreshInProgress) return;
-  const secsSinceServer=Math.round((Date.now()-_fbLastServerSnapshot)/1000);
-  const wasLive=_storageMode==='firebase-live';
-  // If no server snapshot in 15s and we think we're live, test connectivity
-  if(secsSinceServer>15 && wasLive){
-    _fbAllFromCache=true;
-    setStorageChip('firebase-offline');
-    setOfflineBanner(true);
-  }
-  // If we got a server snapshot recently and chip says offline, restore
-  if(secsSinceServer<10 && (_storageMode==='firebase-offline'||_storageMode==='firebase-unavailable') && !_fbWriteInProgress){
-    _fbAllFromCache=false;
-    setStorageChip('firebase-live');
-    setOfflineBanner(false);
-  }
-}, 5000);
+  // Probe: fetch a tiny resource to detect real connectivity
+  fetch('https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js',{method:'HEAD',mode:'no-cors',cache:'no-store'})
+    .then(()=>{
+      // Network reachable
+      if(_storageMode==='firebase-offline'||_storageMode==='firebase-unavailable'){
+        _fbAllFromCache=false;
+        setStorageChip('firebase-live');
+        setOfflineBanner(false);
+      }
+    })
+    .catch(()=>{
+      // Network unreachable
+      if(_storageMode==='firebase-live'||_storageMode==='firebase-loading'){
+        _fbAllFromCache=true;
+        setStorageChip('firebase-offline');
+        setOfflineBanner(true);
+      }
+    });
+}, 10000);
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
 let _installPrompt = null;
