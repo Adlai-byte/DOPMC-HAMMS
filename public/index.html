@@ -2847,6 +2847,7 @@ let _fbWriteInProgress=false; // PATCHED: blocks refresh hooks while explicit cl
 let _fbRecentlyFlushed=Object.create(null); // PATCHED: per-store cooldown timestamps — snapshot listener uses merge instead of full-replace for 2s after flush
 let _fbListenersStarted=false; // PATCHED: keep one stable Firestore listener set alive instead of tearing listeners down around every save
 let _fbAllFromCache=false; // PATCHED: true when Firestore listeners report cache-only — navigator.onLine is unreliable on Windows
+let _fbLastServerSnapshot=0; // FIX: timestamp of last non-cached Firestore snapshot — used for real connectivity detection
 
 function cloneForFirebase(value){ // PATCHED: snapshot write payloads so later mutations do not rewrite stale references
   return value==null ? value : JSON.parse(JSON.stringify(value));
@@ -3199,10 +3200,8 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
   const publishLiveUi=()=>{
     _fbLoadedOnce=true;
     {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
-    // Determine status: LIVE if we got a server snapshot or are online with data loaded
-    // OFFLINE only if navigator says offline; UNAVAILABLE if online but all snapshots are cached
-    if(!navigator.onLine) setStorageChip('firebase-offline');
-    else if(_fbAllFromCache) setStorageChip('firebase-unavailable');
+    // FIX: determine status from Firestore snapshot metadata, not navigator.onLine
+    if(_fbAllFromCache) setStorageChip('firebase-offline');
     else setStorageChip('firebase-live');
     scheduleUiRefresh();
   };
@@ -3219,8 +3218,9 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     STORES.forEach(store=>{
       _fbUnsubscribe.push(window._FB.onSnapshot(getStoreCollectionRef(store), snap=>{
         if(shouldIgnoreCacheSnapshot(snap)) return;
-        // Track Firestore connectivity — any non-cache snapshot means we have a live connection
-        if(!snap.metadata.fromCache){ _fbAllFromCache=false; }
+        // Track Firestore connectivity — non-cache snapshot = live; cache-only = offline/disconnected
+        if(!snap.metadata.fromCache){ _fbAllFromCache=false; _fbLastServerSnapshot=Date.now(); }
+        else if(_fbLoadedOnce){ _fbAllFromCache=true; }
         if(_fbWriteInProgress || hasPendingStoreOps(store) || isRecentlyFlushed(store) || snap.metadata.hasPendingWrites){
           mergeListenerSnapshot(store, snap);
           publishLiveUi();
@@ -3562,7 +3562,25 @@ function setOfflineBanner(offline){
   }
 }
 window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; clearTimeout(window._onlineDebounce); window._onlineDebounce=setTimeout(()=>refreshFromFirebaseSilently('online'), 2000); });
-window.addEventListener('offline', () => { setStorageChip('firebase-offline'); setOfflineBanner(true); });
+window.addEventListener('offline', () => { _fbAllFromCache=true; setStorageChip('firebase-offline'); setOfflineBanner(true); });
+// FIX: periodic connectivity heartbeat — detect real offline state even when navigator.onLine lies
+setInterval(()=>{
+  if(!_fbLoadedOnce || _fbWriteInProgress || _fbRefreshInProgress) return;
+  const secsSinceServer=Math.round((Date.now()-_fbLastServerSnapshot)/1000);
+  const wasLive=_storageMode==='firebase-live';
+  // If no server snapshot in 15s and we think we're live, test connectivity
+  if(secsSinceServer>15 && wasLive){
+    _fbAllFromCache=true;
+    setStorageChip('firebase-offline');
+    setOfflineBanner(true);
+  }
+  // If we got a server snapshot recently and chip says offline, restore
+  if(secsSinceServer<10 && (_storageMode==='firebase-offline'||_storageMode==='firebase-unavailable') && !_fbWriteInProgress){
+    _fbAllFromCache=false;
+    setStorageChip('firebase-live');
+    setOfflineBanner(false);
+  }
+}, 5000);
 
 // ── Install to home screen prompt (PWA) ───────────────────────────
 let _installPrompt = null;
