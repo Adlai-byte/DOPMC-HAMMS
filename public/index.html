@@ -107,6 +107,7 @@ document.addEventListener('DOMContentLoaded',()=>{
         // Not logged in — show login overlay, hide app
         document.getElementById('hamms-login-overlay').style.display = 'flex';
         document.getElementById('app').style.visibility = 'hidden';
+        {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}} // FIX: hide loading spinner when login form appears
         const userEl = document.getElementById('sb-user-email');
         if (userEl) userEl.textContent = '';
       }
@@ -708,7 +709,7 @@ tr.row-warn td{background:#fffdf0;}
 
 <!-- ══ HAMMS LOGIN OVERLAY ══════════════════════════════════════ -->
 <div id="hamms-login-overlay" style="
-  display:flex; position:fixed; inset:0; z-index:99999;
+  display:none; position:fixed; inset:0; z-index:99999;
   align-items:center; justify-content:center;
   background:linear-gradient(160deg,#0d2440 0%,#1e3a5f 50%,#112e4e 100%);
   font-family:'IBM Plex Sans',sans-serif;
