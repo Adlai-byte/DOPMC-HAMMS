@@ -8881,7 +8881,7 @@ renderWaterTank=function(){
       <td class="mono" style="color:var(--muted);">${t.intervalHrs!=null?t.intervalHrs.toFixed(1)+' h':'—'}</td>
       <td class="mono" style="color:var(--muted);">${t.pumpDeliveredL!=null?t.pumpDeliveredL.toLocaleString()+' L':'—'}</td>
       <td class="mono" style="color:${t.excessSupplyL==null?'var(--muted)':t.excessSupplyL>=0?'#1a7a44':'#c0392b'};font-weight:${t.excessSupplyL!=null?700:400};">${t.excessSupplyL!=null?(t.excessSupplyL>=0?'+':'')+t.excessSupplyL.toLocaleString()+' L':'—'}</td>
-      <td>${t.pumpDeliveredL==null?'—':t.demandExceededPump?'<span style="background:#fde8e8;color:#c0392b;border:1px solid #f5aaaa;padding:2px 6px;border-radius:8px;font-size:10px;font-weight:700;">⚠ Exceeded</span>':'<span style="background:#e8f7ee;color:#1a7a44;border:1px solid #88d9a6;padding:2px 6px;border-radius:8px;font-size:10px;">OK</span>'}</td>
+      <td style="white-space:nowrap;">${t.pumpDeliveredL==null?'—':t.demandExceededPump?'<span style="background:#fde8e8;color:#c0392b;border:1px solid #f5aaaa;padding:2px 6px;border-radius:8px;font-size:10px;font-weight:700;white-space:nowrap;">⚠ Exceeded</span>':'<span style="background:#e8f7ee;color:#1a7a44;border:1px solid #88d9a6;padding:2px 6px;border-radius:8px;font-size:10px;white-space:nowrap;">OK</span>'}</td>
       <td class="mono">${t.patientCount!=null?t.patientCount:'⚠'}</td>
       <td style="font-weight:700;font-size:11px;white-space:nowrap;">${
         t.tankDirection==='FALLING'?'<span style="color:#c0392b;">⬇ Falling</span>'
