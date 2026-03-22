@@ -2806,7 +2806,7 @@ function stampChangedRecords(prev,next){
     }else{
       r._v=old._v||0;
       r._updatedAt=old._updatedAt||0;
-      r._updatedBy=old._updatedBy||'';
+      r._updatedBy=old._updatedBy||(window._FB?.email||window._FB?.uid||''); // FIX: legacy records need valid _updatedBy for Firestore isWriter() rule
     }
   });
 }
