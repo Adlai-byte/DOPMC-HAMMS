@@ -4300,12 +4300,12 @@ function saveWO(){
     if(item){
       item.qty=parseFloat((item.qty-m.qty).toFixed(4));
       stampRecord(item);
-      issuanceLog.push({id:generateUniqueNumericId(_issUsed),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:'WO-'+String(newWoId).padStart(4,'0'),remarks:'Auto-deducted via Work Order'});
+      issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:'WO-'+String(newWoId).padStart(4,'0'),remarks:'Auto-deducted via Work Order'});
     }
   });
   DB.s('inventory',inv);DB.s('issuance',issuanceLog);
   const o={
-    id:newWoId,section:sec,
+    id:newWoId,code:_editWO?(wos.find(x=>x.id===_editWO)?.code||null):generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[document.getElementById('m-wo-priority').value]||'MD']),section:sec,
     asset:document.getElementById('m-wo-asset').value,
     location:document.getElementById('m-wo-loc').value,
     priority:document.getElementById('m-wo-priority').value,
@@ -4375,7 +4375,7 @@ function saveInvItem(){
   clearAllFieldErrors('mo-inv');{let _e=false;if(!desc){showFieldError('m-i-desc','Required.');_e=true;}if(!cat){showFieldError('m-i-cat','Required.');_e=true;}if(isNaN(qty)){showFieldError('m-i-qty','Required.');_e=true;}if(_e)return;}
   const inv=DB.g('inventory');
   const existing=_editInv?inv.find(x=>x.id===_editInv):null;
-  const item={id:_editInv||DB.nid('inventory'),description:desc,category:cat,unit:document.getElementById('m-i-unit').value,qty,minLevel:min,originalQty:_editInv?(existing?.originalQty||qty):qty};
+  const item={id:_editInv||DB.nid('inventory'),code:_editInv?(existing?.code||null):generateModuleCode('inventory',[SEC_ABV[cat]||cat.replace(/[^A-Za-z]/g,'').substring(0,4).toUpperCase()||'GEN'],3),description:desc,category:cat,unit:document.getElementById('m-i-unit').value,qty,minLevel:min,originalQty:_editInv?(existing?.originalQty||qty):qty};
   if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-inv');return;}inv[idx]=item;}else inv.push(item);
   DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
@@ -4415,7 +4415,7 @@ function saveManualIssue(){
   stampRecord(item);
   DB.s('inventory',inv);
   const log=DB.g('issuance');
-  log.push({id:DB.nid('issuance'),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:document.getElementById('m-iss-section').value,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
+  log.push({id:DB.nid('issuance'),code:generateModuleCode('issuance',[SEC_ABV[document.getElementById('m-iss-section').value]||'GEN']),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:document.getElementById('m-iss-section').value,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
   DB.s('issuance',log);closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance recorded.');
 }
 
@@ -4687,7 +4687,7 @@ function saveWaste(){
   const vol=parseFloat(document.getElementById('m-w-vol').value);
   clearAllFieldErrors('mo-waste');{let _e=false;if(!date){showFieldError('m-w-date','Required.');_e=true;}if(!type){showFieldError('m-w-type','Required.');_e=true;}if(isNaN(vol)){showFieldError('m-w-vol','Required.');_e=true;}if(_e)return;}
   const w=DB.g('waste');
-  w.push({id:DB.nid('waste'),date,type,volume:vol,contractor:document.getElementById('m-w-contractor').value,emb:document.getElementById('m-w-emb').value,remarks:document.getElementById('m-w-remarks').value,photo:document._wPhoto||null,createdAt:today()});
+  w.push({id:DB.nid('waste'),code:generateModuleCode('waste',[WASTE_ABV[type]||'GEN']),date,type,volume:vol,contractor:document.getElementById('m-w-contractor').value,emb:document.getElementById('m-w-emb').value,remarks:document.getElementById('m-w-remarks').value,photo:document._wPhoto||null,createdAt:today()});
   DB.s('waste',w);closeModal('mo-waste');renderWaste();renderDash();showToast('Waste entry saved.');
 }
 async function delWaste(id){return delRecord('waste',id,'waste entry',renderWaste);}
@@ -4761,7 +4761,7 @@ function renderInventory(){
     const barClass=s==='Critical'?'sb-crit':s==='Warning'?'sb-warn':'sb-ok';
     const lastIssued=lastIssuedMap[item.id]||null;
     const rowClass=s==='Critical'?'row-crit':s==='Warning'?'row-warn':'';
-    return`<tr class="${rowClass}"><td>${invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
+    return`<tr class="${rowClass}"><td>${item.code?'<span class="mono">'+escapeHTML(item.code)+'</span>':invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="10" class="empty">No inventory items. Upload CSV or add manually.</td></tr>';
   updateInvAlerts();
 }
@@ -4782,7 +4782,7 @@ function renderIssuance(){
     const fromWO=l.woRef&&l.woRef!=='—';
     const editBtn=!fromWO?`<button type="button" class="btn btn-sm btn-ghost" onclick="openIssueEditModal(${l.id})">Edit</button> `:'';
     const delBtn=`<button onclick="deleteIssuanceLog(${l.id})" style="color:#cc3333;background:none;border:1px solid #f0c0c0;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;margin-left:2px;font-family:inherit;">Del</button>`;
-    return`<tr><td>${issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(l.woRef)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
+    return`<tr><td>${l.code?'<span class="mono">'+escapeHTML(l.code)+'</span>':issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(l.woRef)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
   }).join(''):'<tr><td colspan="11" class="empty">No issuance records found.</td></tr>';
 }
 async function deleteIssuanceLog(id){
@@ -4820,7 +4820,7 @@ function renderWaste(){
   const allWaste=DB.g('waste');
   const cd=buildMonthlyData(allWaste,'date','volume',12);
   drawBarLineChart('waste-chart',cd.labels,cd.barData,cd.lineData,'#cc3333','#0f8c6e','Volume (kg)');
-  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" alt="Waste photo" data-photo-src="${escapeHTML(photoUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button type="button" class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
+  document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" alt="Waste photo" data-photo-src="${escapeHTML(photoUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button type="button" class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
 }
 
 const WASTE_THRESH={Infectious:10,Pathological:10,Chemical:10,Pharmaceutical:20,Sharps:5,General:50,Radioactive:1};
@@ -4839,7 +4839,7 @@ function renderWasteFcast(){
   if(entriesTbody){
     const sorted=[...wastes].sort((a,b)=>b.id-a.id);
     entriesTbody.innerHTML=sorted.length?sorted.map(w=>`<tr>
-      <td>${weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td>
+      <td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td>
       <td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td>
       <td>${emblBadge(w.emb)}</td>
       <td style="max-width:110px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td>
@@ -4978,6 +4978,17 @@ function switchAssetTab(name,btn){
 // PATCH: asset auto-code format — LocationAbv-AssetAbv-SectionAbv (e.g. RM101-AC-MECH)
 const SEC_ABV={'CMW':'CMW','Electrical':'ELEC','Plumbing':'PLBG','Mechanical':'MECH','Housekeeping':'HSKP','General':'GEN','':'GEN'};
 const CLASS_ABV={'Aircon':'AC','Ventilation':'VN','Exhaust Fan':'XF','Faucet':'FT','Lavatory':'LV','Water Closet':'WC','Shower':'SH','Floor Drain':'FD','Pump':'PM','Tank':'TK','Lighting':'LT','Light Bulb':'LB','LED Bulb':'LB','LED Panel Light':'LP','Fluorescent Lamp':'FL','Outlet / Receptacle':'OR','Switch':'SW','Circuit Breaker':'CB','Fire Extinguisher':'FE','Safety Signage':'SG','Exit Sign':'ES','Fire Alarm':'FA','Fire Hose':'FH','Door':'DR','Window':'WN','Ceiling':'CL','Flooring':'FG','Generator':'GN','Panel Board':'PB','Smoke Detector':'SD','Motor':'MT','Compressor':'CP','Boiler':'BL','Transformer':'TF','UPS':'UP','AVR':'AV','Water Heater':'WH','Mop':'MP','Broom':'BR','Vacuum':'VC','Scrubber':'SC'};
+const PRI_ABV={Emergency:'EM',High:'HI',Medium:'MD',Low:'LO','':'MD'};
+const SEV_ABV={Critical:'CR',High:'HI',Moderate:'MD',Low:'LO','':'LO'};
+const WASTE_ABV={Infectious:'INF',Pathological:'PTH',Chemical:'CHM',Pharmaceutical:'PHA',Sharps:'SHP',General:'GEN',Radioactive:'RAD','':'GEN'};
+const TEST_ABV={Bacteriological:'BAC',Chemical:'CHM',Physical:'PHY',Residual:'RES','':'TST'};
+const EFF_POINT_ABV={'STP Effluent':'STPEFF','STP Inlet':'STPIN','Outfall 001':'OUT1','Outfall 002':'OUT2','Chlorine Contact Tank':'CCT'};
+function generateModuleCode(store,parts,padLen){
+  const prefix=parts.filter(Boolean).join('-');
+  const existing=DB.g(store).filter(r=>(r.code||'').startsWith(prefix+'-'));
+  return prefix+'-'+String(existing.length+1).padStart(padLen||4,'0');
+}
+function abvName(name){return(name||'').replace(/[^A-Za-z0-9 ]/g,'').trim().split(/\s+/).map(w=>w.substring(0,3).toUpperCase()).join('').substring(0,6)||'GEN';}
 
 function generateAssetCode(mainCategory,building,floor,roomNo,overrideId){
   // Legacy fallback — delegates to generateAssetCodeFull with partial data
@@ -5606,7 +5617,7 @@ function saveSafety(){
   clearAllFieldErrors('mo-safety');{let _e=false;if(!desc){showFieldError('m-sf-desc','Required.');_e=true;}if(!sev){showFieldError('m-sf-sev','Required.');_e=true;}if(_e)return;}
   const list=DB.g('safety');
   const s={
-    id:_editSafety||DB.nid('safety'),
+    id:_editSafety||DB.nid('safety'),code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(null,null,document.getElementById('m-sf-loc').value)],3),
     description:desc,severity:sev,
     status:document.getElementById('m-sf-status').value,
     location:document.getElementById('m-sf-loc').value,
@@ -5643,7 +5654,7 @@ function renderSafety(){
   drawBarLineChart('safety-chart',cd.labels,cd.barData,cd.lineData,'#e07030','#cc3333','Issues');
 
   document.getElementById('safety-tbody').innerHTML=list.length?list.map(s=>`<tr>
-    <td class="mono" style="font-size:11px;">SF-${String(s.id).padStart(4,'0')}</td>
+    <td class="mono" style="font-size:11px;">${s.code?escapeHTML(s.code):'SF-'+String(s.id).padStart(4,'0')}</td>
     <td>${sevBadge(s.severity)}</td>
     <td style="max-width:200px;white-space:normal;">${escapeHTML(s.description)}</td>
     <td>${escapeHTML(s.location)||'—'}</td>
@@ -5787,9 +5798,11 @@ function saveWaterLog(){
   const date=document.getElementById('m-wl-date').value;
   clearAllFieldErrors('mo-waterlog');{let _e=false;if(!ward){showFieldError('m-wl-ward','Required.');_e=true;}if(!date){showFieldError('m-wl-date','Required.');_e=true;}if(_e)return;}
   const list=DB.g('waterLogs');
+  const testType=document.getElementById('m-wl-type').value;
+  const existing=_editWaterLog?list.find(x=>x.id===_editWaterLog):null;
   const l={
-    id:_editWaterLog||DB.nid('waterLogs'),date,ward,
-    testType:document.getElementById('m-wl-type').value,
+    id:_editWaterLog||DB.nid('waterLogs'),code:_editWaterLog?(existing?.code||null):generateModuleCode('waterLogs',[abvName(ward),TEST_ABV[testType]||'TST'],3),date,ward,
+    testType,
     result:document.getElementById('m-wl-result').value,
     bacteriaCount:document.getElementById('m-wl-bacteria').value,
     chlorine:document.getElementById('m-wl-chlorine').value,
@@ -5822,7 +5835,7 @@ function renderWaterLogs(){
     const safeImgUrl=safeSrc(l.resultImage);
     const imgBtn=safeImgUrl?`<button type="button" class="btn btn-sm btn-outline" data-photo-src="${escapeHTML(safeImgUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">View</button>`:'—';
     return`<tr>
-      <td class="mono" style="font-size:11px;">WL-${String(l.id).padStart(4,'0')}</td>
+      <td class="mono" style="font-size:11px;">${l.code?escapeHTML(l.code):'WL-'+String(l.id).padStart(4,'0')}</td>
       <td>${fmt(l.date)}</td>
       <td style="font-weight:600;">${escapeHTML(l.ward)}</td>
       <td style="font-size:12px;">${escapeHTML(l.testType)||'—'}</td>
@@ -5898,7 +5911,7 @@ function renderWaterTank(){
   if(q)list=list.filter(l=>(l.tankName||'').toLowerCase().includes(q)||(l.remarks||'').toLowerCase().includes(q));
   list.sort((a,b)=>(b.datetime||'').localeCompare(a.datetime||''));
   document.getElementById('watertank-tbody').innerHTML=list.length?list.map(t=>`<tr>
-    <td class="mono" style="font-size:11px;">TK-${String(t.id).padStart(4,'0')}</td>
+    <td class="mono" style="font-size:11px;">${t.code?escapeHTML(t.code):'TK-'+String(t.id).padStart(4,'0')}</td>
     <td style="font-size:12px;">${(t.datetime||'—').replace('T',' ').slice(0,16)}</td>
     <td style="font-weight:600;">${escapeHTML(t.tankName)}</td>
     <td>
@@ -6407,7 +6420,7 @@ function saveEffluent(){
   const customParams = effGetCustomParams();
   // PATCH END
   const items=DB.g('effluent');
-  const o={id:_editEffluent||DB.nid('effluent'),date,samplingPoint:point,status:document.getElementById('m-eff-status').value,pH:gn('m-eff-ph'),BOD:gn('m-eff-bod'),COD:gn('m-eff-cod'),TSS:gn('m-eff-tss'),oilGrease:gn('m-eff-oil'),temperature:gn('m-eff-temp'),totalColiform:gn('m-eff-coliform'),fecalColiform:gn('m-eff-fecal'),dissolvedOxygen:gn('m-eff-do'),remarks:document.getElementById('m-eff-remarks').value,customParams};
+  const o={id:_editEffluent||DB.nid('effluent'),code:_editEffluent?(items.find(x=>x.id===_editEffluent)?.code||null):generateModuleCode('effluent',[EFF_POINT_ABV[point]||abvName(point)]),date,samplingPoint:point,status:document.getElementById('m-eff-status').value,pH:gn('m-eff-ph'),BOD:gn('m-eff-bod'),COD:gn('m-eff-cod'),TSS:gn('m-eff-tss'),oilGrease:gn('m-eff-oil'),temperature:gn('m-eff-temp'),totalColiform:gn('m-eff-coliform'),fecalColiform:gn('m-eff-fecal'),dissolvedOxygen:gn('m-eff-do'),remarks:document.getElementById('m-eff-remarks').value,customParams};
   if(_editEffluent){const i=items.findIndex(x=>x.id===_editEffluent);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-effluent');return;}items[i]=o;}else items.push(o);
   DB.s('effluent',items);closeModal('mo-effluent');renderEffluent();showToast('Effluent reading saved.');
 }
@@ -6524,7 +6537,7 @@ function renderEffluent(){
       ? `<div style="font-size:10px;color:var(--teal);margin-top:2px;">+${r.customParams.length} custom: ${r.customParams.map(p=>escapeHTML(p.name)).join(', ')}</div>`
       : '';
     return`<tr>
-      <td>${effNum(r.id)}</td><td>${fmt(r.date)}</td><td style="font-weight:600;">${escapeHTML(r.samplingPoint)||'—'}</td>
+      <td>${r.code?'<span class="mono">'+escapeHTML(r.code)+'</span>':effNum(r.id)}</td><td>${fmt(r.date)}</td><td style="font-weight:600;">${escapeHTML(r.samplingPoint)||'—'}</td>
       <td class="mono">${r.pH!=null?r.pH:'—'}</td><td class="mono">${r.BOD!=null?r.BOD:'—'}</td>
       <td class="mono">${r.COD!=null?r.COD:'—'}</td><td class="mono">${r.TSS!=null?r.TSS:'—'}</td>
       <td class="mono">${r.oilGrease!=null?r.oilGrease:'—'}</td><td class="mono">${r.totalColiform!=null?r.totalColiform:'—'}</td>
@@ -6574,7 +6587,8 @@ function saveMedWaste(){
   const items=DB.g('medWasteProd');
   const opHrs=gn('m-mw-ophrs');const downtime=gn('m-mw-downtime');
   const shiftHrs=8;const mwDenom=Math.max(opHrs+(downtime||0),shiftHrs);const util=opHrs!=null&&mwDenom>0?Math.min(100,Math.round((opHrs/mwDenom)*100)):null;
-  const o={id:_editMedWaste||DB.nid('medWasteProd'),date,shift:document.getElementById('m-mw-shift').value,status:document.getElementById('m-mw-status').value,inputQty:gn('m-mw-input'),treatedQty:gn('m-mw-treated'),outputQty:gn('m-mw-output'),opHours:opHrs,downtime:downtime,utilizationPct:util,remarks:document.getElementById('m-mw-remarks').value};
+  const mwShift=document.getElementById('m-mw-shift').value;
+  const o={id:_editMedWaste||DB.nid('medWasteProd'),code:_editMedWaste?(items.find(x=>x.id===_editMedWaste)?.code||null):generateModuleCode('medWasteProd',[(mwShift||'').replace(/\s*Shift$/i,'').toUpperCase()||'AM']),date,shift:mwShift,status:document.getElementById('m-mw-status').value,inputQty:gn('m-mw-input'),treatedQty:gn('m-mw-treated'),outputQty:gn('m-mw-output'),opHours:opHrs,downtime:downtime,utilizationPct:util,remarks:document.getElementById('m-mw-remarks').value};
   if(_editMedWaste){const i=items.findIndex(x=>x.id===_editMedWaste);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-medwaste');return;}items[i]=o;}else items.push(o);
   DB.s('medWasteProd',items);closeModal('mo-medwaste');renderMedWaste();showToast('Medical waste log saved.');
 }
@@ -6700,7 +6714,7 @@ function renderMedWaste(){
   const maxU=Math.max(...last6.map(r=>r.utilizationPct||0),1);
   document.getElementById('mw-util-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${escapeHTML((r.date||'').substring(5))} ${escapeHTML((r.shift||'').substring(0,2))}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.utilizationPct||0)/maxU)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.utilizationPct||0}%</span></div>`).join('')||'<div class="empty">No data yet.</div>';
   document.getElementById('medwaste-tbody').innerHTML=items.length?items.map(r=>`<tr>
-    <td>${mwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
+    <td>${r.code?'<span class="mono">'+escapeHTML(r.code)+'</span>':mwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
     <td class="mono">${r.inputQty!=null?r.inputQty.toFixed(2):'—'}</td><td class="mono">${r.treatedQty!=null?r.treatedQty.toFixed(2):'—'}</td><td class="mono">${r.outputQty!=null?r.outputQty.toFixed(2):'—'}</td>
     <td class="mono">${r.opHours!=null?r.opHours:'—'}</td><td class="mono">${r.downtime!=null?r.downtime:'—'}</td><td class="mono">${r.utilizationPct!=null?r.utilizationPct+'%':'—'}</td>
     <td>${escapeHTML(r.status)||'—'}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}</td>
@@ -6743,7 +6757,8 @@ function saveWWProd(){
   const items=DB.g('wwProd');
   const opHrs=gn('m-ww-ophrs');const downtime=gn('m-ww-downtime');
   const wwsDenom=Math.max(opHrs+(downtime||0),24);const util=opHrs!=null&&wwsDenom>0?Math.min(100,Math.round((opHrs/wwsDenom)*100)):null;
-  const o={id:_editWWProd||DB.nid('wwProd'),date,shift:document.getElementById('m-ww-shift').value,status:document.getElementById('m-ww-status').value,inflow:gn('m-ww-inflow'),treated:gn('m-ww-treated'),outflow:gn('m-ww-outflow'),opHours:opHrs,downtime,utilizationPct:util,remarks:document.getElementById('m-ww-remarks').value};
+  const wwShift=document.getElementById('m-ww-shift').value;
+  const o={id:_editWWProd||DB.nid('wwProd'),code:_editWWProd?(items.find(x=>x.id===_editWWProd)?.code||null):generateModuleCode('wwProd',[(wwShift||'').replace(/\s*Shift$/i,'').toUpperCase()||'AM']),date,shift:wwShift,status:document.getElementById('m-ww-status').value,inflow:gn('m-ww-inflow'),treated:gn('m-ww-treated'),outflow:gn('m-ww-outflow'),opHours:opHrs,downtime,utilizationPct:util,remarks:document.getElementById('m-ww-remarks').value};
   if(_editWWProd){const i=items.findIndex(x=>x.id===_editWWProd);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wwprod');return;}items[i]=o;}else items.push(o);
   DB.s('wwProd',items);closeModal('mo-wwprod');renderWWProd();showToast('Wastewater log saved.');
 }
@@ -6870,7 +6885,7 @@ function renderWWProd(){
   const maxH=Math.max(...last6.map(r=>r.opHours||0),1);
   document.getElementById('ww-hrs-bars').innerHTML=last6.map(r=>`<div class="fbar"><span class="fbar-label">${escapeHTML((r.date||'').substring(5))}</span><div class="fbar-track"><div class="fbar-fill" style="width:${Math.round(((r.opHours||0)/maxH)*100)}%;background:var(--teal);"></div></div><span class="fbar-val">${r.opHours||0}h</span></div>`).join('')||'<div class="empty">No data yet.</div>';
   document.getElementById('wwprod-tbody').innerHTML=items.length?items.map(r=>`<tr>
-    <td>${wwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
+    <td>${r.code?'<span class="mono">'+escapeHTML(r.code)+'</span>':wwNum(r.id)}</td><td>${fmt(r.date)}</td><td>${escapeHTML(r.shift)||'—'}</td>
     <td class="mono">${r.inflow!=null?r.inflow.toFixed(2):'—'}</td><td class="mono">${r.treated!=null?r.treated.toFixed(2):'—'}</td><td class="mono">${r.outflow!=null?r.outflow.toFixed(2):'—'}</td>
     <td class="mono">${r.opHours!=null?r.opHours:'—'}</td><td class="mono">${r.downtime!=null?r.downtime:'—'}</td><td class="mono">${r.utilizationPct!=null?r.utilizationPct+'%':'—'}</td>
     <td>${escapeHTML(r.status)||'—'}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}</td>
@@ -7387,7 +7402,7 @@ function renderWO(){
     const overdueAlert=isOvr?`<div style="font-size:10px;color:#9b1a1a;font-weight:700;margin-top:3px;">&#9888; OVERDUE${w.delayReason?' — '+escapeHTML(w.delayReason):''}</div>`:'';
     const lateAlert=isLateCmp?`<div style="font-size:10px;color:#b06000;font-weight:700;margin-top:3px;">&#9201; Late Completed</div>`:'';
     const rowBg=isOvr?' style="background:#fff8f8;"':isLateCmp?' style="background:#fffbf0;"':'';
-    return`<tr${rowBg}><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
+    return`<tr${rowBg}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="15" class="empty">No work orders found. Click <strong>+ New Work Order</strong> to create one.</td></tr>';
   if(!_woShowAll&&totalWOs>50){
     document.getElementById('wo-tbody').innerHTML+=
@@ -7895,7 +7910,7 @@ renderWaterTank = function(){
     const dHrs = t.intervalHrs ?? null;
     const barClr = lvl == null ? '#ccc' : lvl > 60 ? '#1f9452' : lvl > 30 ? '#d4aa00' : '#cc3333';
     return `<tr>
-      <td class="mono" style="font-size:11px;">TK-${String(t.id).padStart(4,'0')}</td>
+      <td class="mono" style="font-size:11px;">${t.code?escapeHTML(t.code):'TK-'+String(t.id).padStart(4,'0')}</td>
       <td style="font-size:12px;">${(t.dateTime||t.datetime||t.date||'—').replace('T',' ').slice(0,16)}</td>
       <td style="font-weight:600;">${escapeHTML(t.tankName)||'—'}</td>
       <td class="mono">${t.tankCapacityL!=null?t.tankCapacityL.toLocaleString()+' L':'—'}</td>
@@ -8697,6 +8712,7 @@ saveTankReading=function(){
   // Raw observation record (no derived fields — engine will compute them)
   const o={
     id: _editTank||DB.nid('waterTank'),
+    code:_editTank?(DB.g('waterTank').find(x=>x.id===_editTank)?.code||null):generateModuleCode('waterTank',[abvName(tankName)]),
     dateTime: dt,
     datetime: dt,          // legacy alias
     tankName,
@@ -8889,7 +8905,7 @@ renderWaterTank=function(){
     const rate=t.isRefill?null:(t.demandRateLph??t.flowRate);
     const bClr=lvl==null?'#ccc':lvl>60?'#1f9452':lvl>30?'#d4aa00':'#cc3333';
     return`<tr>
-      <td class="mono" style="font-size:11px;">TK-${String(t.id).padStart(4,'0')}</td>
+      <td class="mono" style="font-size:11px;">${t.code?escapeHTML(t.code):'TK-'+String(t.id).padStart(4,'0')}</td>
       <td style="font-size:12px;white-space:nowrap;">${(t.dateTime||t.datetime||'—').replace('T',' ').slice(0,16)}</td>
       <td style="font-weight:600;max-width:120px;word-break:break-word;">${escapeHTML(t.tankName)||'—'}</td>
       <td class="mono">${t.tankCapacityL!=null?t.tankCapacityL.toLocaleString()+' L':'—'}</td>
