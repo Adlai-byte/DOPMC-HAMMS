@@ -4349,7 +4349,7 @@ function viewHistory(idOrName){
   if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);name=a?a.name:'';}
   const wos=DB.g('wo').filter(w=>w.asset===name);
   document.getElementById('mo-history-title').textContent='Repair History – '+name;
-  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
+  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
   openModal('mo-history');
 }
 
@@ -4738,7 +4738,7 @@ function renderForecast(){
     const isOvr=overdue(w);
     const late=isOvr||(proj&&proj<today());
     const forecastFlag=isOvr?'<span class="bs bs-overdue">Overdue</span>':(late?'<span class="bs bs-overdue">Past Due</span>':'<span class="bs bs-inprog">On Track</span>');
-    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
+    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No open work orders to forecast.</td></tr>';
 }
 
@@ -4856,7 +4856,7 @@ function renderWasteFcast(){
 function dl(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);} // M-7 FIX: revoke blob URL to prevent memory leak
 function csvRow(r){return r.map(c=>{const v=(c===0||c===false)?c:(Number.isNaN(c)||c==null?'':c);return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}
 function exportCSV(type){
-  if(type==='wo'){const h=['WO#','Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Duration (days)','Assigned','Materials Used','Delay Reason','Delay Reason Other','Remarks'];const rows=DB.g('wo').map(w=>['WO-'+String(w.id).padStart(4,'0'),w.section,w.asset,w.location,w.description,w.priority,(overdue(w)?'Overdue':w.status),w.dateStart,w.targetCompletionDate||'',w.dateEnd,(w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd):''),w.assigned,(w.materials||[]).map(m=>m.name+'×'+m.qty).join('; '),w.delayReason||'',w.delayReasonOther||'',w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WorkOrders_'+today()+'.csv');}
+  if(type==='wo'){const h=['WO#','Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Duration (days)','Assigned','Materials Used','Delay Reason','Delay Reason Other','Remarks'];const rows=DB.g('wo').map(w=>[w.code||('WO-'+String(w.id).padStart(4,'0')),w.section,w.asset,w.location,w.description,w.priority,(overdue(w)?'Overdue':w.status),w.dateStart,w.targetCompletionDate||'',w.dateEnd,(w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd):''),w.assigned,(w.materials||[]).map(m=>m.name+'×'+m.qty).join('; '),w.delayReason||'',w.delayReasonOther||'',w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WorkOrders_'+today()+'.csv');}
   else if(type==='assets'){
     const h=['Asset ID','Asset Name','Section','Location / Room','Quantity','Brand / Model','Serial No.','Property No.','Condition','Date Acquired','Maintenance Frequency (days)','Last Maintenance','Next Maintenance','PMS Status','Est. kWh/Month','Rated Watts','Auto Hrs/Day','Op Days/Month','Remarks'];
     const rows=DB.g('assets').map(a=>{
@@ -5556,7 +5556,7 @@ function renderDash(){
 
   // Original lower dashboard
   const recent=[...wos].sort((a,b)=>b.id-a.id).slice(0,8);
-  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
+  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
   const ws=getWeekStart(today());const ww=wastes.filter(w=>w.date>=ws);const bt={};ww.forEach(w=>{if(!bt[w.type])bt[w.type]={v:0,s:[]};bt[w.type].v+=w.volume;bt[w.type].s.push(w.emb);});
   document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${escapeHTML(t)}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
   const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping'];
@@ -7176,15 +7176,15 @@ exportCSV=function(type){
     dl(new Blob([[ha,...rowsA].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Water_AssumptionsSnapshot_'+today()+'.csv');
   }else if(type==='effluent'){
     const h=['Reading #','Date','Sampling Point','pH','BOD','COD','TSS','Oil & Grease','Total Coliform','Temp (°C)','DO (mg/L)','Status','Remarks'];
-    const rows=DB.g('effluent').map(r=>[effNum(r.id),r.date,r.samplingPoint,r.pH,r.BOD,r.COD,r.TSS,r.oilGrease,r.totalColiform,r.temperature,r.dissolvedOxygen,r.status,r.remarks]);
+    const rows=DB.g('effluent').map(r=>[r.code||effNum(r.id),r.date,r.samplingPoint,r.pH,r.BOD,r.COD,r.TSS,r.oilGrease,r.totalColiform,r.temperature,r.dissolvedOxygen,r.status,r.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Effluent_'+today()+'.csv');
   }else if(type==='medwaste'){
     const h=['Log #','Date','Shift','Input (kg)','Treated (kg)','Output (kg)','Op Hours','Downtime (hrs)','Utilization %','Status','Remarks'];
-    const rows=DB.g('medWasteProd').map(r=>[mwNum(r.id),r.date,r.shift,r.inputQty,r.treatedQty,r.outputQty,r.opHours,r.downtime,r.utilizationPct,r.status,r.remarks]);
+    const rows=DB.g('medWasteProd').map(r=>[r.code||mwNum(r.id),r.date,r.shift,r.inputQty,r.treatedQty,r.outputQty,r.opHours,r.downtime,r.utilizationPct,r.status,r.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_MedWasteProd_'+today()+'.csv');
   }else if(type==='wwprod'){
     const h=['Log #','Date','Shift','Inflow (m³)','Treated (m³)','Outflow (m³)','Op Hours','Downtime (hrs)','Utilization %','Status','Remarks'];
-    const rows=DB.g('wwProd').map(r=>[wwNum(r.id),r.date,r.shift,r.inflow,r.treated,r.outflow,r.opHours,r.downtime,r.utilizationPct,r.status,r.remarks]);
+    const rows=DB.g('wwProd').map(r=>[r.code||wwNum(r.id),r.date,r.shift,r.inflow,r.treated,r.outflow,r.opHours,r.downtime,r.utilizationPct,r.status,r.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WWProd_'+today()+'.csv');
   }else{_origExportCSV(type);}
 };
@@ -10446,7 +10446,7 @@ function openRoomView(room){
           s==='In Progress' ? '<span style="font-size:10px;color:#0d3d5f;font-weight:700;display:block;">ONGOING:</span>' :
           '<span style="font-size:10px;color:#7a5000;font-weight:700;display:block;">NOTE:</span>';
         return `<tr style="border-bottom:1px solid #edf0f5;${rowBg}">
-          <td style="padding:7px 10px;font-family:monospace;">${woNum(w.id)}</td>
+          <td style="padding:7px 10px;font-family:monospace;">${w.code||woNum(w.id)}</td>
           <td style="padding:7px 10px;">${escapeHTML(w.asset)||'—'}</td>
           <td style="padding:7px 10px;max-width:160px;white-space:normal;">${escapeHTML(w.description)||'—'}</td>
           <td style="padding:7px 10px;">${priSpan(w.priority)}</td>
