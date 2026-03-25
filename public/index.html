@@ -4780,11 +4780,14 @@ function renderIssuance(){
   // Running balance display
   const allLogs=[...DB.g('issuance')].sort((a,b)=>a.id-b.id);
   const invMap={};DB.g('inventory').forEach(i=>{invMap[i.id]={desc:i.description,origQty:i.originalQty||i.qty,unit:i.unit};});
+  // FIX: map old WO references (WO-{timestamp}) to descriptive codes
+  const woCodeMap=Object.create(null);DB.g('wo').forEach(w=>{if(w.code){const oldRef='WO-'+String(w.id).padStart(4,'0');woCodeMap[oldRef]=w.code;}});
   document.getElementById('issue-tbody').innerHTML=logs.length?logs.map(l=>{
     const fromWO=l.woRef&&l.woRef!=='—';
     const editBtn=!fromWO?`<button type="button" class="btn btn-sm btn-ghost" onclick="openIssueEditModal(${l.id})">Edit</button> `:'';
     const delBtn=`<button onclick="deleteIssuanceLog(${l.id})" style="color:#cc3333;background:none;border:1px solid #f0c0c0;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;margin-left:2px;font-family:inherit;">Del</button>`;
-    return`<tr><td>${l.code?'<span class="mono">'+escapeHTML(l.code)+'</span>':issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(l.woRef)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
+    const woDisplay=l.woRef&&l.woRef!=='—'?(woCodeMap[l.woRef]||l.woRef):l.woRef;
+    return`<tr><td>${l.code?'<span class="mono">'+escapeHTML(l.code)+'</span>':issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(woDisplay)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
   }).join(''):'<tr><td colspan="11" class="empty">No issuance records found.</td></tr>';
 }
 async function deleteIssuanceLog(id){
