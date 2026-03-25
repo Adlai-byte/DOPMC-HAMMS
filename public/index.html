@@ -4295,17 +4295,18 @@ function saveWO(){
     issuanceLog=issuanceLog.filter(l=>!(l.woRef===woRef&&l.remarks==='Auto-deducted via Work Order'));
   }
   const _issUsed=new Set(issuanceLog.map(i=>String(i.id||'')));
+  const newWoCode=_editWO?(wos.find(x=>x.id===_editWO)?.code||null):generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[document.getElementById('m-wo-priority').value]||'MD']);
   _woMaterials.forEach(m=>{
     const item=inv.find(i=>i.id===m.invId);
     if(item){
       item.qty=parseFloat((item.qty-m.qty).toFixed(4));
       stampRecord(item);
-      issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:'WO-'+String(newWoId).padStart(4,'0'),remarks:'Auto-deducted via Work Order'});
+      issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:newWoCode||('WO-'+String(newWoId).padStart(4,'0')),remarks:'Auto-deducted via Work Order'});
     }
   });
   DB.s('inventory',inv);DB.s('issuance',issuanceLog);
   const o={
-    id:newWoId,code:_editWO?(wos.find(x=>x.id===_editWO)?.code||null):generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[document.getElementById('m-wo-priority').value]||'MD']),section:sec,
+    id:newWoId,code:newWoCode,section:sec,
     asset:document.getElementById('m-wo-asset').value,
     location:document.getElementById('m-wo-loc').value,
     priority:document.getElementById('m-wo-priority').value,
@@ -4332,9 +4333,10 @@ async function delWO(id){
   if(w?.materials?.length){
     const inv=DB.g('inventory').map(i=>({...i}));
     const woRef='WO-'+String(id).padStart(4,'0');
+    const woCode=w?.code||null;
     w.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});
     DB.s('inventory',inv);
-    DB.s('issuance',DB.g('issuance').filter(l=>!(l.woRef===woRef&&l.remarks==='Auto-deducted via Work Order')));
+    DB.s('issuance',DB.g('issuance').filter(l=>!((l.woRef===woRef||(woCode&&l.woRef===woCode))&&l.remarks==='Auto-deducted via Work Order')));
   }
   DB.s('wo',DB.g('wo').filter(x=>x.id!==id));
   renderWO();renderDash();renderIssuance();renderInventory();updateInvAlerts();showToast('Work order deleted.','info');
@@ -4864,13 +4866,13 @@ function exportCSV(type){
       const pms=getPMSStatus(a);
       const loc=a.location||a.roomNumber||a.roomName||'';
       const kwh=a.estimatedKwhMonth!=null?a.estimatedKwhMonth.toFixed(2):'';
-      return['ASS-'+String(a.id).padStart(3,'0'),a.name,a.section,loc,a.qty||1,a.brand||'',a.serialNumber||'',a.serial||'',a.condition||'',a.acquired||'',freqDays,a.lastMaintDate||a.lastMaint||'',a.nextMaintDate||'',pms,kwh,a.ratedWatts||'',a.opHoursDay||'',a.opDaysMonth||'',a.remarks||''];
+      return[a.assetCode||('ASS-'+String(a.id).padStart(3,'0')),a.name,a.section,loc,a.qty||1,a.brand||'',a.serialNumber||'',a.serial||'',a.condition||'',a.acquired||'',freqDays,a.lastMaintDate||a.lastMaint||'',a.nextMaintDate||'',pms,kwh,a.ratedWatts||'',a.opHoursDay||'',a.opDaysMonth||'',a.remarks||''];
     });
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Assets_'+today()+'.csv');
   }
-  else if(type==='inventory'){const h=['INV ID','Description','Category','Unit','Qty On Hand','Original Qty','Min Level','Stock %','Alert Status'];const rows=DB.g('inventory').map(i=>['INV-'+String(i.id).padStart(3,'0'),i.description,i.category,i.unit,i.qty,i.originalQty,i.minLevel,i.originalQty>0?Math.round((i.qty/i.originalQty)*100)+'%':'N/A',invStockStatus(i)]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Inventory_'+today()+'.csv');}
-  else if(type==='issuance'){const h=['Log #','Date','Item','Category','Unit','Qty Issued','Issued To','WO Reference','Section','Remarks'];const rows=DB.g('issuance').filter(l=>l.qtyIssued>0).map(l=>['ISS-'+String(l.id).padStart(4,'0'),l.date,l.description,l.category,l.unit,l.qtyIssued,l.issuedTo,l.woRef,l.section,l.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Issuance_'+today()+'.csv');}
-  else if(type==='waste'){const h=['Entry#','Date','Waste Type','Volume (kg)','Contractor/Hauler','EMB Status','Remarks'];const rows=DB.g('waste').map(w=>['WE-'+String(w.id).padStart(4,'0'),w.date,w.type,w.volume,w.contractor,w.emb,w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WasteLog_'+today()+'.csv');}
+  else if(type==='inventory'){const h=['INV ID','Description','Category','Unit','Qty On Hand','Original Qty','Min Level','Stock %','Alert Status'];const rows=DB.g('inventory').map(i=>[i.code||('INV-'+String(i.id).padStart(3,'0')),i.description,i.category,i.unit,i.qty,i.originalQty,i.minLevel,i.originalQty>0?Math.round((i.qty/i.originalQty)*100)+'%':'N/A',invStockStatus(i)]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Inventory_'+today()+'.csv');}
+  else if(type==='issuance'){const h=['Log #','Date','Item','Category','Unit','Qty Issued','Issued To','WO Reference','Section','Remarks'];const rows=DB.g('issuance').filter(l=>l.qtyIssued>0).map(l=>[l.code||('ISS-'+String(l.id).padStart(4,'0')),l.date,l.description,l.category,l.unit,l.qtyIssued,l.issuedTo,l.woRef,l.section,l.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Issuance_'+today()+'.csv');}
+  else if(type==='waste'){const h=['Entry#','Date','Waste Type','Volume (kg)','Contractor/Hauler','EMB Status','Remarks'];const rows=DB.g('waste').map(w=>[w.code||('WE-'+String(w.id).padStart(4,'0')),w.date,w.type,w.volume,w.contractor,w.emb,w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WasteLog_'+today()+'.csv');}
 }
 function exportJSON(){
   const d={..._memDB,inpatientToday:_memDB.inpatientToday||0,exportedAt:new Date().toISOString(),system:'HAMMS v1.5 DOPMC GSD'};
@@ -6992,7 +6994,7 @@ const _origExportCSV=exportCSV;
 exportCSV=function(type){
   if(type==='safety'){
     const h=['Issue #','Severity','Description','Location','Linked Asset','Status','Date Logged','Logged By','Remarks'];
-    const rows=DB.g('safety').map(s=>['SF-'+String(s.id).padStart(4,'0'),s.severity,s.description,s.location,s.asset,s.status,s.date,s.loggedBy,s.remarks]);
+    const rows=DB.g('safety').map(s=>[s.code||('SF-'+String(s.id).padStart(4,'0')),s.severity,s.description,s.location,s.asset,s.status,s.date,s.loggedBy,s.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Safety_'+today()+'.csv');
   }else if(type==='projects'){
     const h=['Code','Title','Category','Location','Budget (PHP)','Funding','Responsible','Start','Target','Actual','Physical %','Financial %','Status','Issues'];
@@ -7000,7 +7002,7 @@ exportCSV=function(type){
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Projects_'+today()+'.csv');
   }else if(type==='water'){
     const h=['Log #','Date','Ward/Location','Test Type','Result','Bacteria Count (CFU)','Residual Chlorine (mg/L)','Mitigation','Remarks'];
-    const rows=DB.g('waterLogs').map(l=>['WL-'+String(l.id).padStart(4,'0'),l.date,l.ward,l.testType,l.result,l.bacteriaCount,l.residualChlorine,l.mitigation,l.remarks]);
+    const rows=DB.g('waterLogs').map(l=>[l.code||('WL-'+String(l.id).padStart(4,'0')),l.date,l.ward,l.testType,l.result,l.bacteriaCount,l.residualChlorine,l.mitigation,l.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WaterSafety_'+today()+'.csv');
   }else if(type==='watertank'){
     // PATCH: Water CSV Export Upgrade — Export 1: Raw + Computations
@@ -7038,7 +7040,7 @@ exportCSV=function(type){
       const demFormula=t.pumpDeliveredL!=null&&prevVol!=null&&t.volumeL!=null?`${t.pumpDeliveredL} L - (${t.volumeL}-${prevVol}) L`:'';
       const rateFormula=demand!=null&&dHrs>0?`${Math.round(demand)} L ÷ ${dHrs.toFixed(2)} hrs`:'';
       const hteFormula=hte&&netDrain?`${t.volumeL} L ÷ ${netDrain.toFixed(1)} L/hr net drain`:'';
-      return ['TK-'+String(t.id).padStart(4,'0'),t.dateTime||t.datetime,t.tankName,
+      return [t.code||('TK-'+String(t.id).padStart(4,'0')),t.dateTime||t.datetime,t.tankName,
         t.tankCapacityL??'',t.tankLevel??'',t.volumeL??'',
         prevVol??'',dHrs||'',
         pumpFormula,t.pumpDeliveredL??'',
