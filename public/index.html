@@ -7475,16 +7475,19 @@ function importEnergyCSV(e){
       if(isNaN(actual)||isNaN(amount)||actual<=0||amount<=0){skipped++;continue;}
       const existing=list.find(x=>x.period===period);
       const theoreticalKwh=isNaN(theo)?(existing?existing.theoreticalKwh:Math.round(calcCurrentTheoreticalKwh()*100)/100):Math.round(theo*100)/100;
-      const demandKw=demandRaw===''?null:Math.round(parseFloat(demandRaw)*100)/100;
-      const genRate=genRateRaw===''?null:Math.round(parseFloat(genRateRaw)*10000)/10000;
+      const demandKw=idx.demand>=0?(demandRaw===''?null:Math.round(parseFloat(demandRaw)*100)/100):(existing?existing.demandKw:null);
+      const genRate=idx.genRate>=0?(genRateRaw===''?null:Math.round(parseFloat(genRateRaw)*10000)/10000):(existing?existing.genRate:null);
+      const acct=idx.accountNo>=0?accountNo:(existing?existing.accountNo:'');
+      const metr=idx.meterNo>=0?meterNo:(existing?existing.meterNo:'');
+      const rmks=idx.remarks>=0?remarks:(existing?existing.remarks:'');
       if(existing){
         existing.actualKwh=Math.round(actual*100)/100;
         existing.billAmount=Math.round(amount*100)/100;
-        existing.demandKw=demandKw;
-        existing.genRate=genRate;
-        existing.accountNo=accountNo;
-        existing.meterNo=meterNo;
-        existing.remarks=remarks;
+        if(idx.demand>=0)existing.demandKw=demandKw;
+        if(idx.genRate>=0)existing.genRate=genRate;
+        if(idx.accountNo>=0)existing.accountNo=acct;
+        if(idx.meterNo>=0)existing.meterNo=metr;
+        if(idx.remarks>=0)existing.remarks=rmks;
         if(!isNaN(theo))existing.theoreticalKwh=theoreticalKwh;
         existing.periodLabel=periodLabel(period);
         updated++;
@@ -7497,10 +7500,10 @@ function importEnergyCSV(e){
           billAmount:Math.round(amount*100)/100,
           demandKw,
           genRate,
-          accountNo,
-          meterNo,
+          accountNo:acct,
+          meterNo:metr,
           theoreticalKwh,
-          remarks
+          remarks:rmks
         });
         added++;
       }

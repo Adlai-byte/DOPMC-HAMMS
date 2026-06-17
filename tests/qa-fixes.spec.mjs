@@ -385,7 +385,7 @@ test.describe('Integration', () => {
     const result = await page.evaluate(() => {
       const pages = ['dashboard','workorders','assets','forecast','inventory','issuance',
         'waste','wastefcast','safety','projects','water','watertank',
-        'effluent','medwaste','wwprod','reports','instructions'];
+        'effluent','medwaste','wwprod','energy','reports','instructions'];
       const errors = [];
       pages.forEach(p => {
         try { navigate(p, true); } catch(e) { errors.push(p + ': ' + e.message); }
@@ -393,7 +393,7 @@ test.describe('Integration', () => {
       navigate('dashboard', true);
       return { tested: pages.length, errors };
     });
-    expect(result.tested).toBe(17);
+    expect(result.tested).toBe(18);
     expect(result.errors).toEqual([]);
   });
 

@@ -387,6 +387,40 @@ test.describe('Energy — CSV', () => {
     expect(bill.meterNo).toBe('09955797');
     expect(bill.remarks).toBe('July test');
   });
+
+  test('importEnergyCSV preserves optional fields when columns are absent', async ({ page }) => {
+    await bootstrapApp(page);
+    await page.evaluate(() => {
+      // Seed an existing bill with optional fields populated.
+      _memDB.energyBills = [{
+        id: 1,
+        period: '2026-07',
+        periodLabel: 'July 2026',
+        actualKwh: 1500,
+        billAmount: 9000,
+        demandKw: 285.50,
+        genRate: 6.2834,
+        accountNo: '01-150-0004075',
+        meterNo: '09955797',
+        theoreticalKwh: 400,
+        remarks: 'Keep me'
+      }];
+      // Import a minimal CSV for the same period without optional columns.
+      const csv = 'Period_YYYY-MM,Actual_kWh,Bill_PHP\n2026-07,1600,9500';
+      const f = new File([csv], 'energy.csv', { type: 'text/csv' });
+      const ev = { target: { files: [f], value: '' } };
+      importEnergyCSV(ev);
+    });
+    await page.waitForTimeout(200);
+    const bill = await page.evaluate(() => _memDB.energyBills[0]);
+    expect(bill.actualKwh).toBe(1600);
+    expect(bill.billAmount).toBe(9500);
+    expect(bill.demandKw).toBeCloseTo(285.50, 2);
+    expect(bill.genRate).toBeCloseTo(6.2834, 4);
+    expect(bill.accountNo).toBe('01-150-0004075');
+    expect(bill.meterNo).toBe('09955797');
+    expect(bill.remarks).toBe('Keep me');
+  });
 });
 
 // ═══════════════════════════════════════

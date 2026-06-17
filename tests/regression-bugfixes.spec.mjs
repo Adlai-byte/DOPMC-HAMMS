@@ -489,7 +489,7 @@ test.describe('Sync retry count reset', () => {
 // ═══════════════════════════════════════════════════
 test.describe('All pages render without JS errors', () => {
   const pages = ['dashboard','workorders','assets','forecast','inventory','issuance',
-    'waste','wastefcast','safety','projects','water','watertank','effluent','medwaste','wwprod'];
+    'waste','wastefcast','safety','projects','water','watertank','effluent','medwaste','wwprod','energy'];
 
   for (const pg of pages) {
     test(`navigate('${pg}') does not throw`, async ({ page }) => {

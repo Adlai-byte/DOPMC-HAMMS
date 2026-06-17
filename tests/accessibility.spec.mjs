@@ -24,7 +24,7 @@ async function bootstrapApp(page) {
 const PAGES = [
   'dashboard', 'workorders', 'assets', 'inventory', 'safety',
   'waste', 'water', 'watertank', 'effluent', 'medwaste',
-  'wwprod', 'projects', 'reports'
+  'wwprod', 'projects', 'reports', 'energy'
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
