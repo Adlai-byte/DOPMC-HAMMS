@@ -20,11 +20,12 @@ async function bootstrapApp(page) {
     if (!window._FB) window._FB = { enabled: false, db: null };
     else { window._FB.enabled = false; window._FB.db = null; }
     window.confirmDialog = async () => true;
-    // Seed two assets so the theoretical baseline is non-zero and deterministic.
-    // 1000W × 8h × 30d × 0.8 df = 192 kWh each ⇒ 384 kWh total
+    // Seed three assets so the theoretical baseline is non-zero and deterministic.
+    // 1000W × 8h × 30d × 0.8 df = 192 kWh each; 2000W × 8h × 30d × 0.8 df = 384 kWh.
     _memDB.assets = [
-      { id: 9001, name: 'Test AC 1', section: 'HVAC', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
-      { id: 9002, name: 'Test AC 2', section: 'HVAC', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' }
+      { id: 9001, name: 'Test AC 1', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
+      { id: 9002, name: 'Test AC 2', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
+      { id: 9003, name: 'Test X-ray', section: 'Radiology', mainCategory: 'Biomedical', ratedWatts: 2000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' }
     ];
     navigate('dashboard');
   });
@@ -49,7 +50,7 @@ test.describe('Energy — Theoretical baseline', () => {
       perAsset: (typeof calcAssetKwh === 'function') ? calcAssetKwh(_memDB.assets[0]) : null
     }));
     expect(result.perAsset).toBeCloseTo(192, 1);
-    expect(result.total).toBeCloseTo(384, 1);
+    expect(result.total).toBeCloseTo(768, 1);
   });
 
   test('theoretical snapshot is captured at save time and does not change when assets are added later', async ({ page }) => {
@@ -63,13 +64,13 @@ test.describe('Energy — Theoretical baseline', () => {
       saveEnergy();
     });
     const before = await page.evaluate(() => _memDB.energyBills[0].theoreticalKwh);
-    expect(before).toBeCloseTo(384, 1);
-    // Add a third asset and verify the existing bill's snapshot is unchanged.
+    expect(before).toBeCloseTo(768, 1);
+    // Add a fourth asset and verify the existing bill's snapshot is unchanged.
     await page.evaluate(() => {
-      _memDB.assets.push({ id: 9003, name: 'Late Asset', section: 'HVAC', ratedWatts: 5000, opHoursDay: 12, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' });
+      _memDB.assets.push({ id: 9004, name: 'Late Asset', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 5000, opHoursDay: 12, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' });
     });
     const after = await page.evaluate(() => _memDB.energyBills[0].theoreticalKwh);
-    expect(after).toBeCloseTo(384, 1);
+    expect(after).toBeCloseTo(768, 1);
   });
 });
 
@@ -86,6 +87,10 @@ test.describe('Energy — CRUD', () => {
       document.getElementById('m-en-year').value = '2026';
       document.getElementById('m-en-actual').value = '42500';
       document.getElementById('m-en-amount').value = '285000';
+      document.getElementById('m-en-demand').value = '292.10';
+      document.getElementById('m-en-genrate').value = '7.1596';
+      document.getElementById('m-en-account').value = '01-150-0004075';
+      document.getElementById('m-en-meter').value = '09955797';
       document.getElementById('m-en-remarks').value = 'May 2026 DORECO';
       saveEnergy();
     });
@@ -95,7 +100,11 @@ test.describe('Energy — CRUD', () => {
     expect(bill.periodLabel).toBe('May 2026');
     expect(bill.actualKwh).toBe(42500);
     expect(bill.billAmount).toBe(285000);
-    expect(bill.theoreticalKwh).toBeCloseTo(384, 1);
+    expect(bill.demandKw).toBeCloseTo(292.10, 2);
+    expect(bill.genRate).toBeCloseTo(7.1596, 4);
+    expect(bill.accountNo).toBe('01-150-0004075');
+    expect(bill.meterNo).toBe('09955797');
+    expect(bill.theoreticalKwh).toBeCloseTo(768, 1);
   });
 
   test('Duplicate period is rejected', async ({ page }) => {
@@ -241,6 +250,26 @@ test.describe('Energy — Reports & Charts', () => {
     expect(hasCanvas).toBe(true);
   });
 
+  test('Category breakdown chart renders by asset mainCategory', async ({ page }) => {
+    await bootstrapApp(page);
+    await gotoEnergy(page);
+    const result = await page.evaluate(() => {
+      const el = document.getElementById('en-category-chart');
+      if (!el) return { present: false };
+      const text = el.textContent || '';
+      return {
+        present: true,
+        hasSvg: el.querySelector('svg') !== null,
+        hasAircon: text.includes('Aircon/Refrigeration'),
+        hasBiomedical: text.includes('Biomedical')
+      };
+    });
+    expect(result.present).toBe(true);
+    expect(result.hasSvg).toBe(true);
+    expect(result.hasAircon).toBe(true);
+    expect(result.hasBiomedical).toBe(true);
+  });
+
   test('Annual summary aggregates per year', async ({ page }) => {
     await bootstrapApp(page);
     await page.evaluate(() => {
@@ -326,13 +355,20 @@ test.describe('Energy — CSV', () => {
     expect(text).toContain('Period_YYYY-MM');
     expect(text).toContain('Actual_kWh');
     expect(text).toContain('Bill_PHP');
+    expect(text).toContain('Demand_kW');
+    expect(text).toContain('GenRate_PHP_per_kWh');
+    expect(text).toContain('Account_No');
+    expect(text).toContain('Meter_No');
     expect(text).toContain('2026-01');
   });
 
-  test('importEnergyCSV adds a bill from a minimal CSV row', async ({ page }) => {
+  test('importEnergyCSV adds a bill from a CSV row with all fields', async ({ page }) => {
     await bootstrapApp(page);
     await page.evaluate(() => {
-      const csv = 'Period_YYYY-MM,Actual_kWh,Bill_PHP,Theoretical_kWh,Remarks\n2026-07,1500,9000,400,July test';
+      const csv = [
+        'Period_YYYY-MM,Actual_kWh,Bill_PHP,Theoretical_kWh,Demand_kW,GenRate_PHP_per_kWh,Account_No,Meter_No,Remarks',
+        '2026-07,1500,9000,400,285.50,6.2834,01-150-0004075,09955797,July test'
+      ].join('\n');
       const f = new File([csv], 'energy.csv', { type: 'text/csv' });
       const ev = { target: { files: [f], value: '' } };
       importEnergyCSV(ev);
@@ -345,6 +381,11 @@ test.describe('Energy — CSV', () => {
     expect(bill.actualKwh).toBe(1500);
     expect(bill.billAmount).toBe(9000);
     expect(bill.theoreticalKwh).toBe(400);
+    expect(bill.demandKw).toBeCloseTo(285.50, 2);
+    expect(bill.genRate).toBeCloseTo(6.2834, 4);
+    expect(bill.accountNo).toBe('01-150-0004075');
+    expect(bill.meterNo).toBe('09955797');
+    expect(bill.remarks).toBe('July test');
   });
 });
 

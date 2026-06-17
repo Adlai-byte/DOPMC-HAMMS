@@ -58,12 +58,12 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 <!-- Firebase SDK v9 (modular) loaded from CDN -->
 <script type="module">
-  import { initializeApp }                                    from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
+  import { initializeApp }                                    from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
   // firebase-analytics removed — not required for core HAMMS operation
   import { getFirestore,
            doc, getDoc, getDocs, getDocFromServer, getDocsFromServer, setDoc, updateDoc, deleteField,
-           collection, writeBatch, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js"; // PATCHED: use server-first reads, live listeners, and disable persistent multi-tab cache to prevent stale snapshot reversion
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-auth.js";
+           collection, writeBatch, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js"; // PATCHED: use server-first reads, live listeners, and disable persistent multi-tab cache to prevent stale snapshot reversion
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
   // Only initialise if user has filled in config
   const configured = FIREBASE_CONFIG.apiKey !== "" && FIREBASE_CONFIG.projectId !== "";
@@ -1648,16 +1648,29 @@ resetIdleTimer();
 
       <div class="stat-grid mb14" id="en-stat-row"></div>
 
-      <div class="card mb14">
-        <div class="card-header"><h3>Monthly Consumption — Theoretical vs Actual (kWh)</h3></div>
-        <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption versus actual DORECO reading"></div></div>
+      <div id="en-account-info" class="card mb14" style="display:none;">
+        <div class="card-body" style="padding:10px 14px;font-size:12px;color:var(--muted);">
+          DORECO Account: <strong id="en-account-no" style="color:var(--navy);">—</strong> &nbsp;|&nbsp;
+          Meter No.: <strong id="en-meter-no" style="color:var(--navy);">—</strong>
+        </div>
+      </div>
+
+      <div class="two-col mb14">
+        <div class="card">
+          <div class="card-header"><h3>Monthly Consumption — Theoretical vs Actual (kWh)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption versus actual DORECO reading"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Theoretical Load by Equipment Category</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-category-chart" role="img" aria-label="Bar chart of theoretical energy consumption grouped by asset main category"></div></div>
+        </div>
       </div>
 
       <div class="card mb14">
         <div class="card-header"><h3>Bill Records (Monthly)</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Monthly Energy Bills</caption>
-          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">₱ / kWh</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">Demand (kW)</th><th scope="col">Gen Rate (₱/kWh)</th><th scope="col">₱ / kWh</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="energy-tbody"></tbody>
         </table></div>
       </div>
@@ -1666,7 +1679,7 @@ resetIdleTimer();
         <div class="card-header"><h3>Annual Summary</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Annual Energy Summary</caption>
-          <thead><tr><th scope="col">Year</th><th scope="col">Σ Theoretical (kWh)</th><th scope="col">Σ Actual (kWh)</th><th scope="col">Σ Variance (kWh)</th><th scope="col">Avg Variance %</th><th scope="col">Σ Bill (₱)</th><th scope="col">Avg ₱ / kWh</th></tr></thead>
+          <thead><tr><th scope="col">Year</th><th scope="col">Σ Theoretical (kWh)</th><th scope="col">Σ Actual (kWh)</th><th scope="col">Σ Variance (kWh)</th><th scope="col">Avg Variance %</th><th scope="col">Σ Bill (₱)</th><th scope="col">Avg Gen Rate (₱/kWh)</th><th scope="col">Avg Demand (kW)</th></tr></thead>
           <tbody id="energy-annual-tbody"></tbody>
         </table></div>
       </div>
@@ -2839,6 +2852,24 @@ resetIdleTimer();
           <input type="number" id="m-en-amount" min="0" step="0.01" placeholder="e.g. 285000.00">
           <div class="form-hint">Total amount due in Philippine pesos.</div>
         </div>
+        <div class="form-group">
+          <label for="m-en-demand">Demand (kW)</label>
+          <input type="number" id="m-en-demand" min="0" step="0.01" placeholder="e.g. 292.10">
+          <div class="form-hint">Peak demand as shown on the DORECO bill.</div>
+        </div>
+        <div class="form-group">
+          <label for="m-en-genrate">Generation Rate (₱/kWh)</label>
+          <input type="number" id="m-en-genrate" min="0" step="0.0001" placeholder="e.g. 7.1596">
+          <div class="form-hint">DORECO generation charge per kWh.</div>
+        </div>
+        <div class="form-group">
+          <label for="m-en-account">Account No.</label>
+          <input type="text" id="m-en-account" placeholder="e.g. 01-150-0004075">
+        </div>
+        <div class="form-group">
+          <label for="m-en-meter">Meter No.</label>
+          <input type="text" id="m-en-meter" placeholder="e.g. 09955797">
+        </div>
         <div class="form-group" style="grid-column:1/-1;background:var(--light);padding:10px 12px;border-radius:4px;">
           <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;color:var(--muted);margin-bottom:4px;">Theoretical Baseline (snapshot)</div>
           <div style="font-size:18px;font-weight:800;color:var(--blue);" id="m-en-theo">—</div>
@@ -3665,7 +3696,7 @@ window.addEventListener('offline', () => { _fbAllFromCache=true; setStorageChip(
 setInterval(()=>{
   if(!_fbLoadedOnce || _fbWriteInProgress || _fbRefreshInProgress) return;
   // Probe: fetch a tiny resource to detect real connectivity
-  fetch('https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js',{method:'HEAD',mode:'no-cors',cache:'no-store'})
+  fetch('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js',{method:'HEAD',mode:'no-cors',cache:'no-store'})
     .then(()=>{
       // Network reachable
       if(_storageMode==='firebase-offline'||_storageMode==='firebase-unavailable'){
@@ -5282,12 +5313,13 @@ function computeEnergy(){
 }
 
 function calcAssetKwh(a){
+  const qty=parseInt(a.qty||1,10)||1;
   let w=parseFloat(a.ratedWatts||0);
   if(!w&&a.hp)w=parseFloat(a.hp)*746;
   const hrs=parseFloat(a.opHoursDay||0);
   const days=parseFloat(a.opDaysMonth||0);
   const df=(a.demandFactor!=null&&a.demandFactor!=='')?parseFloat(a.demandFactor)||0.80:0.80;
-  return(w/1000)*hrs*days*df;
+  return(w/1000)*hrs*days*df*qty;
 }
 
 // ═══════════════════════════════════════
@@ -7032,7 +7064,8 @@ function openEnergyModal(id=null){
   const defaults={
     'm-en-month':String(now.getMonth()+1).padStart(2,'0'),
     'm-en-year':String(now.getFullYear()),
-    'm-en-actual':'','m-en-amount':'','m-en-remarks':''
+    'm-en-actual':'','m-en-amount':'','m-en-demand':'','m-en-genrate':'',
+    'm-en-account':'','m-en-meter':'','m-en-remarks':''
   };
   if(!id){
     Object.entries(defaults).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v;});
@@ -7043,6 +7076,10 @@ function openEnergyModal(id=null){
     sv('m-en-year',(b.period||'').substring(0,4));
     sv('m-en-actual',b.actualKwh);
     sv('m-en-amount',b.billAmount);
+    sv('m-en-demand',b.demandKw);
+    sv('m-en-genrate',b.genRate);
+    sv('m-en-account',b.accountNo);
+    sv('m-en-meter',b.meterNo);
     sv('m-en-remarks',b.remarks);
   }
   const recomputeBtn=document.getElementById('m-en-recompute-btn');
@@ -7077,6 +7114,10 @@ function saveEnergy(){
   const year=document.getElementById('m-en-year').value;
   const actual=parseFloat(document.getElementById('m-en-actual').value);
   const amount=parseFloat(document.getElementById('m-en-amount').value);
+  const demandRaw=document.getElementById('m-en-demand').value;
+  const genRateRaw=document.getElementById('m-en-genrate').value;
+  const accountNo=(document.getElementById('m-en-account').value||'').trim();
+  const meterNo=(document.getElementById('m-en-meter').value||'').trim();
   const remarks=(document.getElementById('m-en-remarks').value||'').trim();
   clearAllFieldErrors('mo-energy');
   let hasErr=false;
@@ -7084,6 +7125,8 @@ function saveEnergy(){
   if(!year||!/^\d{4}$/.test(year)){showFieldError('m-en-year','Required — 4-digit year.');hasErr=true;}
   if(isNaN(actual)||actual<=0){showFieldError('m-en-actual','Required — must be > 0.');hasErr=true;}
   if(isNaN(amount)||amount<=0){showFieldError('m-en-amount','Required — must be > 0.');hasErr=true;}
+  if(demandRaw!==''&&(isNaN(parseFloat(demandRaw))||parseFloat(demandRaw)<0)){showFieldError('m-en-demand','Must be ≥ 0.');hasErr=true;}
+  if(genRateRaw!==''&&(isNaN(parseFloat(genRateRaw))||parseFloat(genRateRaw)<0)){showFieldError('m-en-genrate','Must be ≥ 0.');hasErr=true;}
   if(hasErr)return;
   const period=year.padStart(4,'0')+'-'+month.padStart(2,'0');
   const list=DB.g('energyBills');
@@ -7096,12 +7139,18 @@ function saveEnergy(){
   }
   const existing=_editEnergyBill?list.find(x=>x.id===_editEnergyBill):null;
   const theoretical=Math.round(calcCurrentTheoreticalKwh()*100)/100;
+  const demandKw=demandRaw===''?null:Math.round(parseFloat(demandRaw)*100)/100;
+  const genRate=genRateRaw===''?null:Math.round(parseFloat(genRateRaw)*10000)/10000;
   const b={
     id:_editEnergyBill||DB.nid('energyBills'),
     period,
     periodLabel:periodLabel(period),
     actualKwh:Math.round(actual*100)/100,
     billAmount:Math.round(amount*100)/100,
+    demandKw,
+    genRate,
+    accountNo,
+    meterNo,
     theoreticalKwh:existing&&typeof existing.theoreticalKwh==='number'?existing.theoreticalKwh:theoretical,
     remarks
   };
@@ -7120,6 +7169,60 @@ function saveEnergy(){
 }
 
 async function delEnergyBill(id){return delRecord('energyBills',id,'bill',renderEnergy,renderDash);}
+
+function renderEnergyCategoryChart(){
+  const container=document.getElementById('en-category-chart');
+  if(!container)return;
+  const assets=DB.g('assets')||[];
+  if(!assets.length){
+    container.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">No assets in registry — category breakdown unavailable.</div>';
+    return;
+  }
+  const map=new Map();
+  assets.forEach(a=>{
+    const cat=(a.mainCategory||a.section||'Uncategorized').trim();
+    const kwh=calcAssetKwh(a)||0;
+    map.set(cat,(map.get(cat)||0)+kwh);
+  });
+  const entries=[...map.entries()].sort((a,b)=>b[1]-a[1]);
+  const labels=entries.map(e=>e[0]);
+  const values=entries.map(e=>Math.round(e[1]*100)/100);
+  if(window.drawEnergyCategoryBarChart)drawEnergyCategoryBarChart('en-category-chart',labels,values,'kWh');
+  else container.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
+}
+
+function drawEnergyCategoryBarChart(containerId,labels,values,yLabel){
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  container.setAttribute('role','img');
+  const maxVal=Math.max(values.length?Math.max(...values)*1.12:10,1);
+  const W=Math.max(container.clientWidth||560,420);
+  const H=220,PL=54,PR=20,PT=16,PB=48+labels.length*2;
+  const cW=W-PL-PR,cH=H-PT-PB;
+  const n=labels.length;
+  const bW=Math.max(Math.floor((cW/n)*0.55),6);
+  const x=i=>PL+(i+0.5)*(cW/n);
+  const y=v=>PT+cH-(v/maxVal)*cH;
+  const barColor='#1e6fb5';
+  let bars='',xLabels='';
+  values.forEach((v,i)=>{
+    const bH=(v/maxVal)*cH;
+    const bx=x(i)-bW/2;const by=y(v);
+    bars+=`<rect x="${bx}" y="${by}" width="${bW}" height="${bH}" fill="${barColor}" rx="2" opacity="0.82"/>`;
+    bars+=`<text x="${x(i)}" y="${by-4}" text-anchor="middle" font-size="10" fill="${barColor}" font-weight="600">${v>0?v:''}</text>`;
+    xLabels+=`<text x="${x(i)}" y="${H-PT+4}" text-anchor="middle" font-size="11" fill="#5a6e84" transform="rotate(-25,${x(i)},${H-PT+4})">${escapeHTML(labels[i])}</text>`;
+  });
+  let yTicks='';
+  const ticks=5;
+  for(let i=0;i<=ticks;i++){const val=maxVal*(i/ticks);const yy=PT+cH-(val/maxVal)*cH;yTicks+=`<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e8edf3" stroke-width="1"/>`;yTicks+=`<text x="${PL-6}" y="${yy+4}" text-anchor="end" font-size="10" fill="#6b7f96">${Math.round(val)}</text>`;}
+  container.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="font-family:'IBM Plex Sans',sans-serif;display:block;">
+    ${yTicks}
+    <line x1="${PL}" x2="${W-PR}" y1="${PT+cH}" y2="${PT+cH}" stroke="#d0d8e4" stroke-width="1.5"/>
+    <line x1="${PL}" x2="${PL}" y1="${PT}" y2="${PT+cH}" stroke="#d0d8e4" stroke-width="1.5"/>
+    ${bars}${xLabels}
+    <text x="${PL-42}" y="${PT+cH/2}" text-anchor="middle" font-size="10" fill="#6b7f96" transform="rotate(-90,${PL-42},${PT+cH/2})">${yLabel}</text>
+  </svg>`;
+}
 
 function renderEnergy(){
   const all=DB.g('energyBills')||[];
@@ -7173,7 +7276,7 @@ function renderEnergy(){
   const tbody=document.getElementById('energy-tbody');
   if(tbody){
     if(!list.length){
-      tbody.innerHTML='<tr><td colspan="9" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="11" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
     }else{
       tbody.innerHTML=list.map(b=>{
         const theo=b.theoreticalKwh||0;
@@ -7189,6 +7292,8 @@ function renderEnergy(){
           <td class="mono">${act.toFixed(1)}</td>
           <td class="mono ${vClass}">${vSign}${variance.toFixed(1)}</td>
           <td class="mono ${vClass}">${variancePct!=null?vSign+variancePct.toFixed(1)+'%':'—'}</td>
+          <td class="mono">${b.demandKw!=null?b.demandKw.toFixed(2):'—'}</td>
+          <td class="mono">${b.genRate!=null?'₱'+b.genRate.toFixed(4):'—'}</td>
           <td class="mono">${ratePerKwh!=null?'₱'+ratePerKwh.toFixed(2):'—'}</td>
           <td class="mono">₱${(b.billAmount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           <td style="max-width:160px;white-space:normal;font-size:12px;">${escapeHTML(b.remarks)||'—'}</td>
@@ -7199,15 +7304,37 @@ function renderEnergy(){
   }
 
   // Annual summary
+  // Account / meter info banner (shows the first non-empty account/meter found)
+  const acctInfo=document.getElementById('en-account-info');
+  const acctNoEl=document.getElementById('en-account-no');
+  const meterNoEl=document.getElementById('en-meter-no');
+  if(acctInfo&&acctNoEl&&meterNoEl){
+    const acct=all.find(b=>b.accountNo)?.accountNo||'';
+    const metr=all.find(b=>b.meterNo)?.meterNo||'';
+    if(acct||metr){
+      acctInfo.style.display='';
+      acctNoEl.textContent=acct||'—';
+      meterNoEl.textContent=metr||'—';
+    }else{
+      acctInfo.style.display='none';
+    }
+  }
+
+  // Theoretical load by asset mainCategory
+  renderEnergyCategoryChart();
+
+  // Annual summary
   const annualMap=new Map();
   all.forEach(b=>{
     if(!b.period||b.period.length<4)return;
     const y=b.period.substring(0,4);
     if(year&&y!==year)return;
-    const cur=annualMap.get(y)||{year:y,theo:0,act:0,bill:0,n:0};
+    const cur=annualMap.get(y)||{year:y,theo:0,act:0,bill:0,demandSum:0,demandN:0,genSum:0,genN:0,n:0};
     cur.theo+=(b.theoreticalKwh||0);
     cur.act+=(b.actualKwh||0);
     cur.bill+=(b.billAmount||0);
+    if(b.demandKw!=null){cur.demandSum+=b.demandKw;cur.demandN++;}
+    if(b.genRate!=null){cur.genSum+=b.genRate;cur.genN++;}
     cur.n++;
     annualMap.set(y,cur);
   });
@@ -7215,12 +7342,14 @@ function renderEnergy(){
   const annualTbody=document.getElementById('energy-annual-tbody');
   if(annualTbody){
     if(!annualRows.length){
-      annualTbody.innerHTML='<tr><td colspan="7" class="empty">No annual data yet.</td></tr>';
+      annualTbody.innerHTML='<tr><td colspan="8" class="empty">No annual data yet.</td></tr>';
     }else{
       annualTbody.innerHTML=annualRows.map(r=>{
         const variance=r.act-r.theo;
         const avgPct=r.theo>0?(variance/r.theo*100):null;
         const avgRate=r.act>0?(r.bill/r.act):null;
+        const avgDemand=r.demandN>0?(r.demandSum/r.demandN):null;
+        const avgGen=r.genN>0?(r.genSum/r.genN):null;
         const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
         return`<tr>
           <td><span class="mono">${escapeHTML(r.year)}</span></td>
@@ -7229,7 +7358,8 @@ function renderEnergy(){
           <td class="mono ${vClass}">${(variance>=0?'+':'')+variance.toFixed(0)}</td>
           <td class="mono ${vClass}">${avgPct!=null?(avgPct>=0?'+':'')+avgPct.toFixed(1)+'%':'—'}</td>
           <td class="mono">₱${r.bill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-          <td class="mono">${avgRate!=null?'₱'+avgRate.toFixed(2):'—'}</td>
+          <td class="mono">${avgGen!=null?'₱'+avgGen.toFixed(4):'—'}</td>
+          <td class="mono">${avgDemand!=null?avgDemand.toFixed(2):'—'}</td>
         </tr>`;
       }).join('');
     }
@@ -7238,14 +7368,24 @@ function renderEnergy(){
 
 function exportEnergyCSV(){
   const list=DB.g('energyBills')||[];
-  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','PHP_per_kWh','Bill_PHP','Remarks']];
+  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','GenRate_PHP_per_kWh','PHP_per_kWh','Bill_PHP','Account_No','Meter_No','Remarks']];
   list.slice().sort((a,b)=>(b.period||'').localeCompare(a.period||'')).forEach(b=>{
     const theo=b.theoreticalKwh||0;
     const act=b.actualKwh||0;
     const variance=act-theo;
     const variancePct=theo>0?(variance/theo*100):'';
     const rate=act>0?(b.billAmount/act):'';
-    rows.push([b.periodLabel||b.period||'',theo.toFixed(2),act.toFixed(2),variance.toFixed(2),variancePct!==''?variancePct.toFixed(2):'',rate!==''?rate.toFixed(2):'',(b.billAmount||0).toFixed(2),(b.remarks||'').replace(/[\r\n]+/g,' ').replace(/"/g,'""')]);
+    rows.push([
+      b.periodLabel||b.period||'',theo.toFixed(2),act.toFixed(2),variance.toFixed(2),
+      variancePct!==''?variancePct.toFixed(2):'',
+      b.demandKw!=null?b.demandKw.toFixed(2):'',
+      b.genRate!=null?b.genRate.toFixed(4):'',
+      rate!==''?rate.toFixed(2):'',
+      (b.billAmount||0).toFixed(2),
+      b.accountNo||'',
+      b.meterNo||'',
+      (b.remarks||'').replace(/[\r\n]+/g,' ').replace(/"/g,'""')
+    ]);
   });
   const csv=rows.map(r=>r.map(c=>{
     const s=String(c??'');
@@ -7262,10 +7402,10 @@ function exportEnergyCSV(){
 
 function downloadEnergyTemplate(){
   const rows=[
-    ['Period_YYYY-MM','Actual_kWh','Bill_PHP','Theoretical_kWh','Remarks'],
-    ['2026-01','42500','285000.00','38942.70','January 2026 DORECO bill'],
-    ['2026-02','39800','265500.00','38942.70','February 2026 DORECO bill'],
-    ['2026-03','45200','298000.00','39450.00','New 1.5HP aircon added mid-month']
+    ['Period_YYYY-MM','Actual_kWh','Bill_PHP','Theoretical_kWh','Demand_kW','GenRate_PHP_per_kWh','Account_No','Meter_No','Remarks'],
+    ['2026-01','42500','285000.00','38942.70','292.10','7.1596','01-150-0004075','09955797','January 2026 DORECO bill'],
+    ['2026-02','39800','265500.00','38942.70','285.75','6.2834','01-150-0004075','09955797','February 2026 DORECO bill'],
+    ['2026-03','45200','298000.00','39450.00','279.40','6.4697','01-150-0004075','09955797','March 2026 DORECO bill']
   ];
   const csv=rows.map(r=>r.map(c=>{
     const s=String(c??'');
@@ -7305,6 +7445,10 @@ function importEnergyCSV(e){
       actual:header.findIndex(h=>h.includes('actual')&&h.includes('kwh')),
       amount:header.findIndex(h=>(h.includes('bill')&&h.includes('php'))||h.includes('amount')),
       theo:header.findIndex(h=>h.includes('theoretical')),
+      demand:header.findIndex(h=>h.includes('demand')),
+      genRate:header.findIndex(h=>h.includes('gen')&&h.includes('rate')),
+      accountNo:header.findIndex(h=>h.includes('account')),
+      meterNo:header.findIndex(h=>h.includes('meter')),
       remarks:header.findIndex(h=>h.includes('remark'))
     };
     if(idx.period<0||idx.actual<0||idx.amount<0){
@@ -7323,13 +7467,23 @@ function importEnergyCSV(e){
       const actual=parseFloat(cols[idx.actual]);
       const amount=parseFloat(cols[idx.amount]);
       const theo=idx.theo>=0?parseFloat(cols[idx.theo]):NaN;
+      const demandRaw=idx.demand>=0?(cols[idx.demand]||''):'';
+      const genRateRaw=idx.genRate>=0?(cols[idx.genRate]||''):'';
+      const accountNo=idx.accountNo>=0?(cols[idx.accountNo]||''):'';
+      const meterNo=idx.meterNo>=0?(cols[idx.meterNo]||''):'';
       const remarks=idx.remarks>=0?(cols[idx.remarks]||''):'';
       if(isNaN(actual)||isNaN(amount)||actual<=0||amount<=0){skipped++;continue;}
       const existing=list.find(x=>x.period===period);
       const theoreticalKwh=isNaN(theo)?(existing?existing.theoreticalKwh:Math.round(calcCurrentTheoreticalKwh()*100)/100):Math.round(theo*100)/100;
+      const demandKw=demandRaw===''?null:Math.round(parseFloat(demandRaw)*100)/100;
+      const genRate=genRateRaw===''?null:Math.round(parseFloat(genRateRaw)*10000)/10000;
       if(existing){
         existing.actualKwh=Math.round(actual*100)/100;
         existing.billAmount=Math.round(amount*100)/100;
+        existing.demandKw=demandKw;
+        existing.genRate=genRate;
+        existing.accountNo=accountNo;
+        existing.meterNo=meterNo;
         existing.remarks=remarks;
         if(!isNaN(theo))existing.theoreticalKwh=theoreticalKwh;
         existing.periodLabel=periodLabel(period);
@@ -7341,6 +7495,10 @@ function importEnergyCSV(e){
           periodLabel:periodLabel(period),
           actualKwh:Math.round(actual*100)/100,
           billAmount:Math.round(amount*100)/100,
+          demandKw,
+          genRate,
+          accountNo,
+          meterNo,
           theoreticalKwh,
           remarks
         });
