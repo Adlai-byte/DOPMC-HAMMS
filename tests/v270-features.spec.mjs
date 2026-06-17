@@ -15,7 +15,7 @@ async function bootstrapApp(page) {
     const ov = document.getElementById('app-loading-overlay');
     if (ov) ov.remove();
     if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings'];
+    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
     stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
     if (!_memDB.personnel) _memDB.personnel = {};
     if (!window._FB) window._FB = { enabled: false, db: null };

@@ -20,7 +20,8 @@ service cloud.firestore {
       allow create: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
-                     'medWasteProd','wwProd','censusLog','waterSettings']
+                     'medWasteProd','wwProd','censusLog','waterSettings',
+                     'energyBills']
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
@@ -29,7 +30,8 @@ service cloud.firestore {
       allow update: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
-                     'medWasteProd','wwProd','censusLog','waterSettings']
+                     'medWasteProd','wwProd','censusLog','waterSettings',
+                     'energyBills']
         && request.resource.data.keys().size() < 100
         && (!('_v' in request.resource.data) || request.resource.data._v is int)
         && (!('_updatedAt' in request.resource.data) || request.resource.data._updatedAt is int)
@@ -40,7 +42,8 @@ service cloud.firestore {
       allow delete: if isNamedUser()
         && store in ['wo','assets','inventory','issuance','waste','safety',
                      'projects','waterLogs','waterTank','effluent',
-                     'medWasteProd','wwProd','censusLog','waterSettings'];
+                     'medWasteProd','wwProd','censusLog','waterSettings',
+                     'energyBills'];
     }
     match /hammsMeta/state {
       allow read: if isNamedUser();

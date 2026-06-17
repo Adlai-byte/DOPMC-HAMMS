@@ -29,6 +29,11 @@
       "name": "Water Monitoring",
       "url": "/?page=watertank",
       "description": "Water supply monitoring"
+    },
+    {
+      "name": "Energy Conservation",
+      "url": "/?page=energy",
+      "description": "Compare theoretical kWh vs DORECO bills"
     }
   ],
   "icons": [

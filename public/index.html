@@ -387,6 +387,11 @@ tr.row-warn td{background:#fffdf0;}
 .bs-ok{background:#e2f5eb;color:#1a5e30;}
 .bs-poor{background:#fde8e8;color:#9b1a1a;}
 
+/* ─── Energy Conservation Variance ─── */
+.var-over  { color: #b81a1a; font-weight: 700; }  /* actual > theoretical (over-consumption) */
+.var-under { color: #1a6b1a; font-weight: 700; }  /* actual < theoretical (savings) */
+.var-flat  { color: var(--text); }                /* equal */
+
 .sec-tag{display:inline-flex;align-items:center;padding:2px 8px;border-radius:2px;font-size:11px;font-weight:700;}
 .sec-CMW{background:#fff3e0;color:#bf4e00;}
 .sec-Electrical{background:#e3f0ff;color:#0a4a8a;}
@@ -903,6 +908,8 @@ resetIdleTimer();
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
     <div class="nav-group-label">Environmental</div> <!-- PATCH: effluent monitoring -->
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
+    <div class="nav-group-label">Energy</div> <!-- PATCH: energy conservation -->
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('energy')"><span class="ni-icon">⚡</span>Energy Conservation</div>
     <div class="nav-group-label">Production</div> <!-- PATCH: production tabs -->
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
@@ -1619,6 +1626,48 @@ resetIdleTimer();
           <caption class="sr-only">Wastewater Treatment</caption>
           <thead><tr><th scope="col">Log #</th><th scope="col">Date</th><th scope="col">Shift</th><th scope="col">Inflow (m³)</th><th scope="col">Treated (m³)</th><th scope="col">Outflow (m³)</th><th scope="col">Op. Hours</th><th scope="col">Downtime (hrs)</th><th scope="col">Utilization %</th><th scope="col">System Status</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="wwprod-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ══════ ENERGY CONSERVATION -->
+    <div id="page-energy" class="page">
+      <div style="display:flex;justify-content:space-between;align-items:center;" class="mb14">
+        <div class="filter-bar">
+          <select id="en-year" aria-label="Filter by year" onchange="renderEnergy()"><option value="">All Years</option></select>
+          <input type="text" id="en-search" aria-label="Search by period or remarks" placeholder="Search period…" oninput="renderEnergy()" style="width:160px;">
+        </div>
+        <div style="display:flex;gap:7px;">
+          <button type="button" class="btn btn-ghost" onclick="downloadEnergyTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('en-csv-upload').click()">📤 Upload CSV</button>
+          <input type="file" id="en-csv-upload" accept=".csv" style="display:none;" onchange="importEnergyCSV(event)">
+          <button type="button" class="btn btn-outline" onclick="exportEnergyCSV()">🖨 Export CSV</button>
+          <button type="button" class="btn btn-primary" onclick="openEnergyModal()">+ Add Bill</button>
+        </div>
+      </div>
+
+      <div class="stat-grid mb14" id="en-stat-row"></div>
+
+      <div class="card mb14">
+        <div class="card-header"><h3>Monthly Consumption — Theoretical vs Actual (kWh)</h3></div>
+        <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption versus actual DORECO reading"></div></div>
+      </div>
+
+      <div class="card mb14">
+        <div class="card-header"><h3>Bill Records (Monthly)</h3></div>
+        <div class="tbl-wrap"><table>
+          <caption class="sr-only">Monthly Energy Bills</caption>
+          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">₱ / kWh</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <tbody id="energy-tbody"></tbody>
+        </table></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3>Annual Summary</h3></div>
+        <div class="tbl-wrap"><table>
+          <caption class="sr-only">Annual Energy Summary</caption>
+          <thead><tr><th scope="col">Year</th><th scope="col">Σ Theoretical (kWh)</th><th scope="col">Σ Actual (kWh)</th><th scope="col">Σ Variance (kWh)</th><th scope="col">Avg Variance %</th><th scope="col">Σ Bill (₱)</th><th scope="col">Avg ₱ / kWh</th></tr></thead>
+          <tbody id="energy-annual-tbody"></tbody>
         </table></div>
       </div>
     </div>
@@ -2761,6 +2810,54 @@ resetIdleTimer();
   </div>
 </div>
 
+<!-- Energy Conservation Modal — v2.10 ENERGY MODULE PATCH -->
+<div class="modal-overlay" id="mo-energy" role="dialog" aria-modal="true" aria-labelledby="mo-energy-title">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header"><h3 id="mo-energy-title">Add DORECO Bill</h3><button type="button" class="modal-close" onclick="closeModal('mo-energy')">×</button></div>
+    <div class="modal-body">
+      <div class="form-grid fg-2">
+        <div class="form-group">
+          <label for="m-en-month">Billing Month *</label>
+          <select id="m-en-month">
+            <option value="01">January</option><option value="02">February</option><option value="03">March</option>
+            <option value="04">April</option><option value="05">May</option><option value="06">June</option>
+            <option value="07">July</option><option value="08">August</option><option value="09">September</option>
+            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="m-en-year">Billing Year *</label>
+          <input type="number" id="m-en-year" min="2000" max="2100" step="1" placeholder="e.g. 2026">
+        </div>
+        <div class="form-group">
+          <label for="m-en-actual">Actual Consumption (kWh) *</label>
+          <input type="number" id="m-en-actual" min="0" step="0.01" placeholder="e.g. 42500">
+          <div class="form-hint">Value as printed on the DORECO bill.</div>
+        </div>
+        <div class="form-group">
+          <label for="m-en-amount">Bill Amount (₱) *</label>
+          <input type="number" id="m-en-amount" min="0" step="0.01" placeholder="e.g. 285000.00">
+          <div class="form-hint">Total amount due in Philippine pesos.</div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;background:var(--light);padding:10px 12px;border-radius:4px;">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.6px;font-weight:700;color:var(--muted);margin-bottom:4px;">Theoretical Baseline (snapshot)</div>
+          <div style="font-size:18px;font-weight:800;color:var(--blue);" id="m-en-theo">—</div>
+          <div style="font-size:11px;color:var(--muted);" id="m-en-theo-hint">Sum of calcAssetKwh() across the current asset registry.</div>
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label for="m-en-remarks">Remarks</label>
+          <textarea id="m-en-remarks" style="min-height:44px;" placeholder="Optional note…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-energy')">Cancel</button>
+      <button type="button" class="btn btn-outline" id="m-en-recompute-btn" onclick="recomputeTheoretical()" title="Recompute theoretical kWh from the current asset registry" style="display:none;">⟳ Recompute Theoretical</button>
+      <button type="button" class="btn btn-primary" onclick="saveEnergy()">Save Bill</button>
+    </div>
+  </div>
+</div>
+
 <script>
 window.onerror=function(msg,src,line,col,err){
   console.error('HAMMS Error:',{msg,src,line,col,stack:err?.stack});
@@ -2827,8 +2924,8 @@ function safeSrc(url){
 // ═══════════════════════════════════════════════════════════════
 
 
-const STORES=['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings']; // PATCHED: record-level Firestore collections remain the live operational stores
-let _memDB={wo:[],assets:[],inventory:[],issuance:[],waste:[],safety:[],projects:[],waterLogs:[],waterTank:[],effluent:[],medWasteProd:[],wwProd:[],censusLog:[],waterSettings:[]}; // PATCHED: in-memory mirror fed from record-level cloud collections
+const STORES=['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills']; // PATCHED: record-level Firestore collections remain the live operational stores
+let _memDB={wo:[],assets:[],inventory:[],issuance:[],waste:[],safety:[],projects:[],waterLogs:[],waterTank:[],effluent:[],medWasteProd:[],wwProd:[],censusLog:[],waterSettings:[],energyBills:[]}; // PATCHED: in-memory mirror fed from record-level cloud collections
 let _cleanStoreState=Object.create(null); // PATCHED: pre-mutation snapshot for version stamping — survives in-place mutations by callers
 let _storageMode='firebase-loading'; // PATCHED: Firebase-only status mode
 let _saveTimer=null;
@@ -3663,8 +3760,8 @@ if(navigator.serviceWorker){
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment'}; // PATCH: effluent monitoring + production tabs
-let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null; // PATCH: issuance log edit support
+const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment',energy:'Energy Conservation'}; // PATCH: effluent monitoring + production tabs + energy conservation
+let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null,_editEnergyBill=null; // PATCH: issuance log edit support + energy bill edit support
 const _editSnapshots=new Map(); // Map<store, {store, id, _v}> — optimistic concurrency per store
 function captureEditSnapshot(store,id){
   if(!id){_editSnapshots.delete(store);return;}
@@ -3726,7 +3823,7 @@ function navigate(p, _noPush){
   const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
-  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();}}; // PATCH: added medwaste
+  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();}}; // PATCH: added medwaste + energy conservation
   if(r[p])r[p]();
 }
 window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
@@ -6896,6 +6993,366 @@ function renderWWProd(){
     <td>${escapeHTML(r.status)||'—'}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(r.remarks)||'—'}</td>
     <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWWProdModal(${r.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWWProd(${r.id})">Del</button></td>
   </tr>`).join(''):'<tr><td colspan="12" class="empty">No production logs found.</td></tr>';
+}
+
+// ═══════════════════════════════════════
+// PATCH: energy conservation module (v2.10)
+// Theoretical kWh = Σ calcAssetKwh(a) over the asset registry at save time.
+// Theoretical is SNAPSHOTTED per bill so historical variance stays stable
+// even as the asset registry changes after the bill is recorded.
+// ═══════════════════════════════════════
+function calcCurrentTheoreticalKwh(){
+  return (DB.g('assets')||[]).reduce((s,a)=>s+(calcAssetKwh(a)||0),0);
+}
+
+function periodLabel(period){
+  if(!period||period.length<7)return period||'—';
+  const y=parseInt(period.substring(0,4),10);
+  const m=parseInt(period.substring(5,7),10);
+  if(isNaN(y)||isNaN(m)||m<1||m>12)return period;
+  return MONTHS[m-1]+' '+y;
+}
+
+function populateEnergyFilters(){
+  const list=DB.g('energyBills')||[];
+  const years=new Set();
+  list.forEach(b=>{if(b.period&&b.period.length>=4)years.add(b.period.substring(0,4));});
+  years.add(String(new Date().getFullYear()));
+  const yEl=document.getElementById('en-year');
+  if(yEl){
+    const curY=yEl.value;
+    yEl.innerHTML='<option value="">All Years</option>'+[...years].sort().reverse().map(y=>`<option value="${y}" ${curY===y?'selected':''}>${y}</option>`).join('');
+  }
+}
+
+function openEnergyModal(id=null){
+  _editEnergyBill=id;captureEditSnapshot('energyBills',id);
+  document.getElementById('mo-energy-title').textContent=id?'Edit DORECO Bill':'Add DORECO Bill';
+  const now=new Date();
+  const defaults={
+    'm-en-month':String(now.getMonth()+1).padStart(2,'0'),
+    'm-en-year':String(now.getFullYear()),
+    'm-en-actual':'','m-en-amount':'','m-en-remarks':''
+  };
+  if(!id){
+    Object.entries(defaults).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v;});
+  }else{
+    const b=DB.g('energyBills').find(x=>x.id===id);if(!b)return;
+    const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v!=null?v:'';};
+    sv('m-en-month',(b.period||'').substring(5,7));
+    sv('m-en-year',(b.period||'').substring(0,4));
+    sv('m-en-actual',b.actualKwh);
+    sv('m-en-amount',b.billAmount);
+    sv('m-en-remarks',b.remarks);
+  }
+  const recomputeBtn=document.getElementById('m-en-recompute-btn');
+  if(recomputeBtn)recomputeBtn.style.display=id?'':'none';
+  updateTheoreticalPreview();
+  openModal('mo-energy');
+}
+
+function updateTheoreticalPreview(){
+  const el=document.getElementById('m-en-theo');
+  if(!el)return;
+  const t=calcCurrentTheoreticalKwh();
+  el.textContent=t>0?t.toFixed(1)+' kWh':'—';
+}
+
+function recomputeTheoretical(){
+  if(!_editEnergyBill){showToast('Open an existing bill first to recompute.','error');return;}
+  const list=DB.g('energyBills');
+  const i=list.findIndex(x=>x.id===_editEnergyBill);
+  if(i<0){showToast('Record not found — it may have been deleted.','error');return;}
+  const t=calcCurrentTheoreticalKwh();
+  list[i].theoreticalKwh=Math.round(t*100)/100;
+  DB.s('energyBills',list);
+  showToast(`Theoretical kWh refreshed to ${t.toFixed(1)}.`);
+  closeModal('mo-energy');
+  renderEnergy();
+}
+
+function saveEnergy(){
+  if(checkEditConflict('energyBills',_editEnergyBill))return;
+  const month=document.getElementById('m-en-month').value;
+  const year=document.getElementById('m-en-year').value;
+  const actual=parseFloat(document.getElementById('m-en-actual').value);
+  const amount=parseFloat(document.getElementById('m-en-amount').value);
+  const remarks=(document.getElementById('m-en-remarks').value||'').trim();
+  clearAllFieldErrors('mo-energy');
+  let hasErr=false;
+  if(!month){showFieldError('m-en-month','Required.');hasErr=true;}
+  if(!year||!/^\d{4}$/.test(year)){showFieldError('m-en-year','Required — 4-digit year.');hasErr=true;}
+  if(isNaN(actual)||actual<=0){showFieldError('m-en-actual','Required — must be > 0.');hasErr=true;}
+  if(isNaN(amount)||amount<=0){showFieldError('m-en-amount','Required — must be > 0.');hasErr=true;}
+  if(hasErr)return;
+  const period=year.padStart(4,'0')+'-'+month.padStart(2,'0');
+  const list=DB.g('energyBills');
+  if(!_editEnergyBill){
+    const dup=list.find(b=>b.period===period);
+    if(dup){showFieldError('m-en-month','Bill for '+periodLabel(period)+' already exists. Edit it instead.');return;}
+  }else{
+    const dup=list.find(b=>b.period===period&&b.id!==_editEnergyBill);
+    if(dup){showFieldError('m-en-month','Bill for '+periodLabel(period)+' already exists.');return;}
+  }
+  const existing=_editEnergyBill?list.find(x=>x.id===_editEnergyBill):null;
+  const theoretical=Math.round(calcCurrentTheoreticalKwh()*100)/100;
+  const b={
+    id:_editEnergyBill||DB.nid('energyBills'),
+    period,
+    periodLabel:periodLabel(period),
+    actualKwh:Math.round(actual*100)/100,
+    billAmount:Math.round(amount*100)/100,
+    theoreticalKwh:existing&&typeof existing.theoreticalKwh==='number'?existing.theoreticalKwh:theoretical,
+    remarks
+  };
+  if(_editEnergyBill){
+    const i=list.findIndex(x=>x.id===_editEnergyBill);
+    if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-energy');return;}
+    list[i]=b;
+  }else{
+    list.push(b);
+  }
+  DB.s('energyBills',list);
+  closeModal('mo-energy');
+  renderEnergy();
+  renderDash();
+  showToast('Energy bill saved.');
+}
+
+async function delEnergyBill(id){return delRecord('energyBills',id,'bill',renderEnergy,renderDash);}
+
+function renderEnergy(){
+  const all=DB.g('energyBills')||[];
+  const year=(document.getElementById('en-year')?.value)||'';
+  const q=(document.getElementById('en-search')?.value||'').toLowerCase().trim();
+  populateEnergyFilters();
+  let list=all.slice();
+  if(year)list=list.filter(b=>b.period&&b.period.substring(0,4)===year);
+  if(q)list=list.filter(b=>(b.periodLabel||b.period||'').toLowerCase().includes(q)||(b.remarks||'').toLowerCase().includes(q));
+  list.sort((a,b)=>(b.period||'').localeCompare(a.period||''));
+
+  // KPIs
+  const ytd=list;
+  const sumTheo=ytd.reduce((s,b)=>s+(b.theoreticalKwh||0),0);
+  const sumAct=ytd.reduce((s,b)=>s+(b.actualKwh||0),0);
+  const sumVar=sumAct-sumTheo;
+  const avgVarPct=sumTheo>0?(sumVar/sumTheo*100):null;
+  const sumBill=ytd.reduce((s,b)=>s+(b.billAmount||0),0);
+  const sr=document.getElementById('en-stat-row');
+  if(sr)sr.innerHTML=`
+    <div class="stat-card s-energy"><div class="stat-label">Σ Theoretical</div><div class="stat-val">${sumTheo.toFixed(0)}</div><div class="stat-sub">kWh (snapshot)</div></div>
+    <div class="stat-card s-energy"><div class="stat-label">Σ Actual (DORECO)</div><div class="stat-val">${sumAct.toFixed(0)}</div><div class="stat-sub">kWh billed</div></div>
+    <div class="stat-card ${sumVar>0?'s-overdue':'s-closed'}"><div class="stat-label">Σ Variance</div><div class="stat-val">${(sumVar>=0?'+':'')+sumVar.toFixed(0)}</div><div class="stat-sub">${avgVarPct!=null?(avgVarPct>=0?'+':'')+avgVarPct.toFixed(1)+'% over theoretical':'—'}</div></div>
+    <div class="stat-card"><div class="stat-label">Σ Bill Amount</div><div class="stat-val" style="font-size:22px;">₱${sumBill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="stat-sub">${ytd.length} bill${ytd.length===1?'':'s'}</div></div>`;
+
+  // 12-month trend chart (full year context for selected year, or current year if none)
+  const chartYear=year||String(new Date().getFullYear());
+  const labels=[];
+  const theoBars=[];
+  const actLine=[];
+  for(let m=1;m<=12;m++){
+    const ym=chartYear+'-'+String(m).padStart(2,'0');
+    labels.push(MONTHS[m-1].substring(0,3));
+    const bill=all.find(b=>b.period===ym);
+    if(bill){
+      theoBars.push(Math.round((bill.theoreticalKwh||0)*100)/100);
+      actLine.push(Math.round((bill.actualKwh||0)*100)/100);
+    }else{
+      // No bill for this month — show null so the line is gapped
+      theoBars.push(0);
+      actLine.push(null);
+    }
+  }
+  if(window.drawBarLineChart)drawBarLineChart('en-trend-chart',labels,theoBars,actLine,'#1e6fb5','#cc3333','kWh');
+  else{
+    const c=document.getElementById('en-trend-chart');
+    if(c)c.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
+  }
+
+  // Monthly table
+  const tbody=document.getElementById('energy-tbody');
+  if(tbody){
+    if(!list.length){
+      tbody.innerHTML='<tr><td colspan="9" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
+    }else{
+      tbody.innerHTML=list.map(b=>{
+        const theo=b.theoreticalKwh||0;
+        const act=b.actualKwh||0;
+        const variance=act-theo;
+        const variancePct=theo>0?(variance/theo*100):null;
+        const ratePerKwh=act>0?(b.billAmount/act):null;
+        const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
+        const vSign=variance>0?'+':'';
+        return`<tr>
+          <td><span class="mono">${escapeHTML(b.periodLabel||b.period||'—')}</span></td>
+          <td class="mono">${theo.toFixed(1)}</td>
+          <td class="mono">${act.toFixed(1)}</td>
+          <td class="mono ${vClass}">${vSign}${variance.toFixed(1)}</td>
+          <td class="mono ${vClass}">${variancePct!=null?vSign+variancePct.toFixed(1)+'%':'—'}</td>
+          <td class="mono">${ratePerKwh!=null?'₱'+ratePerKwh.toFixed(2):'—'}</td>
+          <td class="mono">₱${(b.billAmount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td style="max-width:160px;white-space:normal;font-size:12px;">${escapeHTML(b.remarks)||'—'}</td>
+          <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openEnergyModal(${b.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delEnergyBill(${b.id})">Del</button></td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // Annual summary
+  const annualMap=new Map();
+  all.forEach(b=>{
+    if(!b.period||b.period.length<4)return;
+    const y=b.period.substring(0,4);
+    if(year&&y!==year)return;
+    const cur=annualMap.get(y)||{year:y,theo:0,act:0,bill:0,n:0};
+    cur.theo+=(b.theoreticalKwh||0);
+    cur.act+=(b.actualKwh||0);
+    cur.bill+=(b.billAmount||0);
+    cur.n++;
+    annualMap.set(y,cur);
+  });
+  const annualRows=[...annualMap.values()].sort((a,b)=>b.year.localeCompare(a.year));
+  const annualTbody=document.getElementById('energy-annual-tbody');
+  if(annualTbody){
+    if(!annualRows.length){
+      annualTbody.innerHTML='<tr><td colspan="7" class="empty">No annual data yet.</td></tr>';
+    }else{
+      annualTbody.innerHTML=annualRows.map(r=>{
+        const variance=r.act-r.theo;
+        const avgPct=r.theo>0?(variance/r.theo*100):null;
+        const avgRate=r.act>0?(r.bill/r.act):null;
+        const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
+        return`<tr>
+          <td><span class="mono">${escapeHTML(r.year)}</span></td>
+          <td class="mono">${r.theo.toFixed(0)}</td>
+          <td class="mono">${r.act.toFixed(0)}</td>
+          <td class="mono ${vClass}">${(variance>=0?'+':'')+variance.toFixed(0)}</td>
+          <td class="mono ${vClass}">${avgPct!=null?(avgPct>=0?'+':'')+avgPct.toFixed(1)+'%':'—'}</td>
+          <td class="mono">₱${r.bill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+          <td class="mono">${avgRate!=null?'₱'+avgRate.toFixed(2):'—'}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+}
+
+function exportEnergyCSV(){
+  const list=DB.g('energyBills')||[];
+  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','PHP_per_kWh','Bill_PHP','Remarks']];
+  list.slice().sort((a,b)=>(b.period||'').localeCompare(a.period||'')).forEach(b=>{
+    const theo=b.theoreticalKwh||0;
+    const act=b.actualKwh||0;
+    const variance=act-theo;
+    const variancePct=theo>0?(variance/theo*100):'';
+    const rate=act>0?(b.billAmount/act):'';
+    rows.push([b.periodLabel||b.period||'',theo.toFixed(2),act.toFixed(2),variance.toFixed(2),variancePct!==''?variancePct.toFixed(2):'',rate!==''?rate.toFixed(2):'',(b.billAmount||0).toFixed(2),(b.remarks||'').replace(/[\r\n]+/g,' ').replace(/"/g,'""')]);
+  });
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c??'');
+    return /[",\n]/.test(s)?'"'+s+'"':s;
+  }).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='HAMMS_Energy_'+today()+'.csv';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},100);
+  showToast(`Exported ${list.length} energy bill${list.length===1?'':'s'}.`);
+}
+
+function downloadEnergyTemplate(){
+  const rows=[
+    ['Period_YYYY-MM','Actual_kWh','Bill_PHP','Theoretical_kWh','Remarks'],
+    ['2026-01','42500','285000.00','38942.70','January 2026 DORECO bill'],
+    ['2026-02','39800','265500.00','38942.70','February 2026 DORECO bill'],
+    ['2026-03','45200','298000.00','39450.00','New 1.5HP aircon added mid-month']
+  ];
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c??'');
+    return /[",\n]/.test(s)?'"'+s+'"':s;
+  }).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='HAMMS_Energy_Template.csv';
+  document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},100);
+  showToast('Energy CSV template downloaded.');
+}
+
+function importEnergyCSV(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const text=String(ev.target.result||'');
+    const lines=text.split(/\r?\n/).filter(l=>l.trim().length);
+    if(lines.length<2){showToast('CSV has no data rows.','error');return;}
+    const split=line=>{
+      const out=[];let cur='';let inQ=false;
+      for(let i=0;i<line.length;i++){
+        const c=line[i];
+        if(c==='"'){
+          if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;
+        }else if(c===','&&!inQ){out.push(cur);cur='';}
+        else cur+=c;
+      }
+      out.push(cur);
+      return out.map(s=>s.trim());
+    };
+    const header=split(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]+/g,''));
+    const idx={
+      period:header.findIndex(h=>h.includes('period')||h.includes('yyyymm')||h==='period'),
+      actual:header.findIndex(h=>h.includes('actual')&&h.includes('kwh')),
+      amount:header.findIndex(h=>(h.includes('bill')&&h.includes('php'))||h.includes('amount')),
+      theo:header.findIndex(h=>h.includes('theoretical')),
+      remarks:header.findIndex(h=>h.includes('remark'))
+    };
+    if(idx.period<0||idx.actual<0||idx.amount<0){
+      showToast('CSV header must include Period, Actual_kWh, Bill_PHP.','error');
+      e.target.value='';return;
+    }
+    const list=DB.g('energyBills');
+    let added=0,updated=0,skipped=0;
+    for(let i=1;i<lines.length;i++){
+      const cols=split(lines[i]);
+      const periodRaw=cols[idx.period]||'';
+      let period=periodRaw.replace(/[^0-9-]/g,'');
+      const m=period.match(/^(\d{4})-(\d{1,2})$/);
+      if(!m){skipped++;continue;}
+      period=m[1]+'-'+m[2].padStart(2,'0');
+      const actual=parseFloat(cols[idx.actual]);
+      const amount=parseFloat(cols[idx.amount]);
+      const theo=idx.theo>=0?parseFloat(cols[idx.theo]):NaN;
+      const remarks=idx.remarks>=0?(cols[idx.remarks]||''):'';
+      if(isNaN(actual)||isNaN(amount)||actual<=0||amount<=0){skipped++;continue;}
+      const existing=list.find(x=>x.period===period);
+      const theoreticalKwh=isNaN(theo)?(existing?existing.theoreticalKwh:Math.round(calcCurrentTheoreticalKwh()*100)/100):Math.round(theo*100)/100;
+      if(existing){
+        existing.actualKwh=Math.round(actual*100)/100;
+        existing.billAmount=Math.round(amount*100)/100;
+        existing.remarks=remarks;
+        if(!isNaN(theo))existing.theoreticalKwh=theoreticalKwh;
+        existing.periodLabel=periodLabel(period);
+        updated++;
+      }else{
+        list.push({
+          id:DB.nid('energyBills'),
+          period,
+          periodLabel:periodLabel(period),
+          actualKwh:Math.round(actual*100)/100,
+          billAmount:Math.round(amount*100)/100,
+          theoreticalKwh,
+          remarks
+        });
+        added++;
+      }
+    }
+    DB.s('energyBills',list);
+    e.target.value='';
+    renderEnergy();renderDash();
+    showToast(`Imported: ${added} added, ${updated} updated, ${skipped} skipped.`);
+  };
+  r.readAsText(f);
 }
 
 // ═══════════════════════════════════════
@@ -10247,7 +10704,7 @@ async function confirmFactoryReset(){
 
   try{
     const STORES_ALL = ['wo','assets','inventory','issuance','waste','safety',
-      'projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','personnel'];
+      'projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills','personnel'];
     const emptyDB = {};
     STORES_ALL.forEach(k=>{ emptyDB[k]=[]; });
     emptyDB.inpatientToday = 0;

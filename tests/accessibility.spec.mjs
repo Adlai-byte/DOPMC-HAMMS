@@ -13,7 +13,7 @@ async function bootstrapApp(page) {
     document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
     document.getElementById('app').style.visibility = 'visible';
     if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings'];
+    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
     stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
     if (!_memDB.personnel) _memDB.personnel = {};
     navigate('dashboard');
