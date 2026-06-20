@@ -88,7 +88,6 @@ test.describe('Energy — CRUD', () => {
       document.getElementById('m-en-actual').value = '42500';
       document.getElementById('m-en-amount').value = '285000';
       document.getElementById('m-en-demand').value = '292.10';
-      document.getElementById('m-en-genrate').value = '7.1596';
       document.getElementById('m-en-account').value = '01-150-0004075';
       document.getElementById('m-en-meter').value = '09955797';
       document.getElementById('m-en-remarks').value = 'May 2026 DORECO';
@@ -101,7 +100,6 @@ test.describe('Energy — CRUD', () => {
     expect(bill.actualKwh).toBe(42500);
     expect(bill.billAmount).toBe(285000);
     expect(bill.demandKw).toBeCloseTo(292.10, 2);
-    expect(bill.genRate).toBeCloseTo(7.1596, 4);
     expect(bill.accountNo).toBe('01-150-0004075');
     expect(bill.meterNo).toBe('09955797');
     expect(bill.theoreticalKwh).toBeCloseTo(768, 1);
@@ -250,24 +248,35 @@ test.describe('Energy — Reports & Charts', () => {
     expect(hasCanvas).toBe(true);
   });
 
-  test('Category breakdown chart renders by asset mainCategory', async ({ page }) => {
+  test('Monthly DORECO bill chart renders with month labels', async ({ page }) => {
     await bootstrapApp(page);
     await gotoEnergy(page);
+    await page.evaluate(() => {
+      const list = DB.g('energyBills');
+      const base = Math.round(calcCurrentTheoreticalKwh() * 100) / 100;
+      const bills = [
+        { id: DB.nid('energyBills'), period: '2026-01', theoreticalKwh: base, actualKwh: 42500, billAmount: 285000, demandKw: 292.10 },
+        { id: DB.nid('energyBills'), period: '2026-02', theoreticalKwh: base, actualKwh: 39800, billAmount: 265500, demandKw: 285.75 },
+        { id: DB.nid('energyBills'), period: '2026-03', theoreticalKwh: base, actualKwh: 45200, billAmount: 298000, demandKw: 279.40 }
+      ];
+      bills.forEach(b => list.push(b));
+    });
+    await page.evaluate(() => renderEnergy());
     const result = await page.evaluate(() => {
-      const el = document.getElementById('en-category-chart');
+      const el = document.getElementById('en-bill-chart');
       if (!el) return { present: false };
-      const text = el.textContent || '';
-      return {
-        present: true,
-        hasSvg: el.querySelector('svg') !== null,
-        hasAircon: text.includes('Aircon/Refrigeration'),
-        hasBiomedical: text.includes('Biomedical')
-      };
+      const svg = el.querySelector('svg');
+      const textElements = Array.from(svg?.querySelectorAll('text') || []);
+      const hasJan = textElements.some(t => t.textContent.includes('Jan'));
+      const hasFeb = textElements.some(t => t.textContent.includes('Feb'));
+      const hasMar = textElements.some(t => t.textContent.includes('Mar'));
+      return { present: true, hasSvg: svg !== null, hasJan, hasFeb, hasMar };
     });
     expect(result.present).toBe(true);
     expect(result.hasSvg).toBe(true);
-    expect(result.hasAircon).toBe(true);
-    expect(result.hasBiomedical).toBe(true);
+    expect(result.hasJan).toBe(true);
+    expect(result.hasFeb).toBe(true);
+    expect(result.hasMar).toBe(true);
   });
 
   test('Annual summary aggregates per year', async ({ page }) => {
@@ -356,7 +365,6 @@ test.describe('Energy — CSV', () => {
     expect(text).toContain('Actual_kWh');
     expect(text).toContain('Bill_PHP');
     expect(text).toContain('Demand_kW');
-    expect(text).toContain('GenRate_PHP_per_kWh');
     expect(text).toContain('Account_No');
     expect(text).toContain('Meter_No');
     expect(text).toContain('2026-01');
@@ -366,8 +374,8 @@ test.describe('Energy — CSV', () => {
     await bootstrapApp(page);
     await page.evaluate(() => {
       const csv = [
-        'Period_YYYY-MM,Actual_kWh,Bill_PHP,Theoretical_kWh,Demand_kW,GenRate_PHP_per_kWh,Account_No,Meter_No,Remarks',
-        '2026-07,1500,9000,400,285.50,6.2834,01-150-0004075,09955797,July test'
+        'Period_YYYY-MM,Actual_kWh,Bill_PHP,Theoretical_kWh,Demand_kW,Account_No,Meter_No,Remarks',
+        '2026-07,1500,9000,400,285.50,01-150-0004075,09955797,July test'
       ].join('\n');
       const f = new File([csv], 'energy.csv', { type: 'text/csv' });
       const ev = { target: { files: [f], value: '' } };
@@ -382,7 +390,6 @@ test.describe('Energy — CSV', () => {
     expect(bill.billAmount).toBe(9000);
     expect(bill.theoreticalKwh).toBe(400);
     expect(bill.demandKw).toBeCloseTo(285.50, 2);
-    expect(bill.genRate).toBeCloseTo(6.2834, 4);
     expect(bill.accountNo).toBe('01-150-0004075');
     expect(bill.meterNo).toBe('09955797');
     expect(bill.remarks).toBe('July test');
@@ -399,7 +406,6 @@ test.describe('Energy — CSV', () => {
         actualKwh: 1500,
         billAmount: 9000,
         demandKw: 285.50,
-        genRate: 6.2834,
         accountNo: '01-150-0004075',
         meterNo: '09955797',
         theoreticalKwh: 400,
@@ -416,7 +422,6 @@ test.describe('Energy — CSV', () => {
     expect(bill.actualKwh).toBe(1600);
     expect(bill.billAmount).toBe(9500);
     expect(bill.demandKw).toBeCloseTo(285.50, 2);
-    expect(bill.genRate).toBeCloseTo(6.2834, 4);
     expect(bill.accountNo).toBe('01-150-0004075');
     expect(bill.meterNo).toBe('09955797');
     expect(bill.remarks).toBe('Keep me');
