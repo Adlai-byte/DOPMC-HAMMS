@@ -1,7 +1,7 @@
-// HAMMS Service Worker v2.10.1
+// HAMMS Service Worker v2.10.17
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-10-1';
+const CACHE_NAME = 'hamms-v2-10-17';
 const SHELL_FILES = [
   '/',
   '/index.html',
@@ -56,9 +56,13 @@ self.addEventListener('fetch', event => {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache =>
             cache.put(event.request, clone).then(() =>
-              // Limit dynamic cache to 100 entries (evict oldest after put completes)
+              // Limit dynamic cache to 100 entries (protect shell files from eviction)
               cache.keys().then(keys => {
-                if (keys.length > 100) cache.delete(keys[0]);
+                const dynamicKeys = keys.filter(req => {
+                  const path = new URL(req.url, location.origin).pathname;
+                  return !SHELL_FILES.includes(path) && !SHELL_FILES.includes(req.url);
+                });
+                if (dynamicKeys.length > 100) cache.delete(dynamicKeys[0]);
               })
             )
           );

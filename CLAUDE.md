@@ -85,7 +85,7 @@ Rules require `request.auth != null` for all operations. Store writes are restri
 
 ### Navigation / Routing
 
-Client-side tab navigation via `navigate(pageName)`. Each page is a `<div class="page" id="page-{name}">` toggled with `.active` class. 17 pages: `dashboard`, `workorders`, `assets`, `forecast`, `inventory`, `issuance`, `waste`, `wastefcast`, `safety`, `projects`, `water`, `watertank`, `effluent`, `medwaste`, `wwprod`, `reports`, `instructions`.
+Client-side tab navigation via `navigate(pageName)`. Each page is a `<div class="page" id="page-{name}">` toggled with `.active` class. 19 pages: `dashboard`, `workorders`, `assets`, `forecast`, `inventory`, `issuance`, `waste`, `wastefcast`, `safety`, `projects`, `water`, `watertank`, `effluent`, `medwaste`, `wwprod`, `energy`, `fuel`, `reports`, `instructions`.
 
 ### Sync Architecture
 

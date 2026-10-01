@@ -11,8 +11,8 @@ service cloud.firestore {
     }
 
     match /hamms/mainData {
-      allow read: if isNamedUser();
-      allow write: if false;
+      allow read, delete: if isNamedUser();
+      allow create, update: if false;
     }
     match /hammsStores/{store}/records/{docId} {
       allow read: if isNamedUser();

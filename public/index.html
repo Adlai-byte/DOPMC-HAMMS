@@ -184,16 +184,17 @@ document.addEventListener('DOMContentLoaded',()=>{
   --sb-w:       240px;
 }
 html,body{height:100%;}
-body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);display:flex;flex-direction:column;}
+body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);color:var(--text);display:flex;flex-direction:column;overflow:hidden;}
 #app{display:flex;flex:1;min-height:0;}
 
 /* ── SIDEBAR ────────────────────────── */
 #sidebar{
   width:var(--sb-w);background:var(--white);
-  display:flex;flex-direction:column;flex-shrink:0;
-  position:sticky;top:0;height:100vh;overflow:hidden;
+  display:flex;flex-direction:column;
+  position:fixed;top:0;left:0;height:100vh;overflow:hidden;
   border-right:4px solid var(--teal);
   box-shadow:2px 0 8px rgba(0,0,0,0.06);
+  z-index:50;
 }
 .sb-brand{padding:20px 16px 18px;border-bottom:2px solid rgba(10,168,130,0.3);background:linear-gradient(160deg,#051524 0%,#0b2240 60%,#0d2a4a 100%);position:relative;overflow:visible;isolation:isolate;box-shadow:0 0 0 1px rgba(10,168,130,0.2),inset 0 -1px 0 rgba(10,168,130,0.12);}
 .sb-brand::before{content:'';position:absolute;top:0;left:-110%;width:110%;height:2px;background:linear-gradient(90deg,transparent 0%,rgba(13,232,176,0.95) 50%,transparent 100%);animation:brandEdgeSweep 4s cubic-bezier(0.4,0,0.6,1) infinite;z-index:5;pointer-events:none;}
@@ -253,7 +254,7 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .sb-logout-btn:hover{background:rgba(204,51,51,0.7);border-color:rgba(204,51,51,0.9);color:#fff;}
 
 /* ── MAIN ───────────────────────────── */
-#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;margin-left:var(--sb-w);min-height:0;}
 #topbar{
   background:var(--white);border-bottom:1px solid var(--border);
   padding:0 26px;height:54px;display:flex;align-items:center;
@@ -343,7 +344,7 @@ body{font-family:'IBM Plex Sans',sans-serif;font-size:14px;background:var(--bg);
 .chip-alert{background:#fde8e8;color:var(--red);cursor:pointer;display:none;}
 .chip-alert.show{display:inline-flex;}
 
-#content{flex:1;padding:24px 26px;overflow-y:auto;}
+#content{flex:1;padding:24px 26px;overflow-y:auto;min-height:0;}
 
 /* ── PAGES ──────────────────────────── */
 .page{display:none;}.page.active{display:block;}
@@ -398,8 +399,10 @@ tr.row-warn td{background:#fffdf0;}
 .sec-Plumbing{background:#e2f5eb;color:#0f5c2a;}
 .sec-Mechanical{background:#f0e8ff;color:#5a0a8a;}
 .sec-Housekeeping{background:#fce4ec;color:#8a0040;}
-.sec-General{background:#f0f0f0;color:#444;}
 
+.sec-Biomedical{background:#e8f5e9;color:#1b5e20;}
+
+.sec-General{background:#f0f0f0;color:#444;}
 .pri-Low{color:var(--muted);}
 .pri-Medium{color:var(--blue);font-weight:600;}
 .pri-High{color:var(--gold);font-weight:600;}
@@ -536,6 +539,7 @@ tr.row-warn td{background:#fffdf0;}
 
 @media(max-width:1024px){
   #sidebar{width:200px;}
+  #main{margin-left:200px;}
   #content{padding:16px 18px;}
   .stat-grid{grid-template-columns:repeat(auto-fit,minmax(160px,1fr));}
   .filter-bar{flex-wrap:wrap;gap:6px;}
@@ -568,6 +572,7 @@ tr.row-warn td{background:#fffdf0;}
     width:100% !important;
     min-width:0 !important;
     overflow-x:hidden !important;
+    margin-left:0 !important;
   }
 
   /* ── Show hamburger button ── */
@@ -908,8 +913,9 @@ resetIdleTimer();
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
     <div class="nav-group-label">Environmental</div> <!-- PATCH: effluent monitoring -->
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
-    <div class="nav-group-label">Energy</div> <!-- PATCH: energy conservation -->
+    <div class="nav-group-label">Energy</div> <!-- PATCH: energy conservation & fuel monitoring -->
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('energy')"><span class="ni-icon">⚡</span>Energy Conservation</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openFuelSystem()"><span class="ni-icon">⛽</span>Fuel Management System<span style="margin-left:auto;font-size:11px;opacity:0.6;">↗</span></div>
     <div class="nav-group-label">Production</div> <!-- PATCH: production tabs -->
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
@@ -935,7 +941,6 @@ resetIdleTimer();
     </div>
     <div class="tb-right">
       <span class="tb-chip chip-connecting" id="storage-chip" onclick="showFirebaseStatus()" style="cursor:pointer;" title="Click for connection details">Connecting…</span>
-      <span class="tb-chip chip-alert" id="top-inv-alert" onclick="navigate('inventory')">⚠ Low Stock</span>
       <span class="tb-chip chip-date" id="today-chip"></span>
       <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
     </div>
@@ -971,9 +976,7 @@ resetIdleTimer();
             </div>
             <div style="font-size:11px;color:var(--muted);" id="pers-total-label"></div>
           </div>
-          <span id="dash-pm-alarm-summary" style="font-size:12px;color:var(--muted);"></span>
         </div>
-        <div class="dashboard-top-right" id="dash-energy-summary-mini"></div>
       </div>
       <div id="dash-export-reminder" style="display:none;"></div>
       <div class="stat-grid" id="dash-stats"></div>
@@ -1010,7 +1013,7 @@ resetIdleTimer();
     <div id="page-workorders" class="page">
       <div style="display:flex;justify-content:space-between;align-items:center;" class="mb14">
         <div class="filter-bar">
-          <select id="wof-section" onchange="_woShowAll=false;renderWO()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select>
+          <select id="wof-section" onchange="_woShowAll=false;renderWO()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select>
           <select id="wof-status" onchange="_woShowAll=false;renderWO()"><option value="">All Status</option><option>Open</option><option>In Progress</option><option>Closed</option><option>Overdue</option><option>Late Completed</option></select>
           <select id="wof-priority" onchange="_woShowAll=false;renderWO()"><option value="">All Priority</option><option>Low</option><option>Medium</option><option>High</option><option>Emergency</option></select>
           <select id="wof-month" onchange="renderWO()"><option value="">All Months</option></select>
@@ -1041,7 +1044,7 @@ resetIdleTimer();
     <div id="page-assets" class="page">
       <div style="display:flex;justify-content:space-between;align-items:center;" class="mb14">
         <div class="filter-bar">
-          <select id="af-section" onchange="renderAssets()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select>
+          <select id="af-section" onchange="renderAssets()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select>
           <input type="hidden" id="af-maincat">
           <select id="af-pms" onchange="renderAssets()"><option value="">All PMS Status</option><option>Normal</option><option>Upcoming</option><option>Due Today</option><option>Overdue</option><option>Critical Overdue</option><option>No Schedule</option></select>
           <select id="af-condition" onchange="renderAssets()"><option value="">All Conditions</option><option>Good</option><option>Fair</option><option>Poor</option><option>For Replacement</option></select>
@@ -1419,7 +1422,7 @@ resetIdleTimer();
     <div id="page-waste" class="page">
       <div style="display:flex;justify-content:space-between;align-items:center;" class="mb14">
         <div class="filter-bar">
-          <select id="wastef-type" onchange="renderWaste()"><option value="">All Waste Types</option><option>Infectious</option><option>Pathological</option><option>Chemical</option><option>Pharmaceutical</option><option>Sharps</option><option>General</option><option>Radioactive</option></select>
+          <select id="wastef-type" onchange="renderWaste()"><option value="">All Waste Types</option><option>Infectious</option><option>Pathological</option><option>Chemical</option><option>Pharmaceutical</option><option>Sharps</option><option>Biodegradable</option><option>Recyclable</option><option>Residual</option><option>FOG</option><option>Radioactive</option></select>
           <select id="wastef-status" onchange="renderWaste()"><option value="">All Status</option><option>OK</option><option>Warning</option><option>Critical</option></select>
           <select id="wastef-month" onchange="renderWaste()"><option value="">All Months</option></select>
           <select id="wastef-year" onchange="renderWaste()"><option value="">All Years</option></select>
@@ -1447,7 +1450,7 @@ resetIdleTimer();
 
     <!-- ══════ WASTE FORECAST -->
     <div id="page-wastefcast" class="page">
-      <div class="info-box">Averages from last <strong>4 weeks</strong>. EMB thresholds: Infectious/Pathological/Chemical ≥10 · Sharps ≥5 · Radioactive ≥1 · Pharmaceutical ≥20 · General ≥50 (kg/week).</div>
+      <div class="info-box">Averages from last <strong>4 weeks</strong>. EMB thresholds: Infectious/Pathological/Chemical ≥10 · Sharps ≥5 · Radioactive ≥1 · Pharmaceutical ≥20 · Biodegradable ≥30 · Recyclable ≥25 · Residual ≥20 · FOG ≥5 (kg/week).</div>
       <div class="two-col mb18">
         <div class="card"><div class="card-header"><h3>Avg. Weekly Volume by Type (kg)</h3></div><div class="card-body" id="wfc-bars"></div></div>
         <div class="card"><div class="card-header"><h3>Next Week Forecast &amp; EMB Risk</h3></div><div class="card-body" id="wfc-risk"></div></div>
@@ -1456,7 +1459,7 @@ resetIdleTimer();
         <div class="card-header"><h3>Weekly Waste Summary — Last 8 Weeks</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Weekly Waste Summary</caption>
-          <thead><tr><th scope="col">Week</th><th scope="col">Infectious</th><th scope="col">Pathological</th><th scope="col">Chemical</th><th scope="col">Pharma</th><th scope="col">Sharps</th><th scope="col">General</th><th scope="col">Radioactive</th><th scope="col">Total (kg)</th></tr></thead>
+          <thead><tr><th scope="col">Week</th><th scope="col">Infectious</th><th scope="col">Pathological</th><th scope="col">Chemical</th><th scope="col">Pharma</th><th scope="col">Sharps</th><th scope="col">Biodegradable</th><th scope="col">Recyclable</th><th scope="col">Residual</th><th scope="col">FOG</th><th scope="col">Radioactive</th><th scope="col">Total (kg)</th></tr></thead>
           <tbody id="wfc-tbody"></tbody>
         </table></div>
       </div>
@@ -1516,7 +1519,7 @@ resetIdleTimer();
               Application: <strong style="color:var(--teal);">HAMMS v2.6.0</strong><br>
               Storage: Firebase Firestore live data source + optional JSON manual backup<br>
               Institution: DOPMC – GSD Division<br>
-              Sections: CMW · Electrical · Plumbing · Mechanical · Housekeeping<br>
+              Sections: CMW · Electrical · Plumbing · Mechanical · Housekeeping · Biomedical<br>
               Inventory Alert: Below 20% of original stock OR below Min. Level<br>
               Overdue Threshold: Status is not Closed/Completed AND current date is past the Target Completion Date<br>
               <hr style="border:none;border-top:1px solid var(--border);margin:8px 0;">
@@ -1655,10 +1658,19 @@ resetIdleTimer();
         </div>
       </div>
 
+      <div class="card mb14">
+        <div class="card-header"><h3>Theoretical Load by Asset Category (kWh/month)</h3></div>
+        <div class="card-body"><div class="chart-wrap" id="en-category-chart" role="img" aria-label="Bar chart of theoretical load by asset category"></div></div>
+      </div>
+
           <div class="two-col mb14">
         <div class="card">
-          <div class="card-header"><h3>Monthly Consumption — Theoretical vs Actual (kWh)</h3></div>
-          <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption versus actual DORECO reading"></div></div>
+          <div class="card-header"><h3>Theoretical Consumption (kWh)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Actual Consumption (kWh)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-actual-chart" role="img" aria-label="12-month bar chart of actual energy consumption"></div></div>
         </div>
         <div class="card">
           <div class="card-header"><h3>Monthly DORECO Bills (₱)</h3></div>
@@ -1670,7 +1682,7 @@ resetIdleTimer();
         <div class="card-header"><h3>Bill Records (Monthly)</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Monthly Energy Bills</caption>
-          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">Demand (kW)</th><th scope="col">₱ / kWh</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">Demand (kW)</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="energy-tbody"></tbody>
         </table></div>
       </div>
@@ -1684,6 +1696,103 @@ resetIdleTimer();
         </table></div>
       </div>
     </div>
+
+    <!-- ══════ FUEL MANAGEMENT SYSTEM PORTAL ══════ -->
+    <div id="page-fuel" class="page">
+      <div style="max-width:960px;">
+        <div class="card mb18" style="border-top:4px solid var(--teal);box-shadow:var(--shadow-md);">
+          <div class="card-body" style="padding:24px 28px;">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:16px;">
+              <div>
+                <div style="display:inline-flex;align-items:center;gap:6px;background:var(--success-bg);color:var(--success-text);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700;margin-bottom:8px;">
+                  <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#10b981;"></span>
+                  LIVE CONNECTED SYSTEM
+                </div>
+                <h2 style="font-size:22px;font-weight:800;color:var(--navy);letter-spacing:0.3px;margin:0 0 4px 0;">
+                  Fuel Management System
+                </h2>
+                <div style="font-size:14px;color:var(--teal);font-weight:600;margin-bottom:8px;">
+                  Davao Oriental Provincial Medical Center · General Services Division
+                </div>
+                <div style="font-size:13px;color:var(--muted);line-height:1.8;max-width:620px;">
+                  Centralized monitoring of hospital fuel consumption, emergency standby generator reserves, ambulance and patient transport fleet dispatch, and bulk diesel and gasoline tank replenishment.
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;min-width:220px;">
+                <a href="https://fuel-monitoring-system-24eea.web.app/" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;font-size:14px;font-weight:700;text-decoration:none;border-radius:6px;box-shadow:0 4px 12px rgba(15,140,110,0.35);text-align:center;">
+                  Launch Live Portal ↗
+                </a>
+                <button type="button" class="btn btn-outline" onclick="copyFuelSystemUrl()" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;font-size:12px;font-weight:600;">
+                  📋 Copy System URL
+                </button>
+              </div>
+            </div>
+            <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--muted);">
+              <span>🔗 Target URL:</span>
+              <a href="https://fuel-monitoring-system-24eea.web.app/" target="_blank" rel="noopener noreferrer" style="color:var(--teal);font-family:monospace;font-weight:600;text-decoration:underline;">
+                https://fuel-monitoring-system-24eea.web.app/
+              </a>
+              <span style="color:var(--border);">|</span>
+              <span>Platform: <strong style="color:var(--navy);">Google Cloud Firebase</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3 Feature Highlight Cards -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-bottom:18px;">
+          <div class="card">
+            <div class="card-header" style="background:#f4f7fb;">
+              <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;margin:0;">
+                <span>⚡</span> Generator Fuel Monitoring
+              </h3>
+            </div>
+            <div class="card-body" style="font-size:12.5px;color:var(--muted);line-height:1.7;">
+              Tracks diesel supply and running hours for DOPMC standby power generator sets. Ensures critical medical wards, ICU, and OR suites maintain continuous power during electrical grid interruptions.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header" style="background:#f4f7fb;">
+              <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;margin:0;">
+                <span>🚑</span> Ambulance &amp; Fleet Logistics
+              </h3>
+            </div>
+            <div class="card-body" style="font-size:12.5px;color:var(--muted);line-height:1.7;">
+              Monitors fuel disbursements, kilometer tracking, and consumption efficiency for emergency patient transport ambulances and hospital General Services service vehicles.
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header" style="background:#f4f7fb;">
+              <h3 style="display:flex;align-items:center;gap:8px;font-size:14px;margin:0;">
+                <span>🛢</span> Bulk Storage &amp; Reorders
+              </h3>
+            </div>
+            <div class="card-body" style="font-size:12.5px;color:var(--muted);line-height:1.7;">
+              Maintains real-time visibility into main storage tank capacity, minimum reorder thresholds, and delivery purchase orders to guarantee uninterrupted hospital operations.
+            </div>
+          </div>
+        </div>
+
+        <!-- Direct Access Box -->
+        <div class="card">
+          <div class="card-header"><h3 style="font-size:14px;margin:0;">Direct System Access &amp; Support</h3></div>
+          <div class="card-body" style="font-size:13px;line-height:1.9;">
+            <p style="margin-bottom:12px;">
+              The <strong>Fuel Monitoring System</strong> is an external live service connected to the DOPMC operational suite. To view fuel dashboards, record fuel replenishment, or generate fuel allocation reports, click the launch button below:
+            </p>
+            <div style="background:var(--light);border:1px solid var(--border);border-radius:6px;padding:16px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;">
+              <div>
+                <strong style="color:var(--navy);display:block;font-size:14px;">DOPMC Fuel Monitoring System — Live Portal</strong>
+                <span style="font-size:12px;color:var(--muted);">Hosted at <code>https://fuel-monitoring-system-24eea.web.app/</code></span>
+              </div>
+              <a href="https://fuel-monitoring-system-24eea.web.app/" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding:10px 18px;font-size:13px;font-weight:700;text-decoration:none;">
+                Open in New Tab ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ══════ INSTRUCTIONS -->
     <div id="page-instructions" class="page">
       <div style="max-width:860px;">
@@ -2050,11 +2159,11 @@ resetIdleTimer();
       <datalist id="wo-loc-list"></datalist>
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Section *</label>
-          <select id="m-wo-section" onchange="fillAssetDrop()"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select></div>
+          <select id="m-wo-section" onchange="fillAssetDrop()"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select></div>
         <div class="form-group"><label>Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(filter assets by room)</span></label>
           <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Select section first, then type room…" oninput="clearTimeout(window._fadTimer);window._fadTimer=setTimeout(()=>fillAssetDrop(document.getElementById('m-wo-asset').value),200)" autocomplete="off"></div>
         <div class="form-group"><label>Asset</label>
-          <select id="m-wo-asset"><option value="">Select section first…</option></select>
+          <select id="m-wo-asset" onchange="onWOAssetChange()"><option value="">Select section first…</option></select>
           <div class="form-hint" id="wo-asset-hint" style="margin-top:3px;"></div></div>
       </div>
       <div class="form-grid fg-2 mb14">
@@ -2154,7 +2263,7 @@ resetIdleTimer();
           <input type="hidden" id="m-a-class">
           <input type="hidden" id="m-a-type">
           <div class="form-group"><label>Section *</label>
-            <select id="m-a-section"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select></div>
+            <select id="m-a-section"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select></div>
           <div class="form-group" style="grid-column:1/-1;"><label>Asset Name *</label><input type="text" id="m-a-name" placeholder="e.g. Split Type Aircon — Room 201" oninput="computeEnergy()"></div>
           <div class="form-group"><label>Brand / Model</label><input type="text" id="m-a-brand"></div>
           <div class="form-group"><label>Serial Number <span style="font-weight:400;font-style:italic;">(if applicable)</span></label>
@@ -2187,7 +2296,6 @@ resetIdleTimer();
         <input type="hidden" id="m-a-building"><input type="hidden" id="m-a-floor">
         <input type="hidden" id="m-a-roomno"><input type="hidden" id="m-a-roomname">
         <input type="hidden" id="m-a-dept"><select id="m-a-roomtype" style="display:none;"></select>
-        <input type="hidden" id="m-a-loc">
       </div>
 
       <!-- TAB: PMS Schedule -->
@@ -2460,7 +2568,7 @@ resetIdleTimer();
         <div class="form-group"><label>Qty to Issue *</label><input type="number" id="m-iss-qty" min="0.01" step="0.01"></div>
         <div class="form-group"><label>Date</label><input type="date" id="m-iss-date"></div>
         <div class="form-group"><label>Issued To (Name) *</label><input type="text" id="m-iss-to" placeholder="Name of withdrawee"></div>
-        <div class="form-group"><label>Section</label><select id="m-iss-section"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option></select></div>
+        <div class="form-group"><label>Section</label><select id="m-iss-section"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select></div>
         <div class="form-group"><label>WO Reference</label><input type="text" id="m-iss-wo" placeholder="e.g. WO-0012 or N/A"></div>
       </div>
       <div class="form-grid" style="margin-top:12px;"><div class="form-group"><label>Remarks</label><textarea id="m-iss-remarks" style="min-height:44px;"></textarea></div></div>
@@ -2479,7 +2587,7 @@ resetIdleTimer();
     <div class="modal-body">
       <div class="form-grid fg-2">
         <div class="form-group"><label>Date *</label><input type="date" id="m-w-date"></div>
-        <div class="form-group"><label>Waste Type *</label><select id="m-w-type"><option value="">Select…</option><option>Infectious</option><option>Pathological</option><option>Chemical</option><option>Pharmaceutical</option><option>Sharps</option><option>General</option><option>Radioactive</option></select></div>
+        <div class="form-group"><label>Waste Type *</label><select id="m-w-type"><option value="">Select…</option><option>Infectious</option><option>Pathological</option><option>Chemical</option><option>Pharmaceutical</option><option>Sharps</option><option>Biodegradable</option><option>Recyclable</option><option>Residual</option><option>FOG</option><option>Radioactive</option></select></div>
         <div class="form-group"><label>Volume / Weight (kg) *</label><input type="number" id="m-w-vol" min="0" step="0.01"></div>
         <div class="form-group"><label>Disposal Contractor / Hauler</label><input type="text" id="m-w-contractor"></div>
         <div class="form-group"><label>EMB Compliance Status</label><select id="m-w-emb"><option>OK</option><option>Warning</option><option>Critical</option></select></div>
@@ -3786,7 +3894,7 @@ if(navigator.serviceWorker){
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment',energy:'Energy Conservation'}; // PATCH: effluent monitoring + production tabs + energy conservation
+const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment',energy:'Energy Conservation',fuel:'Fuel Management System'}; // PATCH: effluent monitoring + production tabs + energy conservation + fuel monitoring
 let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null,_editEnergyBill=null; // PATCH: issuance log edit support + energy bill edit support
 const _editSnapshots=new Map(); // Map<store, {store, id, _v}> — optimistic concurrency per store
 function captureEditSnapshot(store,id){
@@ -3849,7 +3957,7 @@ function navigate(p, _noPush){
   const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
-  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();}}; // PATCH: added medwaste + energy conservation
+  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
   if(r[p])r[p]();
 }
 window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
@@ -3857,6 +3965,28 @@ window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchPara
 // ═══════════════════════════════════════
 //  UTILS
 // ═══════════════════════════════════════
+function openFuelSystem(){
+  if(typeof closeSidebar === 'function' && window.innerWidth <= 768) closeSidebar();
+  const a = document.createElement('a');
+  a.href = 'https://fuel-monitoring-system-24eea.web.app/';
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+function copyFuelSystemUrl(){
+  const url='https://fuel-monitoring-system-24eea.web.app/';
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(()=>{
+      showToast('Fuel Monitoring System URL copied to clipboard!','success');
+    }).catch(()=>{
+      prompt('Copy Fuel System URL:', url);
+    });
+  } else {
+    prompt('Copy Fuel System URL:', url);
+  }
+}
 const today=()=>new Date().toISOString().split('T')[0];
 const addDays=(d,n)=>{const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];};
 const diffDays=(a,b)=>{if(!a||!b)return null;return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);};
@@ -3870,7 +4000,7 @@ const overdue=w=>(w.status!=='Closed'&&w.status!=='Completed')&&w.targetCompleti
 const lateCompleted=w=>(w.status==='Closed'||w.status==='Completed')&&w.targetCompletionDate&&w.dateEnd&&w.dateEnd>w.targetCompletionDate;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-function secTag(s){const cls={'CMW':'sec-CMW','Electrical':'sec-Electrical','Plumbing':'sec-Plumbing','Mechanical':'sec-Mechanical','Housekeeping':'sec-Housekeeping','General':'sec-General'};return`<span class="sec-tag ${cls[s]||'sec-General'}">${escapeHTML(s)}</span>`;}
+function secTag(s){const cls={'CMW':'sec-CMW','Electrical':'sec-Electrical','Plumbing':'sec-Plumbing','Mechanical':'sec-Mechanical','Housekeeping':'sec-Housekeeping','Biomedical':'sec-Biomedical','General':'sec-General'};return`<span class="sec-tag ${cls[s]||'sec-General'}">${escapeHTML(s)}</span>`;}
 function stBadge(s){const m={'Open':'bs-open','Closed':'bs-closed','Overdue':'bs-overdue','In Progress':'bs-inprog'};return`<span class="bs ${m[s]||''}">${escapeHTML(s)}</span>`;}
 function emblBadge(s){const m={'OK':'bs-ok','Warning':'bs-warn','Critical':'bs-crit'};return`<span class="bs ${m[s]||''}">${escapeHTML(s)}</span>`;}
 function condBadge(s){if(s==='Good')return'<span class="bs bs-ok">Good</span>';if(s==='Fair')return'<span class="bs bs-warn">Fair</span>';return`<span class="bs bs-poor">${escapeHTML(s)}</span>`;}
@@ -3889,8 +4019,18 @@ function normYMD(dateStr){
   if(iso)return `${iso[1]}-${iso[2]}-${iso[3]}`;
   const slash=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
   if(slash){
-    const mm=String(parseInt(slash[1],10)).padStart(2,'0');
-    const dd=String(parseInt(slash[2],10)).padStart(2,'0');
+    const p1=parseInt(slash[1],10);
+    const p2=parseInt(slash[2],10);
+    let mm, dd;
+    if(p1>12 && p2<=12){
+      // DD/MM/YYYY format
+      dd=String(p1).padStart(2,'0');
+      mm=String(p2).padStart(2,'0');
+    }else{
+      // MM/DD/YYYY format (standard US or ambiguous <= 12)
+      mm=String(p1).padStart(2,'0');
+      dd=String(p2).padStart(2,'0');
+    }
     return `${slash[3]}-${mm}-${dd}`;
   }
   const dt=new Date(s);
@@ -3928,6 +4068,153 @@ function matchMonthYear(dateStr,prefix){
   if(y&&!ymd.startsWith(y))return false;
   if(m&&parseInt(ymd.substring(5,7),10)!==parseInt(m,10))return false;
   return true;
+}
+
+// ── Location Matcher & Helpers (Prevents cross-room WO leaks e.g. RM 317 -> RM 316/306 & OR vs Medical Records) ──
+function escapeRegex(s){
+  return String(s||'').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function normalizeLocToken(s){
+  if(!s) return '';
+  let c = String(s).trim().toLowerCase().replace(/[\-_,.]+/g, ' ').replace(/\s+/g, ' ').trim();
+  const ALIASES = {
+    'or': 'operating room',
+    'op room': 'operating room',
+    'operating': 'operating room',
+    'operating room': 'operating room',
+    'operating theater': 'operating room',
+    'operating theatre': 'operating room',
+    'er': 'emergency room',
+    'emergency': 'emergency room',
+    'emergency room': 'emergency room',
+    'emergency dept': 'emergency room',
+    'emergency department': 'emergency room',
+    'ed': 'emergency room',
+    'icu': 'icu',
+    'intensive care unit': 'icu',
+    'nicu': 'nicu',
+    'neonatal icu': 'nicu',
+    'picu': 'picu',
+    'pediatric icu': 'picu',
+    'opd': 'opd',
+    'opd clinic': 'opd',
+    'outpatient': 'opd',
+    'outpatient dept': 'opd',
+    'outpatient department': 'opd',
+    'dr': 'delivery room',
+    'delivery room': 'delivery room',
+    'lab': 'laboratory',
+    'laboratory': 'laboratory',
+    'rad': 'radiology',
+    'radiology': 'radiology',
+    'xray': 'radiology',
+    'x ray': 'radiology',
+    'pharm': 'pharmacy',
+    'pharmacy': 'pharmacy',
+    'medrec': 'medical records',
+    'medical records': 'medical records',
+    'health records': 'medical records',
+    'mr': 'medical records',
+    'ward': 'ward',
+    'wrd': 'ward',
+    'dietary': 'dietary',
+    'diet': 'dietary',
+    'dietary dept': 'dietary',
+    'dietary department': 'dietary',
+    'dietary section': 'dietary',
+    'dietary kitchen': 'dietary',
+    'dietary service': 'dietary',
+    'dietary unit': 'dietary',
+    'kitchen': 'dietary',
+    'main kitchen': 'dietary'
+  };
+  if(ALIASES[c]) return ALIASES[c];
+  const stripped = c.replace(/\b(room|rm|bldg|building|dept|department|clinic|area|unit)\b/gi, '').replace(/\s+/g, ' ').trim();
+  if(ALIASES[stripped]) return ALIASES[stripped];
+  return stripped || c;
+}
+
+function isCirculationArea(s){
+  return /\b(corridor|hallway|lobby|ramp|stairway|stair|stairs|entrance|exit|hall)\b/i.test(s);
+}
+
+function isWordSubset(shorter, longer){
+  if(!shorter || !longer) return false;
+  if(shorter.length <= 2) return false;
+  const pattern = new RegExp('(^|\\s)' + escapeRegex(shorter) + '($|\\s)', 'i');
+  return pattern.test(longer);
+}
+
+function isSameLocation(loc1, loc2){
+  if(!loc1 || !loc2) return false;
+  const s1 = String(loc1).trim().toLowerCase();
+  const s2 = String(loc2).trim().toLowerCase();
+  if(s1 === s2) return true;
+
+  // Circulation discriminator: corridor/hallway/lobby/ramp/stairs cannot match a room
+  if(isCirculationArea(s1) !== isCirculationArea(s2)) return false;
+
+  // Extract room number token if present (e.g. "316", "316a", "306", "101")
+  const numRegex = /\b\d+[a-z]?\b/i;
+  const m1 = s1.match(numRegex);
+  const m2 = s2.match(numRegex);
+  const n1 = m1 ? m1[0].toLowerCase() : null;
+  const n2 = m2 ? m2[0].toLowerCase() : null;
+
+  // If BOTH specify room numbers, they MUST match (prevents RM 317 matching RM 316 or RM 306)
+  if(n1 && n2){
+    if(n1 !== n2) return false;
+    // Location category discriminator (prevents "Room 1" matching "Ward 1", "OR 1", "ICU 1", etc.)
+    const getLocType = (s, num) => {
+      const normS = s.replace(/\boperating\s*rooms?\b/gi, 'or')
+                     .replace(/\bemergency\s*rooms?\b/gi, 'er')
+                     .replace(/\bdelivery\s*rooms?\b/gi, 'dr')
+                     .replace(/\bintensive\s*care(\s*unit)?\b/gi, 'icu');
+      const adjMatch = normS.match(new RegExp('(?:(ward|wrd|or|operating|icu|intensive|dr|delivery|er|emergency|cr|toilet|restroom|comfort\\s*room|floor|flr|bldg|building|room|rm|rm\\.)[\\s\\-_.]*)' + escapeRegex(num) + '|' + escapeRegex(num) + '[\\s\\-_.]*(?:(ward|wrd|or|operating|icu|intensive|dr|delivery|er|emergency|cr|toilet|restroom|comfort\\s*room|floor|flr|bldg|building|room|rm|rm\\.))', 'i'));
+      const catWord = adjMatch ? (adjMatch[1] || adjMatch[2] || '').toLowerCase() : null;
+      const target = catWord || normS;
+      if(/\b(ward|wrd)\b/i.test(target)) return 'ward';
+      if(/\b(or|operating)\b/i.test(target)) return 'or';
+      if(/\b(icu|intensive)\b/i.test(target)) return 'icu';
+      if(/\b(dr|delivery)\b/i.test(target)) return 'dr';
+      if(/\b(er|emergency)\b/i.test(target)) return 'er';
+      if(/\b(cr|toilet|restroom|comfort\s*room)\b/i.test(target)) return 'cr';
+      if(/\b(floor|flr)\b/i.test(target)) return 'floor';
+      if(/\b(bldg|building)\b/i.test(target)) return 'building';
+      if(/\b(room|rm|rm\.)\b/i.test(target)) return 'room';
+      return null;
+    };
+    const t1 = getLocType(s1, n1);
+    const t2 = getLocType(s2, n2);
+    if(t1 && t2 && t1 !== t2) return false;
+
+    const cleanPrefix = s => s.replace(/\b(room|rm|rm\.|bldg|building|floor|flr|dept|department|ward|wrd)\b/gi, '').replace(/[\s\-_,.]+/g, ' ').trim();
+    const c1 = cleanPrefix(s1);
+    const c2 = cleanPrefix(s2);
+    if(c1 === c2) return true;
+    if((!t1 && c1 === n1) || (!t2 && c2 === n2)) return true;
+    const p1 = c1.replace(numRegex, '').trim();
+    const p2 = c2.replace(numRegex, '').trim();
+    if(!p1 || !p2) return true;
+    const normP1 = normalizeLocToken(p1);
+    const normP2 = normalizeLocToken(p2);
+    if(normP1 && normP2 && normP1 === normP2) return true;
+    return isWordSubset(c1, c2) || isWordSubset(c2, c1);
+  }
+
+  // If NEITHER has room numbers (e.g. "ICU", "OPD", "Emergency Room", "Medical Records", "OR")
+  if(!n1 && !n2){
+    const norm1 = normalizeLocToken(s1);
+    const norm2 = normalizeLocToken(s2);
+    if(norm1 && norm2){
+      if(norm1 === norm2) return true;
+      if(isWordSubset(norm1, norm2) || isWordSubset(norm2, norm1)) return true;
+    }
+    return false;
+  }
+
+  return false;
 }
 
 // ═══════════════════════════════════════
@@ -4082,9 +4369,14 @@ function buildMonthlyData(records,dateField,valueField,monthCount){
 //  INVENTORY ALERT LOGIC
 // ═══════════════════════════════════════
 function invStockStatus(item){
-  const pct=item.originalQty>0?(item.qty/item.originalQty)*100:100;
-  if(item.qty<=item.minLevel||pct<=20)return'Critical';
-  if(pct<=40||item.qty<=item.minLevel*1.5)return'Warning';
+  const min=item.minLevel||0;
+  if(item.qty<=0)return'Critical';
+  if(min>0){
+    const pct=(item.qty/min)*100;
+    if(pct<=100)return'Critical';
+    if(pct<=150)return'Warning';
+    return'OK';
+  }
   return'OK';
 }
 function updateInvAlerts(){
@@ -4094,9 +4386,6 @@ function updateInvAlerts(){
   const nb=document.getElementById('nb-inv');
   nb.textContent=low.length;nb.classList.toggle('show',low.length>0);
   document.getElementById('sb-inv-alert').classList.toggle('visible',crit.length>0);
-  const chip=document.getElementById('top-inv-alert');
-  chip.classList.toggle('show',low.length>0);
-  if(low.length)chip.textContent='⚠ '+low.length+' Low Stock';
   const box=document.getElementById('dash-inv-alert');
   const lst=document.getElementById('dash-inv-alert-list');
   if(low.length){
@@ -4273,7 +4562,8 @@ function fillAssetDrop(sel=''){
     'Plumbing':['Plumbing / Sanitary'],
     'Mechanical':['HVAC / Refrigeration','Mechanical'],
     'CMW':['Civil / Architectural','Safety / Fire Protection','Environmental / Waste'],
-    'Housekeeping':['Housekeeping']
+    'Housekeeping':['Housekeeping'],
+    'Biomedical':['Biomedical']
   };
   const sec=document.getElementById('m-wo-section').value;
   const locRaw=(document.getElementById('m-wo-loc')?.value||'').trim();
@@ -4306,18 +4596,31 @@ function fillAssetDrop(sel=''){
   // ── Step 3: filter & score by location ────────────────────
   let assets=sectionFiltered;
   if(loc.length>=1){
-    // score: 3=room number exact, 2=room name/dept exact, 1=partial anywhere
+    // score: 3=exact/canonical location match, 1=partial word match
+    const locClean = loc.replace(/[_]+$/, '').trim();
     const scored=assets.map(a=>{
       const rn=(a.roomNumber||'').toLowerCase();
       const rm=(a.roomName||'').toLowerCase();
       const dp=(a.department||'').toLowerCase();
       const lc=(a.location||'').toLowerCase();
-      if(rn===loc||rm===loc||dp===loc)return{a,score:3};
-      if(rn.includes(loc)||loc.includes(rn)&&rn)return{a,score:2};
-      if(rm.includes(loc)||dp.includes(loc)||lc.includes(loc))return{a,score:1};
-      return{a,score:0};
+      const aLocs=[rn,rm,dp,lc].filter(Boolean);
+
+      // 1. Exact string match or canonical isSameLocation match
+      if(aLocs.some(al => al === loc || al === locClean || isSameLocation(locClean, al) || isSameLocation(loc, al))) return {a, score:3};
+
+      // 2. Word-boundary or token match (prevents "icu" matching "nicu/picu", "or" matching "medical records")
+      const wordMatch = target => {
+        if(!target) return false;
+        if(locClean.length <= 3){
+          return new RegExp('\\b' + escapeRegex(locClean) + '\\b', 'i').test(target);
+        }
+        return target.toLowerCase().includes(locClean);
+      };
+
+      if(aLocs.some(al => wordMatch(al))) return {a, score:1};
+      return {a, score:0};
     }).filter(x=>x.score>0);
-    // if any scored, show only those; else fall back to section-only list (with warning)
+    // if any scored, show only those; else fall back to empty state
     if(scored.length){
       scored.sort((a,b)=>b.score-a.score);
       assets=scored.map(x=>x.a);
@@ -4345,6 +4648,7 @@ function fillAssetDrop(sel=''){
     const locLabel=locParts.length?' · '+locParts[0]:'';
     const typLabel=a.assetClass?' ['+a.assetClass+']':'';
     o.textContent=code+' – '+a.name+typLabel+locLabel;
+    o.dataset.location=a.location||a.roomName||a.roomNumber||'';
     if(a.name===sel)o.selected=true;
     el.appendChild(o);
   });
@@ -4364,6 +4668,15 @@ function fillAssetDrop(sel=''){
     }else{
       hint.textContent='';
     }
+  }
+}
+function onWOAssetChange(){
+  const el=document.getElementById('m-wo-asset');
+  const locEl=document.getElementById('m-wo-loc');
+  if(!el||!locEl)return;
+  const opt=el.options[el.selectedIndex];
+  if(opt&&opt.dataset?.location&&!locEl.value.trim()){
+    locEl.value=opt.dataset.location;
   }
 }
 function addMaterialRow(){
@@ -4428,10 +4741,16 @@ function saveWO(){
     }
   });
   DB.s('inventory',inv);DB.s('issuance',issuanceLog);
+  let woLoc=(document.getElementById('m-wo-loc').value||'').trim();
+  const woAsset=document.getElementById('m-wo-asset').value;
+  if(!woLoc&&woAsset){
+    const selAsset=DB.g('assets').find(a=>a.name===woAsset&&(!sec||a.section===sec));
+    if(selAsset)woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
+  }
   const o={
     id:newWoId,code:newWoCode,section:sec,
-    asset:document.getElementById('m-wo-asset').value,
-    location:document.getElementById('m-wo-loc').value,
+    asset:woAsset,
+    location:woLoc,
     priority:document.getElementById('m-wo-priority').value,
     status:document.getElementById('m-wo-status').value,
     dateStart:document.getElementById('m-wo-dstart').value,
@@ -4471,9 +4790,18 @@ async function delWO(id){
 async function delAsset(id){return delRecord('assets',id,'asset',renderAssets);}
 function viewHistory(idOrName){
   let name=idOrName;
-  if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);name=a?a.name:'';}
-  const wos=DB.g('wo').filter(w=>w.asset===name);
-  document.getElementById('mo-history-title').textContent='Repair History – '+name;
+  let targetAsset=null;
+  if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);targetAsset=a;name=a?a.name:'';}
+  const assetLocs=targetAsset?[targetAsset.location,targetAsset.roomNumber,targetAsset.roomName,targetAsset.building].filter(Boolean):[];
+  const wos=DB.g('wo').filter(w=>{
+    if(w.asset!==name) return false;
+    if(!assetLocs.length) return true;
+    const woLoc=(w.location||'').trim();
+    if(!woLoc) return true;
+    return assetLocs.some(al=>al.toLowerCase().trim()===woLoc.toLowerCase()||isSameLocation(woLoc,al));
+  });
+  const locSuffix=targetAsset&&(targetAsset.roomNumber||targetAsset.location)?' ('+(targetAsset.roomNumber||targetAsset.location)+')':'';
+  document.getElementById('mo-history-title').textContent='Repair History – '+name+locSuffix;
   document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
   openModal('mo-history');
 }
@@ -4540,7 +4868,8 @@ function saveManualIssue(){
   stampRecord(item);
   DB.s('inventory',inv);
   const log=DB.g('issuance');
-  log.push({id:DB.nid('issuance'),code:generateModuleCode('issuance',[SEC_ABV[document.getElementById('m-iss-section').value]||'GEN']),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:document.getElementById('m-iss-section').value,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
+  const issSec=document.getElementById('m-iss-section').value||item.category||'CMW';
+  log.push({id:DB.nid('issuance'),code:generateModuleCode('issuance',[SEC_ABV[issSec]||'GEN']),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:issSec,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
   DB.s('issuance',log);closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance recorded.');
 }
 
@@ -4623,15 +4952,48 @@ function openWasteModal(){
   document.getElementById('waste-photo-wrap').style.display='none';
   document._wPhoto=null;openModal('mo-waste');
 }
+function compressImageFile(file, callback, maxDim=1200, quality=0.7){
+  if(!file) return;
+  if(!file.type || !file.type.startsWith('image/')){
+    if(file.size > 800 * 1024){
+      showToast('Attachment exceeds 800 KB limit. Please choose a smaller file.','error');
+      return;
+    }
+    const r=new FileReader();
+    r.onload=ev=>callback(ev.target.result);
+    r.readAsDataURL(file);
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      let w=img.width, h=img.height;
+      if(w>maxDim || h>maxDim){
+        if(w>h){ h=Math.round((h*maxDim)/w); w=maxDim; }
+        else{ w=Math.round((w*maxDim)/h); h=maxDim; }
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=w; canvas.height=h;
+      const ctx=canvas.getContext('2d');
+      ctx.drawImage(img,0,0,w,h);
+      const dataUrl=canvas.toDataURL('image/jpeg',quality);
+      callback(dataUrl);
+    };
+    img.onerror=()=>{ callback(ev.target.result); };
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
 function previewWOReport(e){
   const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    document._woReport=ev.target.result;
-    document.getElementById('wo-report-preview').src=ev.target.result;
-    document.getElementById('wo-report-preview-wrap').style.display='block';
-  };
-  r.readAsDataURL(f);
+  compressImageFile(f, dataUrl=>{
+    document._woReport=dataUrl;
+    const prev=document.getElementById('wo-report-preview');
+    if(prev) prev.src=safeSrc(dataUrl);
+    const wrap=document.getElementById('wo-report-preview-wrap');
+    if(wrap) wrap.style.display='block';
+  });
 }
 // PATCH: CSV import enhancement — full field mapping for all 5 asset tabs
 function parseCSVLine(line){
@@ -4652,7 +5014,7 @@ function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, labe
   const f=e.target.files[0];if(!f)return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const lines=ev.target.result.split('\n').filter(l=>l.trim());
+    const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
     if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
     const colIdx=Object.create(null);
@@ -4737,15 +5099,23 @@ function importAssetCSV(e){
       const kwh=totalW>0&&opHrs>0&&opDays?parseFloat(((totalW/1000)*opHrs*opDays*df).toFixed(2)):null;
       const freqVal=parseInt(gv(idx.freq))||0;
       const newId=generateUniqueNumericId(_usedIds);
+      let roomNo='';
+      if(loc){
+        const rm=loc.match(/\b(?:room|rm|rm\.)\s*([0-9]+[a-z]?)\b/i);
+        if(rm)roomNo=rm[1];
+        else if(/^\d+[a-z]?$/i.test(loc.trim()))roomNo=loc.trim();
+      }
+      const tempAsset={section:sec,mainCategory:'',assetClass:'',assetType:'',building:loc,location:loc,roomNumber:roomNo};
+      const assetCode=generateAssetCodeFull(tempAsset);
       assets.push({
         id:newId,name,section:sec,
-        location:loc,roomNumber:loc,roomName:loc,building:'',floor:'',
+        location:loc,roomNumber:roomNo,roomName:loc,building:'',floor:'',
         brand:gv(idx.brand),serialNumber:gv(idx.serialno),serial:gv(idx.propertyno),
         condition:gv(idx.condition)||'Good',
         qty,acquired:normYMD(gv(idx.acquired)),
         lastMaint:normYMD(gv(idx.lastmaint)),lastMaintDate:normYMD(gv(idx.lastmaint)),
         nextMaintDate:'',remarks:gv(idx.remarks),
-        assetCode:null,maintFrequency:freqVal,
+        assetCode,maintFrequency:freqVal,
         ratedWatts:effectiveWatts,hp:hp||null,
         opHoursDay:opHrs,opDaysMonth:opDays,demandFactor:df,dutyType:dutyType,
         estimatedKwhMonth:kwh,carbonEstimate:null
@@ -4805,7 +5175,16 @@ function downloadAssetTemplate(){
   const csv=rows.map(r=>r.map(f=>`"${String(f).replace(/"/g,'""')}"`).join(',')).join('\n');
   dl(new Blob([csv],{type:'text/csv'}),'HAMMS_Asset_Template.csv');
 }
-function previewWastePhoto(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{document._wPhoto=ev.target.result;document.getElementById('waste-photo-preview').src=ev.target.result;document.getElementById('waste-photo-wrap').style.display='block';};r.readAsDataURL(f);}
+function previewWastePhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  compressImageFile(f, dataUrl=>{
+    document._wPhoto=dataUrl;
+    const prev=document.getElementById('waste-photo-preview');
+    if(prev) prev.src=safeSrc(dataUrl);
+    const wrap=document.getElementById('waste-photo-wrap');
+    if(wrap) wrap.style.display='block';
+  });
+}
 function saveWaste(){
   const date=document.getElementById('m-w-date').value;
   const type=document.getElementById('m-w-type').value;
@@ -4834,8 +5213,8 @@ async function delWasteFromFcast(id){return delRecord('waste',id,'waste entry',r
 
 function renderForecast(){
   const wos=DB.g('wo');
-  const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping'];
-  const SEC_COLORS={CMW:'#e67e22',Electrical:'#1e6fb5',Plumbing:'#1f9452',Mechanical:'#6e3fa3',Housekeeping:'#cc3333'};
+  const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping','Biomedical'];
+  const SEC_COLORS={CMW:'#e67e22',Electrical:'#1e6fb5',Plumbing:'#1f9452',Mechanical:'#6e3fa3',Housekeeping:'#cc3333',Biomedical:'#1b5e20'};
   const avgBySec={};
   secs.forEach(s=>{const c=wos.filter(w=>w.section===s&&(w.status==='Closed'||w.status==='Completed')&&w.dateStart&&w.dateEnd);avgBySec[s]=c.length?Math.round(c.reduce((sum,w)=>sum+diffDays(w.dateStart,w.dateEnd),0)/c.length):null;});
   const maxAvg=Math.max(...Object.values(avgBySec).filter(v=>v!==null),1);
@@ -4871,22 +5250,23 @@ function renderInventory(){
   let inv=DB.g('inventory');
   const cat=document.getElementById('invf-cat').value;
   const st=document.getElementById('invf-status').value;
-  const q=document.getElementById('invf-search').value.toLowerCase();
+  const q=(document.getElementById('invf-search')?.value||'').toLowerCase();
   if(cat)inv=inv.filter(i=>i.category===cat);
   if(st)inv=inv.filter(i=>invStockStatus(i)===st);
   if(q)inv=inv.filter(i=>(i.description||'').toLowerCase().includes(q));
-  inv.sort((a,b)=>a.description.localeCompare(b.description));
+  inv.sort((a,b)=>(a.description||'').localeCompare(b.description||''));
   const issuanceLogs=DB.g('issuance');
   // FIX: pre-build last-issued map to avoid O(n²) scan
   const lastIssuedMap=Object.create(null);
   issuanceLogs.forEach(l=>{if(l.invId&&l.issuedTo&&l.issuedTo!=='—'){if(!lastIssuedMap[l.invId]||l.id>lastIssuedMap[l.invId].id)lastIssuedMap[l.invId]=l;}});
   document.getElementById('inv-tbody').innerHTML=inv.length?inv.map(item=>{
     const s=invStockStatus(item);
-    const pct=item.originalQty>0?Math.round((item.qty/item.originalQty)*100):100;
+    const min=item.minLevel||0;
+    const pct=min>0?Math.round((item.qty/min)*100):(item.qty>0?100:0);
     const barClass=s==='Critical'?'sb-crit':s==='Warning'?'sb-warn':'sb-ok';
     const lastIssued=lastIssuedMap[item.id]||null;
     const rowClass=s==='Critical'?'row-crit':s==='Warning'?'row-warn':'';
-    return`<tr class="${rowClass}"><td>${item.code?'<span class="mono">'+escapeHTML(item.code)+'</span>':invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(pct,100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
+    return`<tr class="${rowClass}"><td>${item.code?'<span class="mono">'+escapeHTML(item.code)+'</span>':invNum(item.id)}</td><td style="font-weight:600;">${escapeHTML(item.description)}</td><td>${secTag(item.category)}</td><td>${escapeHTML(item.unit)||'—'}</td><td><div class="stock-bar-wrap"><div class="stock-bar ${barClass}" style="width:${Math.min(Math.max(pct,0),100)}%;"></div></div>${pct}%</td><td class="mono">${item.qty}</td><td class="mono">${item.minLevel}</td><td>${s==='Critical'?'<span class="bs bs-crit">Critical</span>':s==='Warning'?'<span class="bs bs-warn">Warning</span>':'<span class="bs bs-ok">OK</span>'}</td><td>${lastIssued?escapeHTML(lastIssued.issuedTo):'—'}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-gold" onclick="openIssueModalFor(${item.id})">Issue</button> <button type="button" class="btn btn-sm btn-ghost" onclick="openInvModal(${item.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delInvItem(${item.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="10" class="empty">No inventory items. Upload CSV or add manually.</td></tr>';
   updateInvAlerts();
 }
@@ -4951,8 +5331,8 @@ function renderWaste(){
   document.getElementById('waste-tbody').innerHTML=wastes.length?wastes.map(w=>{const photoUrl=safeSrc(w.photo);const thumb=photoUrl?`<img class="photo-thumb" src="${photoUrl}" alt="Waste photo" data-photo-src="${escapeHTML(photoUrl)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo');" title="View photo">`:'—';return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':weNum(w.id)}</td><td>${fmt(w.date)}</td><td>${escapeHTML(w.type)}</td><td class="mono">${w.volume.toFixed(2)}</td><td>${escapeHTML(w.contractor)||'—'}</td><td>${emblBadge(w.emb)}</td><td>${thumb}</td><td style="max-width:120px;white-space:normal;font-size:12px;">${escapeHTML(w.remarks)||'—'}</td><td><button type="button" class="btn btn-sm btn-danger" onclick="delWaste(${w.id})">Del</button></td></tr>`;}).join(''):'<tr><td colspan="9" class="empty">No waste entries found.</td></tr>';
 }
 
-const WASTE_THRESH={Infectious:10,Pathological:10,Chemical:10,Pharmaceutical:20,Sharps:5,General:50,Radioactive:1};
-const WASTE_TYPES=['Infectious','Pathological','Chemical','Pharmaceutical','Sharps','General','Radioactive'];
+const WASTE_THRESH={Infectious:10,Pathological:10,Chemical:10,Pharmaceutical:20,Sharps:5,Biodegradable:30,Recyclable:25,Residual:20,FOG:5,Radioactive:1};
+const WASTE_TYPES=['Infectious','Pathological','Chemical','Pharmaceutical','Sharps','Biodegradable','Recyclable','Residual','FOG','Radioactive'];
 function renderWasteFcast(){
   const wastes=DB.g('waste');
   const avgs={};
@@ -4961,7 +5341,7 @@ function renderWasteFcast(){
   document.getElementById('wfc-bars').innerHTML=WASTE_TYPES.map(t=>{const v=avgs[t];if(!v)return'';const pct=Math.round((v/maxAvg)*100);const thresh=WASTE_THRESH[t];const col=v>=thresh?'var(--red)':v>=thresh*0.7?'var(--gold)':'var(--green)';return`<div class="fbar"><span class="fbar-label" style="font-size:12px;">${t}</span><div class="fbar-track"><div class="fbar-fill" style="width:${pct}%;background:${col};"></div></div><span class="fbar-val">${v.toFixed(1)}kg</span></div>`;}).filter(Boolean).join('')||'<div class="empty">No waste data yet.</div>';
   document.getElementById('wfc-risk').innerHTML=WASTE_TYPES.map(t=>{const v=avgs[t];if(!v)return'';const thresh=WASTE_THRESH[t];const risk=v>=thresh?'Critical':v>=thresh*0.7?'Warning':'OK';const next=(v*1.05).toFixed(2);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0f5;"><span style="font-size:13px;font-weight:600;min-width:110px;">${t}</span><span style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">~${next} kg/wk</span>${emblBadge(risk)}</div>`;}).filter(Boolean).join('')||'<div class="empty">No forecast data available.</div>';
   const rows=[];for(let i=7;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i*7);const ws=getWeekStart(dt.toISOString().split('T')[0]);const we=addDays(ws,6);const ww=wastes.filter(w=>w.date>=ws&&w.date<=we);if(!ww.length&&i>0)continue;const byt={};WASTE_TYPES.forEach(t=>{byt[t]=ww.filter(w=>w.type===t).reduce((s,w)=>s+w.volume,0);});const tot=Object.values(byt).reduce((s,v)=>s+v,0);rows.push(`<tr><td style="white-space:nowrap;font-size:12px;">${fmt(ws)} – ${fmt(we)}</td>${WASTE_TYPES.map(t=>`<td class="mono">${byt[t]>0?byt[t].toFixed(2):'—'}</td>`).join('')}<td class="mono" style="font-weight:700;">${tot>0?tot.toFixed(2):'—'}</td></tr>`);}
-  document.getElementById('wfc-tbody').innerHTML=rows.join('')||'<tr><td colspan="9" class="empty">No data.</td></tr>';
+  document.getElementById('wfc-tbody').innerHTML=rows.join('')||'<tr><td colspan="12" class="empty">No data.</td></tr>';
   // PATCH START: populate wfc-entries-tbody with per-entry delete
   const entriesTbody=document.getElementById('wfc-entries-tbody');
   if(entriesTbody){
@@ -4996,7 +5376,15 @@ function exportCSV(type){
     });
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Assets_'+today()+'.csv');
   }
-  else if(type==='inventory'){const h=['INV ID','Description','Category','Unit','Qty On Hand','Original Qty','Min Level','Stock %','Alert Status'];const rows=DB.g('inventory').map(i=>[i.code||('INV-'+String(i.id).padStart(3,'0')),i.description,i.category,i.unit,i.qty,i.originalQty,i.minLevel,i.originalQty>0?Math.round((i.qty/i.originalQty)*100)+'%':'N/A',invStockStatus(i)]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Inventory_'+today()+'.csv');}
+  else if(type==='inventory'){
+    const h=['INV ID','Description','Category','Unit','Qty On Hand','Original Qty','Min Level','Stock %','Alert Status'];
+    const rows=DB.g('inventory').map(i=>{
+      const min=i.minLevel||0;
+      const pct=min>0?Math.round((i.qty/min)*100)+'%':(i.qty>0?'100%':'0%');
+      return[i.code||('INV-'+String(i.id).padStart(3,'0')),i.description,i.category,i.unit,i.qty,i.originalQty||i.qty,i.minLevel,pct,invStockStatus(i)];
+    });
+    dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Inventory_'+today()+'.csv');
+  }
   else if(type==='issuance'){const h=['Log #','Date','Item','Category','Unit','Qty Issued','Issued To','WO Reference','Section','Remarks'];const rows=DB.g('issuance').filter(l=>l.qtyIssued>0).map(l=>[l.code||('ISS-'+String(l.id).padStart(4,'0')),l.date,l.description,l.category,l.unit,l.qtyIssued,l.issuedTo,l.woRef,l.section,l.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Issuance_'+today()+'.csv');}
   else if(type==='waste'){const h=['Entry#','Date','Waste Type','Volume (kg)','Contractor/Hauler','EMB Status','Remarks'];const rows=DB.g('waste').map(w=>[w.code||('WE-'+String(w.id).padStart(4,'0')),w.date,w.type,w.volume,w.contractor,w.emb,w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WasteLog_'+today()+'.csv');}
 }
@@ -5079,9 +5467,18 @@ const ASSET_TEMPLATES={
   'arch-win-block':{mainCategory:'Civil / Architectural',assetClass:'Window',assetType:'Glass Block Panel',section:'CMW'},
   'arch-win-temp':{mainCategory:'Civil / Architectural',assetClass:'Window',assetType:'Tempered Glass Window',section:'CMW'},
   'arch-curtain':{mainCategory:'Civil / Architectural',assetClass:'Window',assetType:'Curtain Wall Glass',section:'CMW'},
-};
+  // PATCH: Biomedical equipment templates
+  'biomed-xray':{mainCategory:'Biomedical',assetClass:'Diagnostic Imaging',assetType:'X-Ray Machine',section:'Biomedical'},
+  'biomed-ultrasound':{mainCategory:'Biomedical',assetClass:'Diagnostic Imaging',assetType:'Ultrasound Machine',section:'Biomedical'},
+  'biomed-ventilator':{mainCategory:'Biomedical',assetClass:'Life Support',assetType:'Ventilator',section:'Biomedical'},
+  'biomed-monitor':{mainCategory:'Biomedical',assetClass:'Patient Monitoring',assetType:'Patient Monitor',section:'Biomedical'},
+  'biomed-dialysis':{mainCategory:'Biomedical',assetClass:'Dialysis',assetType:'Dialysis Machine',section:'Biomedical'},
+  'biomed-centrifuge':{mainCategory:'Biomedical',assetClass:'Lab Equipment',assetType:'Centrifuge',section:'Biomedical'},
+  'biomed-autoclave':{mainCategory:'Biomedical',assetClass:'Sterilization',assetType:'Autoclave/Sterilizer',section:'Biomedical'},
+  'biomed-incubator':{mainCategory:'Biomedical',assetClass:'Lab Equipment',assetType:'Incubator',section:'Biomedical'}
+  };
 
-function applyAssetTemplate(){
+  function applyAssetTemplate(){
   const key=document.getElementById('m-a-template').value;
   if(!key||key==='other')return;
   const t=ASSET_TEMPLATES[key];if(!t)return;
@@ -5104,12 +5501,12 @@ function switchAssetTab(name,btn){
 // NEW: AUTOMATIC ASSET CODING
 // ═══════════════════════════════════════
 // PATCH: asset auto-code format — LocationAbv-AssetAbv-SectionAbv (e.g. RM101-AC-MECH)
-const SEC_ABV={'CMW':'CMW','Electrical':'ELEC','Plumbing':'PLBG','Mechanical':'MECH','Housekeeping':'HSKP','General':'GEN','':'GEN'};
+const SEC_ABV={'CMW':'CMW','Electrical':'ELEC','Plumbing':'PLBG','Mechanical':'MECH','Housekeeping':'HSKP','Biomedical':'BIOMED','General':'GEN','':'GEN'};
 const CLASS_ABV={'Aircon':'AC','Ventilation':'VN','Exhaust Fan':'XF','Faucet':'FT','Lavatory':'LV','Water Closet':'WC','Shower':'SH','Floor Drain':'FD','Pump':'PM','Tank':'TK','Lighting':'LT','Light Bulb':'LB','LED Bulb':'LB','LED Panel Light':'LP','Fluorescent Lamp':'FL','Outlet / Receptacle':'OR','Switch':'SW','Circuit Breaker':'CB','Fire Extinguisher':'FE','Safety Signage':'SG','Exit Sign':'ES','Fire Alarm':'FA','Fire Hose':'FH','Door':'DR','Window':'WN','Ceiling':'CL','Flooring':'FG','Generator':'GN','Panel Board':'PB','Smoke Detector':'SD','Motor':'MT','Compressor':'CP','Boiler':'BL','Transformer':'TF','UPS':'UP','AVR':'AV','Water Heater':'WH','Mop':'MP','Broom':'BR','Vacuum':'VC','Scrubber':'SC'};
 const PRI_ABV={Emergency:'EM',High:'HI',Medium:'MD',Low:'LO','':'MD'};
 const SEV_ABV={Critical:'CR',High:'HI',Moderate:'MD',Low:'LO','':'LO'};
-const WASTE_ABV={Infectious:'INF',Pathological:'PTH',Chemical:'CHM',Pharmaceutical:'PHA',Sharps:'SHP',General:'GEN',Radioactive:'RAD','':'GEN'};
-const TEST_ABV={Bacteriological:'BAC',Chemical:'CHM',Physical:'PHY',Residual:'RES','':'TST'};
+const WASTE_ABV={Infectious:'INF',Pathological:'PTH',Chemical:'CHM',Pharmaceutical:'PHA',Sharps:'SHP',Biodegradable:'BIO',Recyclable:'REC',Residual:'RES',FOG:'FOG',Radioactive:'RAD','':'RES'};
+const TEST_ABV={Bacteriological:'BAC',Chemical:'CHM',Physical:'PHY',Residual:'RES','Residual Chlorine':'RES','':'TST'};
 const EFF_POINT_ABV={'STP Effluent':'STPEFF','STP Inlet':'STPIN','Outfall 001':'OUT1','Outfall 002':'OUT2','Chlorine Contact Tank':'CCT'};
 function generateModuleCode(store,parts,padLen){
   const prefix=parts.filter(Boolean).join('-');
@@ -5128,7 +5525,7 @@ function generateAssetCodeFull(a){
   // Example: LB-ELEC-RM119CR-01
   const assetAbv=CLASS_ABV[a.assetClass]||CLASS_ABV[a.assetType]||getTypeAbv(a.mainCategory)||'OT';
   const secAbv=SEC_ABV[a.section]||'GEN';
-  const locAbv=buildLocAbv(a.building,a.floor,a.roomNumber||a.roomNo);
+  const locAbv=buildLocAbv(a.building||a.location||a.roomName,a.floor,a.roomNumber||a.roomNo);
   const prefix=assetAbv+'-'+secAbv+'-'+locAbv;
   // Sequential number: count existing assets with same prefix + 1
   const existing=DB.g('assets').filter(x=>x.id!==a.id&&(x.assetCode||'').startsWith(prefix));
@@ -5141,21 +5538,121 @@ function getTypeAbv(mainCategory){
   return m[mainCategory]||null;
 }
 
-function buildLocAbv(building,floor,roomNo){
-  if(roomNo){
-    const rn=roomNo.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
-    return('RM'+rn).substring(0,8);
+function resolveLocName(bn){
+  if(!bn) return '';
+  bn = String(bn).replace(/[^A-Za-z0-9 ]/g,' ').replace(/\s+/g,' ').trim().toUpperCase();
+  if(!bn) return '';
+
+  // 1. Room number pattern in building/location string (e.g. "Room 101", "RM 316", "RM-204A")
+  const roomMatch = bn.match(/\b(?:ROOM|RM|RM\.)\s*([0-9]+[A-Z]?)\b/i);
+  if(roomMatch) return ('RM' + roomMatch[1].toUpperCase()).substring(0, 8);
+
+  // 2. Ward pattern (e.g. "Ward 1", "WRD 2", "Ward-3")
+  const wardMatch = bn.match(/\b(?:WARD|WRD)\s*([0-9]+[A-Z]?)\b/i);
+  if(wardMatch) return ('WRD' + wardMatch[1].toUpperCase()).substring(0, 8);
+
+  // 3. Multi-word phrases first
+  const PHRASE_MAP={
+    'MEDICAL RECORDS':'MEDREC',
+    'HEALTH RECORDS':'MEDREC',
+    'OPERATING ROOM':'OR',
+    'OPERATING THEATER':'OR',
+    'OPERATING THEATRE':'OR',
+    'EMERGENCY ROOM':'ER',
+    'EMERGENCY DEPT':'ER',
+    'EMERGENCY DEPARTMENT':'ER',
+    'DELIVERY ROOM':'DR',
+    'ELECTRICAL ROOM':'ELRM',
+    'POWER ROOM':'PWRM',
+    'INTENSIVE CARE':'ICU',
+    'OUTPATIENT DEPT':'OPD',
+    'OUTPATIENT DEPARTMENT':'OPD',
+    'CENTRAL STERILE':'CSSD',
+    'CENTRAL SUPPLY':'CSR',
+    'NURSE STATION':'NSTN',
+    'NURSES STATION':'NSTN',
+    'WATER TREATMENT':'WTP',
+    'WASTE WATER':'WWTP',
+    'BOILER ROOM':'BLRM',
+    'DIETARY KITCHEN':'DIET',
+    'DIETARY DEPT':'DIET',
+    'DIETARY DEPARTMENT':'DIET',
+    'MAIN KITCHEN':'DIET',
+    'LINEN ROOM':'LINEN',
+    'MAIN BUILDING':'MBLDG'
+  };
+  for(const [k,v] of Object.entries(PHRASE_MAP)){
+    if(bn.includes(k)) return v;
   }
-  if(floor){
-    const fn=floor.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
-    return('FL'+fn).substring(0,6);
+
+  // 4. Word-boundary matching for standalone tokens / abbreviations (prevents "RECORDS" matching "OR")
+  const TOKEN_MAP={
+    'ER':'ER',
+    'ICU':'ICU',
+    'NICU':'NICU',
+    'PICU':'PICU',
+    'OPD':'OPD',
+    'OR':'OR',
+    'DR':'DR',
+    'MEDREC':'MEDREC',
+    'WARD':'WRD',
+    'LABORATORY':'LAB',
+    'LAB':'LAB',
+    'RADIOLOGY':'RAD',
+    'RAD':'RAD',
+    'PHARMACY':'PHARM',
+    'PHARM':'PHARM',
+    'KITCHEN':'KTCHN',
+    'DIETARY':'DIET',
+    'DIET':'DIET',
+    'HALLWAY':'HALL',
+    'STAIRWAY':'STAIR',
+    'ROOFTOP':'ROOF',
+    'BASEMENT':'BSM',
+    'MORGUE':'MRG',
+    'ISOLATION':'ISOL'
+  };
+  for(const [k,v] of Object.entries(TOKEN_MAP)){
+    const re=new RegExp('\\b'+escapeRegex(k)+'\\b','i');
+    if(re.test(bn)) return v;
+  }
+
+  // 5. Standalone numbers with contextual prefix (e.g. "Floor 3" -> FL3, "Building 2" -> BLD2, "101" -> RM101)
+  const numMatch = bn.match(/\b([0-9]+[A-Z]?)\b/);
+  if(numMatch){
+    if(/\b(?:FL|FLR|FLOOR)\b/i.test(bn)) return ('FL' + numMatch[1].toUpperCase()).substring(0, 8);
+    if(/\b(?:BLDG|BUILDING)\b/i.test(bn)) return ('BLD' + numMatch[1].toUpperCase()).substring(0, 8);
+    return ('RM' + numMatch[1].toUpperCase()).substring(0, 8);
+  }
+
+  return bn.replace(/[^A-Z0-9]/g,'').substring(0,8);
+}
+
+function buildLocAbv(building,floor,roomNo){
+  // Handle case where a single location string was passed as 3rd arg (e.g. from saveSafety)
+  if(!building && !floor && roomNo && !/^\d+[a-z]?$/i.test(roomNo)){
+    building = roomNo;
+    roomNo = null;
+  }
+  if(roomNo){
+    const rnStr = String(roomNo).trim();
+    const rmNumMatch = rnStr.match(/^(?:(?:ROOM|RM|RM\.)\s*)?([0-9]+[A-Z]?)$/i);
+    if(rmNumMatch){
+      return ('RM' + rmNumMatch[1].toUpperCase()).substring(0, 8);
+    }
+    // Named room / department in roomNo (e.g. "ICU", "DIETARY", "Dietary Kitchen")
+    const resolved = resolveLocName(rnStr);
+    if(resolved) return resolved;
+    const rn = rnStr.replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+    return rn.substring(0, 8) || 'GEN';
   }
   if(building){
-    const bn=building.replace(/[^A-Za-z0-9 ]/g,'').trim().toUpperCase();
-    // Common abbreviations
-    const ABV_MAP={'EMERGENCY ROOM':'ER','ER':'ER','ICU':'ICU','OPD':'OPD','OR':'OR','WARD':'WRD','ELECTRICAL ROOM':'ELRM','POWER ROOM':'PWRM','LABORATORY':'LAB','RADIOLOGY':'RAD','PHARMACY':'PHARM','KITCHEN':'KTCHN','HALLWAY':'HALL','STAIRWAY':'STAIR','ROOFTOP':'ROOF','BASEMENT':'BSM','MORGUE':'MRG','ISOLATION':'ISOL','DELIVERY ROOM':'DR'};
-    for(const [k,v] of Object.entries(ABV_MAP)){if(bn.includes(k))return v;}
-    return bn.replace(/[^A-Z0-9]/g,'').substring(0,6)||'GEN';
+    const resolved = resolveLocName(building);
+    if(resolved) return resolved;
+  }
+  if(floor){
+    const fn=String(floor).replace(/[^A-Za-z0-9]/g,'').toUpperCase();
+    return('FL'+fn).substring(0,6);
   }
   return 'GEN';
 }
@@ -5322,14 +5819,15 @@ function calcAssetKwh(a){
 // ═══════════════════════════════════════
 function previewAssetImage(e){
   const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>{
-    _assetImageData=ev.target.result;
-    document.getElementById('asset-img-preview').src=ev.target.result;
-    document.getElementById('asset-img-preview-wrap').style.display='';
-    document.getElementById('asset-img-placeholder').style.display='none';
-  };
-  r.readAsDataURL(f);
+  compressImageFile(f, dataUrl=>{
+    _assetImageData=dataUrl;
+    const prev=document.getElementById('asset-img-preview');
+    if(prev) prev.src=safeSrc(dataUrl);
+    const wrap=document.getElementById('asset-img-preview-wrap');
+    if(wrap) wrap.style.display='';
+    const placeholder=document.getElementById('asset-img-placeholder');
+    if(placeholder) placeholder.style.display='none';
+  });
 }
 
 function clearAssetImage(){
@@ -5467,7 +5965,13 @@ function saveAsset(){
   const maincat=gv('m-a-maincat');
   const building=gv('m-a-building');
   const floor=gv('m-a-floor');
-  const roomNo=gv('m-a-roomno');
+  const locRaw=(gv('m-a-loc')||'').trim();
+  let roomNo=gv('m-a-roomno');
+  if(!roomNo&&locRaw){
+    const rm=locRaw.match(/\b(?:room|rm|rm\.)\s*([0-9]+[a-z]?)\b/i);
+    if(rm)roomNo=rm[1];
+    else if(/^\d+[a-z]?$/i.test(locRaw))roomNo=locRaw;
+  }
 
   // Frequency
   const freqSel=gv('m-a-freq');
@@ -5493,7 +5997,7 @@ function saveAsset(){
   // PATCH: asset auto-code format — use full LocationAbv-AssetAbv-SectionAbv format
   let assetCode=existing?.assetCode||'';
   if(!assetCode){
-    const tempAsset={section:sec,mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),building,floor,roomNumber:roomNo};
+    const tempAsset={section:sec,mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),building:building||locRaw,location:locRaw,floor,roomNumber:roomNo};
     assetCode=generateAssetCodeFull(tempAsset);
   }
   const nextMaint=gv('m-a-nextmaint');
@@ -5502,7 +6006,7 @@ function saveAsset(){
   const a={
     id:_editAsset||DB.nid('assets'),
     // Basic
-    name,section:sec,location:gv('m-a-loc'),brand:gv('m-a-brand'),
+    name,section:sec,location:locRaw,brand:gv('m-a-brand'),
     serial:gv('m-a-serial'),serialNumber:gv('m-a-serialno'),condition:gv('m-a-condition'),
     acquired:gv('m-a-acquired'),remarks:gv('m-a-remarks'),
     qty:parseInt(document.getElementById('m-a-qty')?.value)||1,
@@ -5510,7 +6014,7 @@ function saveAsset(){
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
     // Location — single field (m-a-loc) is the canonical location
-    building,floor,roomNumber:roomNo,roomName:gv('m-a-loc'),
+    building,floor,roomNumber:roomNo,roomName:locRaw,
     department:gv('m-a-dept'),roomType:gv('m-a-roomtype'),
     // PMS
     maintFrequency:freqVal,lastMaintDate:lastMaint,nextMaintDate:nextMaint,
@@ -5561,14 +6065,58 @@ function renderAssets(){
   if(cond)assets=assets.filter(a=>a.condition===cond);
   if(pmsf)assets=assets.filter(a=>getPMSStatus(a)===pmsf);
   assets=assets.filter(a=>matchMonthYear(a.acquired,'af'));
-  if(q)assets=assets.filter(a=>(a.name||'').toLowerCase().includes(q)||(a.location||a.roomNumber||'').toLowerCase().includes(q)||(a.assetCode||'').toLowerCase().includes(q));
+  if(q){
+    const qRaw=q.trim();
+    const qClean=qRaw.replace(/[_]+$/, '').trim().toLowerCase();
+    const qLower=qRaw.toLowerCase();
+    const locAbv=(typeof buildLocAbv==='function'?buildLocAbv(qClean):'').toLowerCase();
+    assets=assets.filter(a=>{
+      const name=(a.name||'').toLowerCase();
+      const code=(a.assetCode||'').toLowerCase();
+      const loc=(a.location||a.roomNumber||a.roomName||'').toLowerCase();
+      if(name.includes(qLower)||name.includes(qClean))return true;
+      if(qClean.length<=3){
+        if(new RegExp('\\b'+escapeRegex(qClean)+'\\b','i').test(code))return true;
+      } else {
+        if(code.includes(qLower)||code.includes(qClean))return true;
+        if(locAbv&&locAbv!=='gen'&&new RegExp('\\b'+escapeRegex(locAbv)+'\\b','i').test(code))return true;
+      }
+      if(isSameLocation(qClean,loc)||isSameLocation(qLower,loc))return true;
+      if(new RegExp('\\b'+escapeRegex(qClean)+'\\b','i').test(loc))return true;
+      if(qClean.length>=4&&loc.includes(qClean))return true;
+      return false;
+    });
+  }
   assets.sort((a,b)=>b.id-a.id);
   const wos=DB.g('wo');
   // FIX: pre-build WO count map to avoid O(n²) scan
   const woCntMap=Object.create(null);
-  wos.forEach(w=>{if(w.asset){woCntMap[w.asset]=(woCntMap[w.asset]||0)+1;}});
+  wos.forEach(w=>{
+    if(!w.asset)return;
+    woCntMap[w.asset]=(woCntMap[w.asset]||0)+1;
+    const loc=(w.location||'').trim().toLowerCase();
+    if(loc){
+      const k=w.asset+':::'+loc;
+      woCntMap[k]=(woCntMap[k]||0)+1;
+    }
+  });
   document.getElementById('asset-tbody').innerHTML=assets.length?assets.map(a=>{
-    const cnt=woCntMap[a.name]||0;
+    const aLocs=[a.location,a.roomNumber,a.roomName].filter(Boolean);
+    let cnt=0;
+    if(aLocs.length){
+      const matchedKeys=new Set();
+      Object.keys(woCntMap).forEach(k=>{
+        if(!k.startsWith(a.name+':::'))return;
+        const kLoc=k.slice((a.name+':::').length);
+        if(!matchedKeys.has(k)&&aLocs.some(al=>al.toLowerCase().trim()===kLoc||isSameLocation(kLoc,al))){
+          cnt+=woCntMap[k];
+          matchedKeys.add(k);
+        }
+      });
+      if(woCntMap[a.name+':::']) cnt+=woCntMap[a.name+':::'];
+    }else{
+      cnt=woCntMap[a.name]||0;
+    }
     const pms=getPMSStatus(a);
     const loc=[a.roomName,a.roomNumber,a.building].filter(Boolean).join(' · ')||a.location||'—';
     const catDisplay=[a.mainCategory,a.assetClass].filter(Boolean).join(' / ')||a.section||'—';
@@ -5669,26 +6217,12 @@ function renderDash(){
       <div class="stat-sub">${delayedProj} delayed</div>
     </div>`;
 
-  // PMS alarm summary line
-  const pmsSummEl=document.getElementById('dash-pm-alarm-summary');
-  if(pmsSummEl){
-    const parts=[];
-    if(pmsOver>0)parts.push(`<span style="color:var(--red);font-weight:700;">${pmsOver} PMS overdue</span>`);
-    if(pmsDue>0)parts.push(`<span style="color:var(--orange);font-weight:700;">${pmsDue} due today</span>`);
-    if(pmsUpcoming>0)parts.push(`<span style="color:var(--gold);">${pmsUpcoming} upcoming</span>`);
-    pmsSummEl.innerHTML=parts.length?'⏰ '+parts.join(' · '):'';
-  }
-
-  // Energy mini summary
-  const ems=document.getElementById('dash-energy-summary-mini');
-  if(ems&&totalKwh)ems.textContent=`⚡ Estimated monthly energy: ${totalKwh.toFixed(0)} kWh`;
-
   // Original lower dashboard
   const recent=[...wos].sort((a,b)=>b.id-a.id).slice(0,8);
   document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
   const ws=getWeekStart(today());const ww=wastes.filter(w=>w.date>=ws);const bt={};ww.forEach(w=>{if(!bt[w.type])bt[w.type]={v:0,s:[]};bt[w.type].v+=w.volume;bt[w.type].s.push(w.emb);});
   document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${escapeHTML(t)}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
-  const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping'];
+  const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping','Biomedical'];
   document.getElementById('section-overview').innerHTML=secs.map(s=>{const sw=wos.filter(w=>w.section===s);const o=sw.filter(w=>w.status==='Open'||w.status==='In Progress').length;const c=sw.filter(w=>w.status==='Closed'||w.status==='Completed').length;const ov=sw.filter(w=>overdue(w)).length;const lc=sw.filter(w=>lateCompleted(w)).length;return`<div class="sec-mini"><div class="sec-mini-title">${secTag(s)}</div><div class="sec-mini-stats"><div class="sec-mini-stat"><div class="sms-label">Open</div><div class="sms-val sms-open">${o}</div></div><div class="sec-mini-stat"><div class="sms-label">Closed</div><div class="sms-val sms-closed">${c}</div></div><div class="sec-mini-stat"><div class="sms-label">Overdue</div><div class="sms-val sms-over">${ov}</div></div>${lc?`<div class="sec-mini-stat"><div class="sms-label" style="color:#b06000;">Late Cmp</div><div class="sms-val" style="color:#b06000;">${lc}</div></div>`:''}</div></div>`;}).join('');
   // Backup export reminder
   const lastExp=_fbMetaState.lastExportDate;
@@ -5746,7 +6280,7 @@ function saveSafety(){
   clearAllFieldErrors('mo-safety');{let _e=false;if(!desc){showFieldError('m-sf-desc','Required.');_e=true;}if(!sev){showFieldError('m-sf-sev','Required.');_e=true;}if(_e)return;}
   const list=DB.g('safety');
   const s={
-    id:_editSafety||DB.nid('safety'),code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(null,null,document.getElementById('m-sf-loc').value)],3),
+    id:_editSafety||DB.nid('safety'),code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(document.getElementById('m-sf-loc').value)],3),
     description:desc,severity:sev,
     status:document.getElementById('m-sf-status').value,
     location:document.getElementById('m-sf-loc').value,
@@ -5765,11 +6299,40 @@ function renderSafety(){
   let list=DB.g('safety');
   const sev=(document.getElementById('sf-sev')||{}).value||'';
   const st=(document.getElementById('sf-status')||{}).value||'';
-  const q=(document.getElementById('sf-search')||{}).value?.toLowerCase()||'';
+  const q=(document.getElementById('sf-search')?.value||'').trim().toLowerCase();
+  const locF=(document.getElementById('sf-loc-filter')?.value||'').trim().toLowerCase();
   if(sev)list=list.filter(s=>s.severity===sev);
   if(st)list=list.filter(s=>s.status===st);
   list=list.filter(s=>matchMonthYear(s.date,'sf')); // month/year filter
-  if(q)list=list.filter(s=>(s.description||'').toLowerCase().includes(q)||(s.location||'').toLowerCase().includes(q));
+  if(locF){
+    const locFClean=locF.replace(/[_]+$/, '').trim().toLowerCase();
+    list=list.filter(s=>{
+      const sl=(s.location||'').toLowerCase();
+      if(isSameLocation(locFClean,sl)||isSameLocation(locF,sl))return true;
+      if(new RegExp('\\b'+escapeRegex(locFClean)+'\\b','i').test(sl))return true;
+      if(locFClean.length>=4&&sl.includes(locFClean))return true;
+      return false;
+    });
+  }
+  if(q){
+    const qRaw=q.trim();
+    const qClean=qRaw.replace(/[_]+$/, '').trim().toLowerCase();
+    const qLower=qRaw.toLowerCase();
+    list=list.filter(s=>{
+      const sd=(s.description||'').toLowerCase();
+      const sl=(s.location||'').toLowerCase();
+      const sa=(s.asset||s.linkedAsset||'').toLowerCase();
+      if(qClean.length<=3){
+        const reg=new RegExp('\\b'+escapeRegex(qClean)+'\\b','i');
+        if(reg.test(sd)||reg.test(sa)||reg.test(sl))return true;
+      } else {
+        if(sd.includes(qLower)||sd.includes(qClean)||sa.includes(qLower)||sa.includes(qClean))return true;
+        if(sl.includes(qClean))return true;
+      }
+      if(isSameLocation(qClean,sl)||isSameLocation(qLower,sl))return true;
+      return false;
+    });
+  }
   list.sort((a,b)=>{const so={Critical:0,High:1,Moderate:2,Low:3};return(so[a.severity]||3)-(so[b.severity]||3);});
   populateDateFilters('sf',DB.g('safety'),'date');
 
@@ -5907,7 +6470,7 @@ function openWaterLogModal(id=null){
     const l=DB.g('waterLogs').find(x=>x.id===id);if(!l)return;
     const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v||'';};
     sv('m-wl-date',l.date);sv('m-wl-ward',l.ward);sv('m-wl-bacteria',l.bacteriaCount);
-    sv('m-wl-chlorine',l.chlorine);sv('m-wl-mitigation',l.mitigation);sv('m-wl-remarks',l.remarks);
+    sv('m-wl-chlorine',l.chlorine??l.residualChlorine??'');sv('m-wl-mitigation',l.mitigation);sv('m-wl-remarks',l.remarks);
     const setS=(fid,v)=>{const el=document.getElementById(fid);if(el&&v)el.value=v;};
     setS('m-wl-type',l.testType);setS('m-wl-result',l.result);
     if(l.resultImage){const _safeWl=safeSrc(l.resultImage);if(_safeWl){document.getElementById('water-result-preview').src=_safeWl;document.getElementById('water-result-preview-wrap').style.display='';}}
@@ -5917,8 +6480,14 @@ function openWaterLogModal(id=null){
 }
 
 function previewWaterResult(e){
-  const f=e.target.files[0];if(!f||!f.type.startsWith('image/'))return;
-  const r=new FileReader();r.onload=ev=>{document._wlResultImg=ev.target.result;document.getElementById('water-result-preview').src=ev.target.result;document.getElementById('water-result-preview-wrap').style.display='';};r.readAsDataURL(f);
+  const f=e.target.files[0];if(!f)return;
+  compressImageFile(f, dataUrl=>{
+    document._wlResultImg=dataUrl;
+    const prev=document.getElementById('water-result-preview');
+    if(prev) prev.src=safeSrc(dataUrl);
+    const wrap=document.getElementById('water-result-preview-wrap');
+    if(wrap) wrap.style.display='';
+  });
 }
 
 function saveWaterLog(){
@@ -5929,12 +6498,14 @@ function saveWaterLog(){
   const list=DB.g('waterLogs');
   const testType=document.getElementById('m-wl-type').value;
   const existing=_editWaterLog?list.find(x=>x.id===_editWaterLog):null;
+  const chl=document.getElementById('m-wl-chlorine').value;
   const l={
     id:_editWaterLog||DB.nid('waterLogs'),code:_editWaterLog?(existing?.code||null):generateModuleCode('waterLogs',[abvName(ward),TEST_ABV[testType]||'TST'],3),date,ward,
     testType,
     result:document.getElementById('m-wl-result').value,
     bacteriaCount:document.getElementById('m-wl-bacteria').value,
-    chlorine:document.getElementById('m-wl-chlorine').value,
+    chlorine:chl,
+    residualChlorine:chl,
     mitigation:document.getElementById('m-wl-mitigation').value,
     remarks:document.getElementById('m-wl-remarks').value,
     resultImage:document._wlResultImg||(_editWaterLog?list.find(x=>x.id===_editWaterLog)?.resultImage||null:null),
@@ -5985,7 +6556,7 @@ function renderWardStatus(){
   const el=document.getElementById('ward-water-status');if(!el)return;
   if(!wards.length){el.innerHTML='<div style="color:var(--muted);font-size:13px;">No water test logs yet. Log a test to see ward status here.</div>';return;}
   el.innerHTML=wards.map(w=>{
-    const wardLogs=list.filter(l=>l.ward===w).sort((a,b)=>b.date.localeCompare(a.date));
+    const wardLogs=list.filter(l=>l.ward===w).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const latest=wardLogs[0];
     const bgMap={'Safe':'#e6f5e6','Warning':'#fff9f0','Fail':'#fde8e8'};
     const borderMap={'Safe':'var(--green)','Warning':'var(--orange)','Fail':'var(--red)'};
@@ -6155,7 +6726,10 @@ function importSafetyCSV(e){
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
     const desc=gv('desc');if(!desc)return null;
-    return{id,description:desc,severity:gv('sev')||'Low',status:gv('status')||'Open',location:gv('loc'),linkedAsset:gv('asset'),date:normYMD(gv('date'))||today(),loggedBy:gv('by'),remarks:gv('remarks')};
+    const sev=gv('sev')||'Low';
+    const loc=gv('loc');
+    const asset=gv('asset');
+    return{id,code:generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(loc)],3),description:desc,severity:sev,status:gv('status')||'Open',location:loc,asset,linkedAsset:asset,date:normYMD(gv('date'))||today(),loggedBy:gv('by'),remarks:gv('remarks')};
   },[renderSafety,renderDash],'safety issue');
 }
 function downloadSafetyTemplate(){
@@ -6238,54 +6812,54 @@ function downloadWasteTemplate(){
     ['Date','Waste_Type','Volume_kg','Contractor_Hauler','EMB_Status','Remarks'],
     ['2026-01-05','Infectious','11.2','EcoWaste Corp','OK','Regular Monday pickup — Ward 1,2,3'],
     ['2026-01-05','Sharps','1.8','EcoWaste Corp','OK','OR, ICU, ER daily sharps'],
-    ['2026-01-05','General','42.5','City Disposal','OK','Non-hazardous general waste'],
+    ['2026-01-05','Biodegradable','42.5','City Disposal','OK','Food and garden waste'],
     ['2026-01-06','Pathological','4.3','EcoWaste Corp','OK','OR and delivery room'],
     ['2026-01-07','Pharmaceutical','3.5','PharmaDis PH','OK','Expired stock from pharmacy'],
     ['2026-01-08','Chemical','5.2','DENR-Licensed Co','OK','Lab reagents and fixatives'],
     ['2026-01-09','Infectious','9.8','EcoWaste Corp','OK',''],
     ['2026-01-09','Sharps','2.1','EcoWaste Corp','OK',''],
-    ['2026-01-09','General','38.0','City Disposal','OK',''],
+    ['2026-01-09','Recyclable','38.0','City Disposal','OK',''],
     ['2026-01-12','Infectious','13.5','EcoWaste Corp','Warning','Nearing weekly threshold'],
     ['2026-01-12','Sharps','2.9','EcoWaste Corp','OK',''],
     ['2026-01-12','Pathological','5.1','EcoWaste Corp','OK',''],
     ['2026-01-13','Chemical','7.8','DENR-Licensed Co','Warning','Near 10kg EMB limit'],
-    ['2026-01-13','General','45.0','City Disposal','OK',''],
+    ['2026-01-13','Residual','45.0','City Disposal','OK',''],
     ['2026-01-14','Pharmaceutical','4.2','PharmaDis PH','OK','Monthly expired meds disposal'],
     ['2026-01-15','Infectious','10.0','EcoWaste Corp','OK',''],
     ['2026-01-15','Sharps','1.5','EcoWaste Corp','OK',''],
-    ['2026-01-16','General','40.5','City Disposal','OK',''],
+    ['2026-01-16','FOG','40.5','City Disposal','OK',''],
     ['2026-01-19','Infectious','14.8','EcoWaste Corp','Critical','Exceeded 10kg weekly limit'],
     ['2026-01-19','Chemical','10.5','DENR-Licensed Co','Critical','Exceeded 10kg EMB limit'],
     ['2026-01-20','Sharps','3.2','EcoWaste Corp','OK',''],
     ['2026-01-20','Pathological','3.8','EcoWaste Corp','OK',''],
-    ['2026-01-20','General','44.0','City Disposal','OK',''],
+    ['2026-01-20','Biodegradable','44.0','City Disposal','OK',''],
     ['2026-01-21','Pharmaceutical','2.9','PharmaDis PH','OK',''],
     ['2026-01-22','Infectious','9.5','EcoWaste Corp','OK',''],
     ['2026-01-22','Sharps','1.9','EcoWaste Corp','OK',''],
     ['2026-01-23','Chemical','8.0','DENR-Licensed Co','Warning',''],
-    ['2026-01-23','General','39.5','City Disposal','OK',''],
+    ['2026-01-23','Recyclable','39.5','City Disposal','OK',''],
     ['2026-01-26','Infectious','11.8','EcoWaste Corp','Warning',''],
     ['2026-01-26','Sharps','2.4','EcoWaste Corp','OK',''],
     ['2026-01-26','Pathological','4.0','EcoWaste Corp','OK',''],
-    ['2026-01-27','General','41.0','City Disposal','OK',''],
+    ['2026-01-27','Residual','41.0','City Disposal','OK',''],
     ['2026-01-27','Pharmaceutical','3.1','PharmaDis PH','OK',''],
     ['2026-01-28','Chemical','6.5','DENR-Licensed Co','OK',''],
     ['2026-01-29','Infectious','10.3','EcoWaste Corp','OK',''],
     ['2026-01-29','Sharps','1.7','EcoWaste Corp','OK',''],
-    ['2026-01-30','General','43.0','City Disposal','OK',''],
+    ['2026-01-30','FOG','43.0','City Disposal','OK',''],
     ['2026-02-02','Infectious','12.1','EcoWaste Corp','Warning',''],
     ['2026-02-02','Sharps','2.6','EcoWaste Corp','OK',''],
     ['2026-02-02','Chemical','9.2','DENR-Licensed Co','Warning',''],
     ['2026-02-03','Pathological','3.5','EcoWaste Corp','OK',''],
-    ['2026-02-03','General','40.0','City Disposal','OK',''],
+    ['2026-02-03','Biodegradable','40.0','City Disposal','OK',''],
     ['2026-02-04','Pharmaceutical','2.7','PharmaDis PH','OK',''],
     ['2026-02-05','Infectious','9.0','EcoWaste Corp','OK',''],
     ['2026-02-05','Sharps','1.8','EcoWaste Corp','OK',''],
-    ['2026-02-06','General','37.5','City Disposal','OK',''],
+    ['2026-02-06','Recyclable','37.5','City Disposal','OK',''],
     ['2026-02-09','Infectious','13.0','EcoWaste Corp','Warning',''],
     ['2026-02-09','Chemical','7.0','DENR-Licensed Co','OK',''],
     ['2026-02-10','Sharps','2.0','EcoWaste Corp','OK',''],
-    ['2026-02-10','General','41.5','City Disposal','OK',''],
+    ['2026-02-10','Residual','41.5','City Disposal','OK',''],
   ];
   const csv=rows.map(r=>r.map(f=>`"${String(f).replace(/"/g,'""')}"`).join(',')).join('\n');
   dl(new Blob([csv],{type:'text/csv'}),'HAMMS_Waste_Template.csv');
@@ -6306,7 +6880,10 @@ function importWaterLogCSV(e){
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
     const ward=gv('ward');if(!ward)return null;
-    return{id,date:normYMD(gv('date'))||today(),ward,testType:gv('testtype')||'Bacteriological',result:gv('result')||'Safe',bacteriaCount:gv('bacteria'),residualChlorine:gv('chlorine'),mitigation:gv('mitigation'),resultImage:null,remarks:gv('remarks')};
+    const chl=gv('chlorine');
+    const tt=gv('testtype')||'Bacteriological';
+    const code=generateModuleCode('waterLogs',[abvName(ward),TEST_ABV[tt]||'TST'],3);
+    return{id,code,date:normYMD(gv('date'))||today(),ward,testType:tt,result:gv('result')||'Safe',bacteriaCount:gv('bacteria'),chlorine:chl,residualChlorine:chl,mitigation:gv('mitigation'),resultImage:null,remarks:gv('remarks')};
   },[renderWaterLogs,renderWardStatus],'water log');
 }
 function downloadWaterLogTemplate(){
@@ -6389,7 +6966,7 @@ function importProjectCSV(e){
     {key:'issues',match:['issue','remark'],label:'Issues'}
   ],(gv,id)=>{
     const title=gv('title');if(!title)return null;
-    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:normYMD(gv('start')),targetCompletion:normYMD(gv('target')),actualCompletion:gv('actual'),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
+    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:normYMD(gv('start')),targetCompletion:normYMD(gv('target')),actualCompletion:normYMD(gv('actual')),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
   },[renderProjects,renderProjStats,renderDash],'project');
 }
 function downloadProjectTemplate(){
@@ -6573,7 +7150,8 @@ function importEffluentCSV(e){
   ],(gv,id)=>{
     const point=gv('point');if(!point)return null;
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
-    return{id,date:normYMD(gv('date'))||today(),samplingPoint:point,status:gv('status')||'Compliant',pH:gn('ph'),BOD:gn('bod'),COD:gn('cod'),TSS:gn('tss'),oilGrease:gn('oil'),temperature:gn('temp'),totalColiform:gn('coliform'),fecalColiform:gn('fecal'),dissolvedOxygen:gn('do_'),remarks:gv('remarks')};
+    const code=generateModuleCode('effluent',[EFF_POINT_ABV[point]||abvName(point)]);
+    return{id,code,date:normYMD(gv('date'))||today(),samplingPoint:point,status:gv('status')||'Compliant',pH:gn('ph'),BOD:gn('bod'),COD:gn('cod'),TSS:gn('tss'),oilGrease:gn('oil'),temperature:gn('temp'),totalColiform:gn('coliform'),fecalColiform:gn('fecal'),dissolvedOxygen:gn('do_'),remarks:gv('remarks')};
   },[renderEffluent],'reading');
 }
 function downloadEffluentTemplate(){
@@ -6637,7 +7215,7 @@ function renderEffluent(){
   let items=DB.g('effluent');
   const pt=document.getElementById('eff-point')?.value||'';
   const st=document.getElementById('eff-status')?.value||'';
-  const q=document.getElementById('eff-search')?.value.toLowerCase()||'';
+  const q=(document.getElementById('eff-search')?.value||'').trim().toLowerCase();
   if(pt)items=items.filter(r=>r.samplingPoint===pt);
   if(st)items=items.filter(r=>r.status===st);
   items=items.filter(r=>matchMonthYear(r.date,'eff'));
@@ -6649,13 +7227,13 @@ function renderEffluent(){
   populateDateFilters('eff',DB.g('effluent'),'date');
   const phData=DB.g('effluent').filter(r=>r.pH!=null).slice(-12).reverse();
   if(phData.length){
-    const labels=phData.map(r=>r.date.substring(5));
+    const labels=phData.map(r=>(r.date||'').substring(5));
     const vals=phData.map(r=>r.pH);
     drawBarLineChart('eff-ph-chart',labels,vals,vals,'#1e6fb5','#1e6fb5','pH');
   }
   const bodData=DB.g('effluent').filter(r=>r.BOD!=null).slice(-12).reverse();
   if(bodData.length){
-    const labels=bodData.map(r=>r.date.substring(5));
+    const labels=bodData.map(r=>(r.date||'').substring(5));
     const bod=bodData.map(r=>r.BOD);
     const cod=bodData.map(r=>r.COD);
     drawBarLineChart('eff-bod-chart',labels,bod,cod,'#cc3333','#d97b1a','mg/L');
@@ -6738,7 +7316,9 @@ function importMedWasteCSV(e){
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
     const opHrs=gn('ophrs');const dt=gn('downtime');
     const denom=Math.max((opHrs||0)+(dt||0),8);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
-    return{id,date,shift:gv('shift')||'AM Shift',status:gv('status')||'Normal',inputQty:gn('input'),treatedQty:gn('treated'),outputQty:gn('output'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
+    const mwShift=gv('shift')||'AM Shift';
+    const code=generateModuleCode('medWasteProd',[(mwShift||'').replace(/\s*Shift$/i,'').toUpperCase()||'AM']);
+    return{id,code,date,shift:mwShift,status:gv('status')||'Normal',inputQty:gn('input'),treatedQty:gn('treated'),outputQty:gn('output'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
   },[renderMedWaste],'log');
 }
 function downloadMedWasteTemplate(){
@@ -6908,7 +7488,9 @@ function importWWProdCSV(e){
     const gn=k=>{const v=parseFloat(gv(k));return isNaN(v)?null:v;};
     const opHrs=gn('ophrs');const dt=gn('downtime');
     const denom=Math.max((opHrs||0)+(dt||0),24);const util=opHrs!=null&&denom>0?Math.min(100,Math.round((opHrs/denom)*100)):null;
-    return{id,date,shift:gv('shift')||'AM Shift',status:gv('status')||'Normal',inflow:gn('inflow'),treated:gn('treated'),outflow:gn('outflow'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
+    const wwShift=gv('shift')||'AM Shift';
+    const code=generateModuleCode('wwProd',[(wwShift||'').replace(/\s*Shift$/i,'').toUpperCase()||'AM']);
+    return{id,code,date,shift:wwShift,status:gv('status')||'Normal',inflow:gn('inflow'),treated:gn('treated'),outflow:gn('outflow'),opHours:opHrs,downtime:dt,utilizationPct:util,remarks:gv('remarks')};
   },[renderWWProd],'log');
 }
 function downloadWWProdTemplate(){
@@ -7177,11 +7759,19 @@ function renderEnergyCategoryChart(){
   const entries=[...map.entries()].sort((a,b)=>b[1]-a[1]);
   const labels=entries.map(e=>e[0]);
   const values=entries.map(e=>Math.round(e[1]*100)/100);
-  if(window.drawEnergyCategoryBarChart)drawEnergyCategoryBarChart('en-category-chart',labels,values,'kWh');
+  const zeroCats=entries.filter(e=>e[1]===0).map(e=>e[0]);
+  let note='';
+  if(zeroCats.length){
+    note=`<div style="padding:10px 12px 0;font-size:11px;color:var(--muted);border-top:1px solid var(--border);margin-top:6px;">
+      <strong>0 kWh categories:</strong> ${zeroCats.map(c=>secTag(c)).join(' ')}
+      — check <em>Rated Watts</em>, <em>Op Hrs/Day</em>, and <em>Op Days/Mo</em>.
+    </div>`;
+  }
+  if(window.drawEnergyCategoryBarChart)drawEnergyCategoryBarChart('en-category-chart',labels,values,'kWh',note);
   else container.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
 }
 
-function drawEnergyCategoryBarChart(containerId,labels,values,yLabel){
+function drawEnergyCategoryBarChart(containerId,labels,values,yLabel,noteHtml){
   const container=document.getElementById(containerId);
   if(!container)return;
   container.setAttribute('role','img');
@@ -7211,7 +7801,7 @@ function drawEnergyCategoryBarChart(containerId,labels,values,yLabel){
     <line x1="${PL}" x2="${PL}" y1="${PT}" y2="${PT+cH}" stroke="#d0d8e4" stroke-width="1.5"/>
     ${bars}${xLabels}
     <text x="${PL-42}" y="${PT+cH/2}" text-anchor="middle" font-size="10" fill="#6b7f96" transform="rotate(-90,${PL-42},${PT+cH/2})">${yLabel}</text>
-  </svg>`;
+  </svg>${noteHtml||''}`;
 }
 
 function renderEnergyBillChart(){
@@ -7261,38 +7851,39 @@ function renderEnergy(){
   const chartYear=year||String(new Date().getFullYear());
   const labels=[];
   const theoBars=[];
-  const actLine=[];
+  const actBars=[];
   for(let m=1;m<=12;m++){
     const ym=chartYear+'-'+String(m).padStart(2,'0');
     labels.push(MONTHS[m-1].substring(0,3));
     const bill=all.find(b=>b.period===ym);
     if(bill){
       theoBars.push(Math.round((bill.theoreticalKwh||0)*100)/100);
-      actLine.push(Math.round((bill.actualKwh||0)*100)/100);
+      actBars.push(Math.round((bill.actualKwh||0)*100)/100);
     }else{
-      // No bill for this month — show null so the line is gapped
       theoBars.push(0);
-      actLine.push(null);
+      actBars.push(0);
     }
   }
-  if(window.drawBarLineChart)drawBarLineChart('en-trend-chart',labels,theoBars,actLine,'#1e6fb5','#cc3333','kWh');
+  if(window.drawBarLineChart)drawBarLineChart('en-trend-chart',labels,theoBars,[],'#1e6fb5',null,'kWh');
+  if(window.drawBarLineChart)drawBarLineChart('en-actual-chart',labels,actBars,[],'#cc3333',null,'kWh');
   else{
     const c=document.getElementById('en-trend-chart');
     if(c)c.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
+    const c2=document.getElementById('en-actual-chart');
+    if(c2)c2.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
   }
 
   // Monthly table
   const tbody=document.getElementById('energy-tbody');
   if(tbody){
     if(!list.length){
-      tbody.innerHTML='<tr><td colspan="11" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="9" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
     }else{
       tbody.innerHTML=list.map(b=>{
         const theo=b.theoreticalKwh||0;
         const act=b.actualKwh||0;
         const variance=act-theo;
         const variancePct=theo>0?(variance/theo*100):null;
-        const ratePerKwh=act>0?(b.billAmount/act):null;
         const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
         const vSign=variance>0?'+':'';
         return`<tr>
@@ -7302,7 +7893,6 @@ function renderEnergy(){
           <td class="mono ${vClass}">${vSign}${variance.toFixed(1)}</td>
           <td class="mono ${vClass}">${variancePct!=null?vSign+variancePct.toFixed(1)+'%':'—'}</td>
           <td class="mono">${b.demandKw!=null?b.demandKw.toFixed(2):'—'}</td>
-          <td class="mono">${ratePerKwh!=null?'₱'+ratePerKwh.toFixed(2):'—'}</td>
           <td class="mono">₱${(b.billAmount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           <td style="max-width:160px;white-space:normal;font-size:12px;">${escapeHTML(b.remarks)||'—'}</td>
           <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openEnergyModal(${b.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delEnergyBill(${b.id})">Del</button></td>
@@ -7375,18 +7965,16 @@ function renderEnergy(){
 
 function exportEnergyCSV(){
   const list=DB.g('energyBills')||[];
-  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','PHP_per_kWh','Bill_PHP','Account_No','Meter_No','Remarks']];
+  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','Bill_PHP','Account_No','Meter_No','Remarks']];
   list.slice().sort((a,b)=>(b.period||'').localeCompare(a.period||'')).forEach(b=>{
     const theo=b.theoreticalKwh||0;
     const act=b.actualKwh||0;
     const variance=act-theo;
     const variancePct=theo>0?(variance/theo*100):'';
-    const rate=act>0?(b.billAmount/act):'';
     rows.push([
       b.periodLabel||b.period||'',theo.toFixed(2),act.toFixed(2),variance.toFixed(2),
       variancePct!==''?variancePct.toFixed(2):'',
       b.demandKw!=null?b.demandKw.toFixed(2):'',
-      rate!==''?rate.toFixed(2):'',
       (b.billAmount||0).toFixed(2),
       b.accountNo||'',
       b.meterNo||'',
@@ -7617,7 +8205,7 @@ const _origExportCSV=exportCSV;
 exportCSV=function(type){
   if(type==='safety'){
     const h=['Issue #','Severity','Description','Location','Linked Asset','Status','Date Logged','Logged By','Remarks'];
-    const rows=DB.g('safety').map(s=>[s.code||('SF-'+String(s.id).padStart(4,'0')),s.severity,s.description,s.location,s.asset,s.status,s.date,s.loggedBy,s.remarks]);
+    const rows=DB.g('safety').map(s=>[s.code||('SF-'+String(s.id).padStart(4,'0')),s.severity,s.description,s.location,s.asset||s.linkedAsset||'',s.status,s.date,s.loggedBy,s.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Safety_'+today()+'.csv');
   }else if(type==='projects'){
     const h=['Code','Title','Category','Location','Budget (PHP)','Funding','Responsible','Start','Target','Actual','Physical %','Financial %','Status','Issues'];
@@ -7625,7 +8213,7 @@ exportCSV=function(type){
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Projects_'+today()+'.csv');
   }else if(type==='water'){
     const h=['Log #','Date','Ward/Location','Test Type','Result','Bacteria Count (CFU)','Residual Chlorine (mg/L)','Mitigation','Remarks'];
-    const rows=DB.g('waterLogs').map(l=>[l.code||('WL-'+String(l.id).padStart(4,'0')),l.date,l.ward,l.testType,l.result,l.bacteriaCount,l.residualChlorine,l.mitigation,l.remarks]);
+    const rows=DB.g('waterLogs').map(l=>[l.code||('WL-'+String(l.id).padStart(4,'0')),l.date,l.ward,l.testType,l.result,l.bacteriaCount,l.residualChlorine??l.chlorine??'',l.mitigation,l.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WaterSafety_'+today()+'.csv');
   }else if(type==='watertank'){
     // PATCH: Water CSV Export Upgrade — Export 1: Raw + Computations
@@ -7889,13 +8477,22 @@ function importWOCSV(e){
       const desc=gv(idx.desc).trim(); const asset=gv(idx.asset).trim();
       if(!desc&&!asset) continue;
       const raw=gv(idx.status); const st=['Open','In Progress','Closed','Completed'].includes(raw)?raw:'Open';
+      const sec=gv(idx.section)||'CMW';
+      const pri=gv(idx.priority)||'Medium';
+      let loc=gv(idx.location);
+      if(!loc && asset){
+        const matched=DB.g('assets').find(a=>(a.name||'').toLowerCase()===asset.toLowerCase()||(a.assetCode||'').toLowerCase()===asset.toLowerCase());
+        if(matched) loc=matched.location||(matched.building?[matched.building,matched.floor,matched.roomNumber].filter(Boolean).join(' - '):'');
+      }
+      const woCode=generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[pri]||'MD']);
       items.push({
         id: generateUniqueNumericId(_usedIds),
-        section:  gv(idx.section)||'CMW',
+        code: woCode,
+        section:  sec,
         asset:    asset||'—',
-        location: gv(idx.location),
+        location: loc||'',
         description: desc||'Imported work order',
-        priority: gv(idx.priority)||'Medium',
+        priority: pri,
         status:   st,
         dateStart:normYMD(gv(idx.dateStart))||today(),
         targetCompletionDate: normYMD(gv(idx.targetCompletion))||null,
@@ -8003,15 +8600,42 @@ function renderWO(){
   const sec=document.getElementById('wof-section')?.value||'';
   const st=document.getElementById('wof-status')?.value||'';
   const pri=document.getElementById('wof-priority')?.value||'';
-  const q=document.getElementById('wof-search')?.value.toLowerCase()||'';
-  const locF=document.getElementById('wof-loc')?.value.toLowerCase()||'';
+  const q=(document.getElementById('wof-search')?.value||'').trim().toLowerCase();
+  const locF=(document.getElementById('wof-loc')?.value||'').trim().toLowerCase();
   let wos=DB.g('wo');
   if(sec)wos=wos.filter(w=>w.section===sec);
   if(st){if(st==='Overdue')wos=wos.filter(w=>overdue(w));else if(st==='Late Completed')wos=wos.filter(w=>lateCompleted(w));else wos=wos.filter(w=>w.status===st);}
   if(pri)wos=wos.filter(w=>w.priority===pri);
   wos=wos.filter(w=>matchMonthYear(w.dateStart,'wof'));
-  if(locF)wos=wos.filter(w=>(w.location||'').toLowerCase().includes(locF));
-  if(q)wos=wos.filter(w=>(w.asset||'').toLowerCase().includes(q)||(w.description||'').toLowerCase().includes(q)||(w.location||'').toLowerCase().includes(q));
+  if(locF){
+    const locFClean=locF.replace(/[_]+$/, '').trim().toLowerCase();
+    wos=wos.filter(w=>{
+      const wl=(w.location||'').toLowerCase();
+      if(isSameLocation(locFClean,wl)||isSameLocation(locF,wl))return true;
+      if(new RegExp('\\b'+escapeRegex(locFClean)+'\\b','i').test(wl))return true;
+      if(locFClean.length>=4&&wl.includes(locFClean))return true;
+      return false;
+    });
+  }
+  if(q){
+    const qRaw=q.trim();
+    const qClean=qRaw.replace(/[_]+$/, '').trim().toLowerCase();
+    const qLower=qRaw.toLowerCase();
+    wos=wos.filter(w=>{
+      const wa=(w.asset||'').toLowerCase();
+      const wd=(w.description||'').toLowerCase();
+      const wl=(w.location||'').toLowerCase();
+      if(qClean.length<=3){
+        const reg=new RegExp('\\b'+escapeRegex(qClean)+'\\b','i');
+        if(reg.test(wa)||reg.test(wd)||reg.test(wl))return true;
+      } else {
+        if(wa.includes(qLower)||wa.includes(qClean)||wd.includes(qLower)||wd.includes(qClean))return true;
+        if(wl.includes(qClean))return true;
+      }
+      if(isSameLocation(qClean,wl)||isSameLocation(qLower,wl))return true;
+      return false;
+    });
+  }
   wos.sort((a,b)=>b.id-a.id);
   const totalWOs=wos.length;
   if(!_woShowAll&&wos.length>50)wos=wos.slice(0,50);
@@ -8261,12 +8885,12 @@ function getCensusForDate(dateStr){
   if(exact) return exact.count;
 
   // Nearest earlier date
-  const earlier = log.filter(x=>x.date<=dateStr).sort((a,b)=>b.date.localeCompare(a.date));
+  const earlier = log.filter(x=>x&&x.date&&x.date<=dateStr).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(earlier.length) return earlier[0].count;
 
   // Latest entry (best available)
-  const latest = [...log].sort((a,b)=>b.date.localeCompare(a.date));
-  return latest[0]?.count || 0;
+  const latest = [...log].filter(x=>x&&x.date).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return latest[0]?.count ?? 0;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -9311,8 +9935,9 @@ saveTankReading=function(){
   if(!dt){showToast('Date/Time is required.','warning');return;}
   if(isNaN(lvl)||lvl<0||lvl>100){showToast('Water Level % is required (0\u2013100).','warning');return;}
   if(!tankName){showToast('Tank Name is required.','warning');return;}
-  const patRaw=parseInt(document.getElementById('m-tk-patients')?.value);
-  if(!patRaw||patRaw<1){showToast('Inpatient Count is required for L/patient analytics. Enter 0 if ward is empty.','warning');return;}
+  const patVal=(document.getElementById('m-tk-patients')?.value||'').trim();
+  const patRaw=patVal!==''?parseInt(patVal,10):NaN;
+  if(isNaN(patRaw)||patRaw<0){showToast('Inpatient Count is required for L/patient analytics. Enter 0 if ward is empty.','warning');return;}
 
   const manualCap=parseFloat(document.getElementById('m-tk-cap')?.value)||null;
   const manualLowAlert=parseFloat(document.getElementById('m-tk-low-alert')?.value)||null;
@@ -9321,7 +9946,7 @@ saveTankReading=function(){
 
   if(!assetId&&!cap){showToast('Tank Capacity (L) is required.','warning');return;}
 
-  const patCount=parseInt(document.getElementById('m-tk-patients')?.value)||getCensusForDate(dt.slice(0,10))||null;
+  const patCount=!isNaN(patRaw)?patRaw:(getCensusForDate(dt.slice(0,10))??0);
 
   // PATCH: Water Log KPI Fix — save activity indicators
   const gChk=id=>document.getElementById(id)?.checked||false;
@@ -10883,15 +11508,22 @@ async function confirmFactoryReset(){
           const snap=await getDocs(collection(db,'hammsStores',store,'records'));
           snap.forEach(ds=>allOps.push({type:'delete',ref:ds.ref}));
         }
-        allOps.push({type:'delete',ref:doc(db,'hamms','mainData')}); // remove legacy shared document
         allOps.push({type:'set',ref:doc(db,'hammsMeta','state'),data:{
           storeInitialized: Object.fromEntries(STORES_ALL.map(store=>[store,true])),
           inpatientToday: 0,
           personnel: {},
           updatedAt: serverTimestamp(),
-          updatedBy: 'FACTORY_RESET',
+          updatedBy: window._FB.email || 'FACTORY_RESET',
           resetAt: new Date().toISOString()
         }});
+        // Attempt legacy shared document deletion separately so it never blocks store reset
+        try{
+          const legacyBatch=writeBatch(db);
+          legacyBatch.delete(doc(db,'hamms','mainData'));
+          await legacyBatch.commit();
+        }catch(legacyErr){
+          console.warn('HAMMS: Legacy mainData removal skipped:', legacyErr.message||legacyErr);
+        }
         const CHUNK=450;
         for(let i=0;i<allOps.length;i+=CHUNK){
           const batch=writeBatch(db);
@@ -11001,17 +11633,30 @@ function openRoomView(room){
 
   // Match assets that belong to this room (check all location fields)
   const roomLower = room.toLowerCase().trim();
+  const roomClean = roomLower.replace(/[_]+$/, '').trim();
   const assets = allAssets.filter(a => {
     const locs = [a.location, a.roomNumber, a.roomName, a.building].filter(Boolean);
-    return locs.some(l => l.toLowerCase().trim() === roomLower);
+    return locs.some(l => {
+      const ll = l.toLowerCase().trim();
+      return ll === roomLower || ll === roomClean || isSameLocation(l, room) || isSameLocation(l, roomClean);
+    });
   });
 
-  // Match WOs by asset names in this room OR by WO location field
+  // Match WOs by location FIRST to prevent cross-room data leaks (e.g. RM 317 repair leaking into RM 316/306)
   const assetNames = new Set(assets.map(a => a.name));
-  const wos = allWOs.filter(w =>
-    assetNames.has(w.asset) ||
-    (w.location||'').toLowerCase().trim() === roomLower
-  ).sort((a,b) => b.id - a.id);
+  const wos = allWOs.filter(w => {
+    const woLoc = (w.location || '').trim();
+    if(woLoc){
+      const wl = woLoc.toLowerCase();
+      if(wl === roomLower || wl === roomClean || isSameLocation(woLoc, room) || isSameLocation(woLoc, roomClean)) return true;
+      return assets.some(a => {
+        const aLocs = [a.location, a.roomNumber, a.roomName].filter(Boolean);
+        return aLocs.some(al => isSameLocation(woLoc, al));
+      });
+    }
+    // Fallback: only if WO has no location at all, check if asset exists in this room
+    return assetNames.has(w.asset);
+  }).sort((a,b) => b.id - a.id);
 
   // ── Summary bar ──────────────────────────────────────
   const totalQty   = assets.reduce((s, a) => s + (a.qty||1), 0);
@@ -11835,7 +12480,11 @@ function wsetUpdateFixtureHints(){
   window.downloadWasteTemplate = function(){
     const rows=[
       ['Date','Waste Type','Volume Kg','Hauler','Status','Remarks'],
-      ['2026-03-15','Infectious','12.5','Sample Hauler','OK','Sample entry only']
+      ['2026-03-15','Infectious','12.5','EcoWaste Corp','OK','Sample infectious waste'],
+      ['2026-03-15','Biodegradable','28.0','City Disposal','OK','Kitchen and food waste'],
+      ['2026-03-15','Recyclable','22.5','Recycling Partner','OK','Packaging and paper'],
+      ['2026-03-15','Residual','18.0','City Disposal','OK','Non-recyclable residual waste'],
+      ['2026-03-15','FOG','4.5','Grease Hauler','OK','Fats, oil, and grease']
     ];
     dl(csvBlob(rows),'HAMMS_Waste_Template.csv');
   };

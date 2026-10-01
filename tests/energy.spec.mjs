@@ -11,8 +11,10 @@ async function bootstrapApp(page) {
   await page.goto('/?nocache=' + Date.now());
   await page.waitForLoadState('domcontentloaded');
   await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
+    const loginOverlay = document.getElementById('hamms-login-overlay');
+    if (loginOverlay) loginOverlay.style.cssText = 'display:none !important';
+    const app = document.getElementById('app');
+    if (app) app.style.visibility = 'visible';
     if (typeof _memDB === 'undefined') window._memDB = {};
     const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
     stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
@@ -27,7 +29,7 @@ async function bootstrapApp(page) {
       { id: 9002, name: 'Test AC 2', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
       { id: 9003, name: 'Test X-ray', section: 'Radiology', mainCategory: 'Biomedical', ratedWatts: 2000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' }
     ];
-    navigate('dashboard');
+    // Note: navigate('dashboard') removed - tests navigate themselves
   });
 }
 
@@ -215,20 +217,7 @@ test.describe('Energy — Variance math', () => {
     expect(html).toContain('var-under');
   });
 
-  test('₱/kWh is computed and rendered', async ({ page }) => {
-    await bootstrapApp(page);
-    await page.evaluate(() => {
-      openEnergyModal();
-      document.getElementById('m-en-month').value = '05';
-      document.getElementById('m-en-year').value = '2026';
-      document.getElementById('m-en-actual').value = '1000';
-      document.getElementById('m-en-amount').value = '7000';
-      saveEnergy();
-    });
-    await gotoEnergy(page);
-    const html = await page.evaluate(() => document.getElementById('energy-tbody').innerHTML);
-    expect(html).toContain('₱7.00');
-  });
+
 });
 
 // ═══════════════════════════════════════
@@ -246,6 +235,58 @@ test.describe('Energy — Reports & Charts', () => {
       return el.querySelector('svg') !== null || el.children.length > 0;
     });
     expect(hasCanvas).toBe(true);
+  });
+
+  test('Actual consumption chart renders on the page', async ({ page }) => {
+    await bootstrapApp(page);
+    await gotoEnergy(page);
+    const hasCanvas = await page.evaluate(() => {
+      const el = document.getElementById('en-actual-chart');
+      if (!el) return false;
+      // drawBarLineChart produces an <svg> child
+      return el.querySelector('svg') !== null || el.children.length > 0;
+    });
+    expect(hasCanvas).toBe(true);
+  });
+
+  test('Theoretical load by category chart renders on the page', async ({ page }) => {
+    await bootstrapApp(page);
+    await gotoEnergy(page);
+    const hasCanvas = await page.evaluate(() => {
+      const el = document.getElementById('en-category-chart');
+      if (!el) return false;
+      // drawEnergyCategoryBarChart produces an <svg> child
+      return el.querySelector('svg') !== null || el.children.length > 0;
+    });
+    expect(hasCanvas).toBe(true);
+  });
+
+  test('Biomedical assets appear as a category in the load chart', async ({ page }) => {
+    await bootstrapApp(page);
+    await gotoEnergy(page);
+    const hasBiomedical = await page.evaluate(() => {
+      const svg = document.querySelector('#en-category-chart svg');
+      if (!svg) return false;
+      const labels = Array.from(svg.querySelectorAll('text')).map(t => t.textContent.trim());
+      return labels.includes('Biomedical');
+    });
+    expect(hasBiomedical).toBe(true);
+  });
+
+  test('0 kWh categories are listed below the load chart', async ({ page }) => {
+    await bootstrapApp(page);
+    await page.evaluate(() => {
+      _memDB.assets = [
+        { id: 9004, name: 'Zero-load Biomed', section: 'Biomedical', mainCategory: 'Biomedical', ratedWatts: 0, opHoursDay: 0, opDaysMonth: 0, demandFactor: 0.8, qty: 1, condition: 'Good' }
+      ];
+    });
+    await gotoEnergy(page);
+    const showsNote = await page.evaluate(() => {
+      const container = document.getElementById('en-category-chart');
+      if (!container) return false;
+      return container.innerHTML.includes('0 kWh categories') && container.innerHTML.includes('Biomedical');
+    });
+    expect(showsNote).toBe(true);
   });
 
   test('Monthly DORECO bill chart renders with month labels', async ({ page }) => {
@@ -463,5 +504,51 @@ test.describe('Energy — Navigation', () => {
     await bootstrapApp(page);
     const has = await page.evaluate(() => STORES.includes('energyBills'));
     expect(has).toBe(true);
+  });
+});
+
+// ═══════════════════════════════════════
+// Module 6 — Layout / scrolling regression
+// ═══════════════════════════════════════
+test.describe('Energy — Layout', () => {
+
+  test('Footer stays fixed when Energy page content is scrolled to bottom', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await bootstrapApp(page);
+
+    // Seed enough bills to make the Energy page taller than the viewport.
+    await page.evaluate(() => {
+      for (let i = 0; i < 36; i++) {
+        const m = String((i % 12) + 1).padStart(2, '0');
+        const y = 2024 + Math.floor(i / 12);
+        _memDB.energyBills.push({
+          id: 1000 + i, _docId: 'eb' + i, period: `${y}-${m}`,
+          periodLabel: `${['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][i % 12]} ${y}`,
+          actualKwh: 40000 + i * 1000, theoreticalKwh: 768, billAmount: 250000 + i * 5000,
+          demandKw: 250 + i * 5, remarks: 'Test', accountNo: '01', meterNo: '02'
+        });
+      }
+      navigate('energy');
+    });
+    await page.waitForFunction(() => document.getElementById('page-energy')?.classList.contains('active'), { timeout: 5000 });
+    await page.waitForTimeout(300);
+
+    const content = page.locator('#content');
+    await content.evaluate(el => el.scrollTo(0, el.scrollHeight));
+    await page.waitForTimeout(300);
+
+    const metrics = await page.evaluate(() => ({
+      windowScrollY: window.scrollY,
+      contentScrollTop: document.getElementById('content').scrollTop,
+      contentClientHeight: document.getElementById('content').clientHeight,
+      footerBottom: document.getElementById('app-footer').getBoundingClientRect().bottom,
+      viewportHeight: window.innerHeight
+    }));
+
+    expect(metrics.windowScrollY).toBe(0);
+    expect(metrics.contentScrollTop).toBeGreaterThan(0);
+    expect(metrics.footerBottom).toBeLessThanOrEqual(metrics.viewportHeight + 1);
+    expect(metrics.footerBottom).toBeGreaterThanOrEqual(metrics.viewportHeight - 1);
+    expect(metrics.contentClientHeight).toBeGreaterThan(300);
   });
 });

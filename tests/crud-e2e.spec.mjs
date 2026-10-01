@@ -632,6 +632,19 @@ test.describe('Validation guards', () => {
     expect(countAfter).toBe(countBefore);
   });
 
+  test('Waste type dropdown uses new categories and no General', async ({ page }) => {
+    await bootstrapApp(page);
+    await page.evaluate(() => navigate('waste'));
+    const options = await page.evaluate(() =>
+      Array.from(document.getElementById('m-w-type').options).map(o => o.value || o.text)
+    );
+    expect(options).toContain('Biodegradable');
+    expect(options).toContain('Recyclable');
+    expect(options).toContain('Residual');
+    expect(options).toContain('FOG');
+    expect(options).not.toContain('General');
+  });
+
   test('Project save rejects empty code/title', async ({ page }) => {
     await bootstrapApp(page);
     await page.evaluate(() => navigate('projects'));

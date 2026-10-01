@@ -1,14 +1,14 @@
 # AGENTS.md — HAMMS (Hospital Asset Maintenance Monitoring System)
 
-Single-file vanilla-JS PWA for Davao Oriental Provincial Medical Center. No build step, no framework, no bundler. The whole app is `public/index.html` (~11,900 lines, 11,893). See `CLAUDE.md` for the full architecture map (data layer, sync, page structure, file layout).
+Single-file vanilla-JS PWA for Davao Oriental Provincial Medical Center. No build step, no framework, no bundler. The whole app is `public/index.html` (~11,200 lines, 11,212). See `CLAUDE.md` for the full architecture map (data layer, sync, page structure, file layout).
 
 ## Quick facts
 
 - **App entry:** `public/index.html` (all HTML, CSS, JS in one file)
-- **Service worker:** `public/sw.js` — caches app shell + dynamic GETs (skips `firestore.googleapis.com`, `identitytoolkit.googleapis.com`, `securetoken.googleapis.com`, `firebaseinstallations.googleapis.com`, `firebasejs`)
+- **Service worker:** `public/sw.js` — caches app shell + dynamic GETs (skips Firebase API calls)
 - **PWA manifest + icons:** `public/manifest.json`, `public/icon-192.png`, `public/icon-512.png`
-- **Data:** in-memory `_memDB` (15 stores) → Firestore per-record docs under `/hammsStores/{store}/records/{docId}`. Scalar state under `/hammsMeta/state`. See `CLAUDE.md` "Data Layer" for the accessor pattern (`DB.g`, `DB.s`, `DB.nid`).
-- **Auth:** Firebase Auth email/password; anonymous auth enabled in `firestore.rules` via `isNamedUser()` (non-null email).
+- **Data:** in-memory `_memDB` (15 stores) → Firestore per-record docs under `/hammsStores/{store}/records/{docId}`. Scalar state under `/hammsMeta/state`. Access via `DB.g(key)`, `DB.s(key, val)`, `DB.nid(key)`.
+- **Auth:** Firebase Auth email/password; requires non-null email per `firestore.rules`.
 - **No `scripts` in `package.json`** — invoke tools via `npx`.
 
 ## Common commands
@@ -36,16 +36,19 @@ Playwright config: `testDir: ./tests`, `baseURL: http://localhost:3000`, `timeou
 
 ## Repo-specific gotchas (things an agent will get wrong without this)
 
-- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-10-1`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
+- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-10-17`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
 - **Firestore rules enforce exact store names.** Writes are rejected unless the store segment is one of the 15 names (`wo`, `assets`, `inventory`, `issuance`, `waste`, `waterLogs`, `waterTank`, `effluent`, `medWasteProd`, `wwProd`, `censusLog`, `waterSettings`, `energyBills`, `safety`, `projects`). See `firestore.rules:21-24`. `_updatedBy` on every record must equal the writer's auth email (`isWriter()`).
-- **Records are versioned.** Every record gets `_docId` (Firestore key), numeric `id` (collision-safe across devices), `_v` (int, monotonic), `_updatedAt` (epoch ms), `_updatedBy` (email). Use `stampRecord()` or `stampChangedRecords()` — never set these fields by hand. Helpers: `generateRecordDocId()`, `generateUniqueNumericId()` at `public/index.html:2782-2900`.
+- **`FIREBASE_ENABLED = false` for test mode.** Tests stub `window._FB.enabled = false` to prevent actual Firestore writes. The app also runs fully offline when set at line 56.
+- **Records are versioned.** Every record gets `_docId` (Firestore key), numeric `id` (collision-safe across devices), `_v` (int, monotonic), `_updatedAt` (epoch ms), `_updatedBy` (email). Use `stampRecord()` or `stampChangedRecords()` — never set these fields by hand. Helpers: `generateRecordDocId()`, `generateUniqueNumericId()` at `public/index.html:2978-2991`.
+- **Layout is viewport-locked.** `body { overflow:hidden; }` prevents whole-page scrolling; `#main` and `#content` use `min-height:0` so the content area scrolls independently and the footer stays fixed at the bottom. The desktop sidebar is `position:fixed` with `#main { margin-left:var(--sb-w); }`.
 - **No offline write buffering.** Writes while offline are discarded for multi-user safety. The user must reconnect and re-save. The top bar shows sync state via `setStorageChip()` (`LIVE` / `Unavailable` / `Offline`).
-- **Test bootstrap pattern.** Every spec in `tests/` uses a `bootstrapApp(page)` helper that: clears the SW + cache, reloads with `?nocache=<ts>`, hides `#hamms-login-overlay`, makes `#app` visible, seeds empty `_memDB` with the 15 stores, and calls `navigate('dashboard')`. CRUD specs also stub `window._FB.enabled = false` and override `confirmDialog` to auto-confirm. Reuse this helper — do not write a new one. See `tests/crud-e2e.spec.mjs:4-31`.
+- **Test bootstrap pattern.** Every spec in `tests/` uses a `bootstrapApp(page)` helper (see `tests/crud-e2e.spec.mjs:4-31`): clears SW + cache, reloads with `?nocache=<ts>`, hides login overlay, seeds empty `_memDB` with 15 stores, stubs Firestore, overrides `confirmDialog`, calls `navigate('dashboard')`. Reuse this helper — do not write a new one.
 - **All innerHTML must be sanitized.** Wrap user strings in `escapeHTML()`; URLs in `safeSrc()` (data:image/ + https only). This was audited and patched across 15 locations in v2.5.0; do not regress it.
-- **CSP is strict.** `public/index.html` runs inline scripts/styles (`'unsafe-inline'` allowed), Firebase SDK is loaded from `https://www.gstatic.com`, Google Fonts from `https://fonts.googleapis.com` / `https://fonts.gstatic.com`. Don't add new external origins without updating the `Content-Security-Policy` header in `firebase.json:34`.
-- **No lint/format/typecheck configured.** There is no ESLint, Prettier, tsc, or formatter in this repo. Tests are the only automated verification. CI (if added) would need to install its own tooling.
+- **CSP is strict.** `public/index.html` runs inline scripts/styles (`'unsafe-inline'` allowed), Firebase SDK from `https://www.gstatic.com`, Google Fonts from `https://fonts.googleapis.com` / `https://fonts.gstatic.com`. Don't add new external origins without updating `Content-Security-Policy` in `firebase.json:34`.
+- **No lint/format/typecheck configured.** No ESLint, Prettier, tsc, or formatter. Tests are the only automated verification.
 - **`LOCAL.json`** is the demo/fallback dataset loaded on factory reset — it is **not** a normal sample; do not commit real data into it.
-- **`.gitignore`** covers `node_modules/`, `.firebase/`, `.playwright-mcp/`, `package-lock.json`, `*.docx`. `package-lock.json` is intentionally not tracked.
+- **`.gitignore`** excludes `node_modules/`, `.firebase/`, `.playwright-mcp/`, `package-lock.json`, `*.docx`. `package-lock.json` is intentionally untracked.
+- **Code comments tagged `PATCHED:`** carry migration context — read them before changing the surrounding logic.
 
 ## File map (where to look)
 
@@ -53,9 +56,9 @@ Playwright config: `testDir: ./tests`, `baseURL: http://localhost:3000`, `timeou
 |---|---|
 | App shell, all UI, all logic | `public/index.html` (search by function name) |
 | Service worker + cache version | `public/sw.js` |
-| Firebase config + enable flag | `public/index.html:46-57` |
-| Firebase SDK init + auth state wiring | `public/index.html:60-130` |
-| Storage engine (`_memDB`, `DB`, `queueStoreSync`, `syncToFirebase`) | `public/index.html:2820-3460` |
+| Firebase config + enable flag | `public/index.html:46-56` |
+| Firebase SDK init + auth state wiring | `public/index.html:60-134` |
+| Storage engine (`_memDB`, `DB`, `queueStoreSync`, `syncToFirebase`) | `public/index.html:2887-3460` |
 | Security rules (store allowlist, version monotonicity, writer identity) | `firestore.rules` |
 | Hosting config (rewrites, CSP, SW headers) | `firebase.json` |
 | Firestore indexes | `firestore.indexes.json` |

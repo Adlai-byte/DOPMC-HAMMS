@@ -1,5 +1,7 @@
 node_modules/
 .firebase/
 .playwright-mcp/
+test-results/
 package-lock.json
 *.docx
+
