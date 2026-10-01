@@ -6074,16 +6074,16 @@ function renderAssets(){
       const name=(a.name||'').toLowerCase();
       const code=(a.assetCode||'').toLowerCase();
       const loc=(a.location||a.roomNumber||a.roomName||'').toLowerCase();
-      if(name.includes(qLower)||name.includes(qClean))return true;
       if(qClean.length<=3){
-        if(new RegExp('\\b'+escapeRegex(qClean)+'\\b','i').test(code))return true;
+        const reg=new RegExp('\\b'+escapeRegex(qClean)+'\\b','i');
+        if(reg.test(name)||reg.test(code)||reg.test(loc))return true;
       } else {
+        if(name.includes(qLower)||name.includes(qClean))return true;
         if(code.includes(qLower)||code.includes(qClean))return true;
         if(locAbv&&locAbv!=='gen'&&new RegExp('\\b'+escapeRegex(locAbv)+'\\b','i').test(code))return true;
+        if(loc.includes(qClean))return true;
       }
       if(isSameLocation(qClean,loc)||isSameLocation(qLower,loc))return true;
-      if(new RegExp('\\b'+escapeRegex(qClean)+'\\b','i').test(loc))return true;
-      if(qClean.length>=4&&loc.includes(qClean))return true;
       return false;
     });
   }
