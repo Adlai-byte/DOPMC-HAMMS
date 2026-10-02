@@ -36,7 +36,7 @@ Playwright config: `testDir: ./tests`, `baseURL: http://localhost:3000`, `timeou
 
 ## Repo-specific gotchas (things an agent will get wrong without this)
 
-- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-10-18`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
+- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-10-19`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
 - **Firestore rules enforce exact store names.** Writes are rejected unless the store segment is one of the 15 names (`wo`, `assets`, `inventory`, `issuance`, `waste`, `waterLogs`, `waterTank`, `effluent`, `medWasteProd`, `wwProd`, `censusLog`, `waterSettings`, `energyBills`, `safety`, `projects`). See `firestore.rules:21-24`. `_updatedBy` on every record must equal the writer's auth email (`isWriter()`).
 - **`FIREBASE_ENABLED = false` for test mode.** Tests stub `window._FB.enabled = false` to prevent actual Firestore writes. The app also runs fully offline when set at line 56.
 - **Records are versioned.** Every record gets `_docId` (Firestore key), numeric `id` (collision-safe across devices), `_v` (int, monotonic), `_updatedAt` (epoch ms), `_updatedBy` (email). Use `stampRecord()` or `stampChangedRecords()` — never set these fields by hand. Helpers: `generateRecordDocId()`, `generateUniqueNumericId()` at `public/index.html:2978-2991`.

@@ -37,7 +37,7 @@ test.describe('Live Deployed Site Verification', () => {
       const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
       return m ? m[1] : null;
     });
-    expect(swVersion).toBe('hamms-v2-10-18');
+    expect(swVersion).toBe('hamms-v2-10-19');
     console.log('Live Verified SW Version:', swVersion);
 
     // Check for critical console errors (ignore benign network aborts if any)
@@ -187,6 +187,54 @@ test.describe('Live Deployed Site Verification', () => {
     expect(dietaryRoomView.assets).toContain('Dietary Blender');
     expect(dietaryRoomView.assets).toContain('Food Warmer');
     expect(dietaryRoomView.wos).toContain('Motor inspection');
+  });
+
+  test('Live Check 4: Live Fluorescent & Bulb auto-detection, code generation, and search normalization', async ({ page }) => {
+    await bootstrapLiveApp(page);
+
+    // 1. Live detectAssetType
+    const detected = await page.evaluate(() => {
+      return {
+        flLamp: detectAssetType('Fluorescent Lamp 36W'),
+        flTube: detectAssetType('Flourescent Tube'),
+        flStarter: detectAssetType('Flourescent Starter'),
+        bulb: detectAssetType('Bulb'),
+        ledBulb: detectAssetType('LED Bulb 9W')
+      };
+    });
+
+    expect(detected.flLamp.type).toBe('Lighting');
+    expect(detected.flLamp.hrs).toBe(12);
+    expect(detected.flLamp.df).toBe(1.0);
+
+    expect(detected.flTube.type).toBe('Lighting');
+    expect(detected.flStarter.type).toBe('Lighting');
+    expect(detected.bulb.type).toBe('Lighting');
+    expect(detected.ledBulb.type).toBe('Lighting');
+
+    // 2. Live asset auto-code generation
+    const codes = await page.evaluate(() => {
+      return {
+        flCode: generateAssetCodeFull({ name: 'Fluorescent Lamp 36W', section: 'Electrical', location: 'Room 101' }),
+        flouroCode: generateAssetCodeFull({ name: 'Flourescent Tube', section: 'Electrical', location: 'Room 102' }),
+        bulbCode: generateAssetCodeFull({ name: 'LED Bulb 9W', section: 'Electrical', location: 'Room 103' })
+      };
+    });
+
+    expect(codes.flCode).toMatch(/^FL-ELEC-RM101-\d{2}$/);
+    expect(codes.flouroCode).toMatch(/^FL-ELEC-RM102-\d{2}$/);
+    expect(codes.bulbCode).toMatch(/^LB-ELEC-RM103-\d{2}$/);
+
+    // 3. Live search normalization
+    const normResults = await page.evaluate(() => {
+      return {
+        flourescentNorm: normSearchTerm('flourescent lamp'),
+        fluorescentNorm: normSearchTerm('fluorescent lamp')
+      };
+    });
+
+    expect(normResults.flourescentNorm).toBe('fluorescent lamp');
+    expect(normResults.fluorescentNorm).toBe('fluorescent lamp');
   });
 
 });
