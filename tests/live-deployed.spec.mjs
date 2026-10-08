@@ -37,7 +37,7 @@ test.describe('Live Deployed Site Verification', () => {
       const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
       return m ? m[1] : null;
     });
-    expect(swVersion).toBe('hamms-v2-10-19');
+    expect(swVersion).toBe('hamms-v2-10-20');
     console.log('Live Verified SW Version:', swVersion);
 
     // Check for critical console errors (ignore benign network aborts if any)

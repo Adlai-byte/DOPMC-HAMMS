@@ -900,6 +900,73 @@ test.describe('Audit Bug Fixes', () => {
     expect(results.mwCode).toBe('AM-0001');
     expect(results.wwCode).toBe('PM-0001');
   });
+
+  test('Fix 28: Room View modal escapes assetCode and w.code against XSS', async ({ page }) => {
+    await bootstrapApp(page);
+    const htmlContent = await page.evaluate(() => {
+      DB.s('assets', [{
+        id: 991,
+        assetCode: '<img src=x onerror=alert(1)>',
+        name: 'Test XSS Asset',
+        location: 'ICU',
+        qty: 1,
+        condition: 'Good'
+      }]);
+      DB.s('wo', [{
+        id: 992,
+        code: '<b id="wo-xss-injection">WO-INJ</b>',
+        asset: 'Test XSS Asset',
+        location: 'ICU',
+        status: 'Open',
+        priority: 'Medium'
+      }]);
+      openRoomView('ICU');
+      return {
+        assetsHtml: document.getElementById('room-view-assets').innerHTML,
+        wosHtml: document.getElementById('room-view-wos').innerHTML,
+        hasRawAssetCodeTag: !!document.querySelector('#room-view-assets img[onerror]'),
+        hasRawWoCodeTag: !!document.getElementById('wo-xss-injection')
+      };
+    });
+    expect(htmlContent.hasRawAssetCodeTag).toBe(false);
+    expect(htmlContent.hasRawWoCodeTag).toBe(false);
+    expect(htmlContent.assetsHtml).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    expect(htmlContent.wosHtml).toContain('&lt;b id="wo-xss-injection"&gt;');
+  });
+
+  test('Fix 29: safeSrc escapes double quotes and HTML special characters', async ({ page }) => {
+    await bootstrapApp(page);
+    const results = await page.evaluate(() => {
+      return {
+        quoteBreakout: safeSrc('https://example.com/test.jpg" onerror="alert(1)'),
+        dataImage: safeSrc('data:image/png;base64,abc123" onload="alert(2)'),
+        cleanHttps: safeSrc('https://example.com/clean.jpg')
+      };
+    });
+    expect(results.quoteBreakout).toBe('https://example.com/test.jpg&quot; onerror=&quot;alert(1)');
+    expect(results.dataImage).toBe('data:image/png;base64,abc123&quot; onload=&quot;alert(2)');
+    expect(results.cleanHttps).toBe('https://example.com/clean.jpg');
+  });
+
+  test('Fix 30: censusLog ensures deterministic docId keyed by date', async ({ page }) => {
+    await bootstrapApp(page);
+    const results = await page.evaluate(() => {
+      const records = [
+        { date: '2026-10-08', count: 185 },
+        { date: '2026-10-09', count: 190 }
+      ];
+      const identified = ensureStoreRecordIdentity('censusLog', records);
+      const key0 = getStoreRecordKey('censusLog', identified[0]);
+      return {
+        docId0: identified[0]._docId,
+        docId1: identified[1]._docId,
+        key0
+      };
+    });
+    expect(results.docId0).toBe('2026-10-08');
+    expect(results.docId1).toBe('2026-10-09');
+    expect(results.key0).toBe('2026-10-08');
+  });
 });
 
 

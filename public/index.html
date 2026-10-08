@@ -3045,7 +3045,7 @@ function stampChangedRecords(prev,next){
 function safeSrc(url){
   if(!url)return'';
   const s=String(url).trim();
-  if(s.startsWith('data:image/')||s.startsWith('https://'))return s; // M-5 FIX: removed http:// — require TLS
+  if(s.startsWith('data:image/')||s.startsWith('https://'))return escapeHTML(s); // PATCHED: escape HTML characters to prevent quote breakout in img src
   return'';
 }
 // ═══════════════════════════════════════════════════════════════
@@ -3102,7 +3102,8 @@ function ensureStoreRecordIdentity(store, arr){ // PATCHED: every record gets a 
   const usedIds=new Set();
   return safe.map(rec=>{
     if(!rec || typeof rec!=='object') return rec;
-    if(store!=='waterSettings' && !rec._docId) rec._docId=generateRecordDocId(store);
+    if(store==='censusLog') rec._docId = rec.date ? String(rec.date) : (rec._docId || generateRecordDocId(store));
+    else if(store!=='waterSettings' && !rec._docId) rec._docId=generateRecordDocId(store);
     if(store==='waterSettings') return rec;
     const rawId=rec.id;
     const normalized=(rawId===undefined || rawId===null || rawId==='') ? null :
@@ -3119,8 +3120,8 @@ function ensureStoreRecordIdentity(store, arr){ // PATCHED: every record gets a 
 }
 function getStoreRecordKey(store, rec, idx=0){ // PATCHED: stable per-record document IDs for record-level Firestore writes
   if(store==='waterSettings') return 'current';
-  if(rec?._docId) return String(rec._docId);
   if(store==='censusLog' && rec?.date) return String(rec.date);
+  if(rec?._docId) return String(rec._docId);
   if(rec && rec.id!=null && rec.id!=='') return String(rec.id);
   if(rec?.dateTime) return String(rec.dateTime).replace(/[./:#\[\]?]/g,'_');
   if(rec?.date) return String(rec.date).replace(/[./:#\[\]?]/g,'_');
@@ -5850,7 +5851,7 @@ function calcAssetKwh(a){
     hrs=detectAssetType(a.name)?.hrs||0;
   }
   const days=parseFloat(a.opDaysMonth||0);
-  let df=(a.demandFactor!=null&&a.demandFactor!=='')?parseFloat(a.demandFactor):null;
+  let df=(a.demandFactor!=null&&a.demandFactor!==''&&parseFloat(a.demandFactor)>0)?parseFloat(a.demandFactor):null;
   if(df==null && a.name){
     df=detectAssetType(a.name)?.df??0.80;
   } else if(df==null){
@@ -11743,7 +11744,7 @@ function openRoomView(room){
   // ── Assets table ─────────────────────────────────────
   document.getElementById('room-view-assets').innerHTML = assets.length
     ? assets.map(a => `<tr style="border-bottom:1px solid #edf0f5;">
-        <td style="padding:7px 10px;"><span class="asset-code">${a.assetCode||assNum(a.id)}</span></td>
+        <td style="padding:7px 10px;"><span class="asset-code">${escapeHTML(a.assetCode||assNum(a.id))}</span></td>
         <td style="padding:7px 10px;font-weight:600;">${escapeHTML(a.name)}</td>
         <td style="padding:7px 10px;text-align:center;font-weight:700;">${a.qty||1}</td>
         <td style="padding:7px 10px;">${condBadge(a.condition)}</td>
@@ -11762,7 +11763,7 @@ function openRoomView(room){
           s==='In Progress' ? '<span style="font-size:10px;color:#0d3d5f;font-weight:700;display:block;">ONGOING:</span>' :
           '<span style="font-size:10px;color:#7a5000;font-weight:700;display:block;">NOTE:</span>';
         return `<tr style="border-bottom:1px solid #edf0f5;${rowBg}">
-          <td style="padding:7px 10px;font-family:monospace;">${w.code||woNum(w.id)}</td>
+          <td style="padding:7px 10px;font-family:monospace;">${escapeHTML(w.code||woNum(w.id))}</td>
           <td style="padding:7px 10px;">${escapeHTML(w.asset)||'—'}</td>
           <td style="padding:7px 10px;max-width:160px;white-space:normal;">${escapeHTML(w.description)||'—'}</td>
           <td style="padding:7px 10px;">${priSpan(w.priority)}</td>

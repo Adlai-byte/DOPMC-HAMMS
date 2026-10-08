@@ -1,19 +1,24 @@
-// HAMMS Service Worker v2.10.19
+// HAMMS Service Worker v2.10.20
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-10-19';
+const CACHE_NAME = 'hamms-v2-10-20';
 const SHELL_FILES = [
   '/',
   '/index.html',
-  '/manifest.json',
+  '/manifest.json'
+];
+const OPTIONAL_SHELL_FILES = [
   'https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap'
 ];
 
 // Install: cache app shell
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(SHELL_FILES);
+    caches.open(CACHE_NAME).then(async cache => {
+      await cache.addAll(SHELL_FILES);
+      try {
+        await Promise.all(OPTIONAL_SHELL_FILES.map(url => cache.add(url).catch(e => console.warn('SW optional font cache failed:', url, e))));
+      } catch (_) {}
     }).then(() => self.skipWaiting())
   );
 });
@@ -60,7 +65,7 @@ self.addEventListener('fetch', event => {
               cache.keys().then(keys => {
                 const dynamicKeys = keys.filter(req => {
                   const path = new URL(req.url, location.origin).pathname;
-                  return !SHELL_FILES.includes(path) && !SHELL_FILES.includes(req.url);
+                  return !SHELL_FILES.includes(path) && !SHELL_FILES.includes(req.url) && !OPTIONAL_SHELL_FILES.includes(req.url);
                 });
                 if (dynamicKeys.length > 100) cache.delete(dynamicKeys[0]);
               })
