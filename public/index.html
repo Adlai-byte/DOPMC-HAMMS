@@ -3457,6 +3457,19 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
   clearFirebaseListeners();
   _fbListenersStarted=true;
   const listenerSession=_sessionGeneration;
+  // Initial cache delivery is normal, even after a successful server-first load.
+  // Only a listener that already confirmed the server can later report a disconnect.
+  const connectionStates=new Map();
+  const observeConnection=(key,snap)=>{
+    if(snap.metadata.fromCache===false){
+      connectionStates.set(key,true);_fbLastServerSnapshot=Date.now();
+    }else if(connectionStates.has(key)&&!snap.metadata.hasPendingWrites){
+      connectionStates.set(key,false);
+    }
+    const states=[...connectionStates.values()];
+    if(states.some(Boolean))_fbAllFromCache=false;
+    else if(states.length)_fbAllFromCache=true;
+  };
   const shouldIgnoreCacheSnapshot=snap=>{
     if(listenerSession!==_sessionGeneration)return true; // PATCHED: only ignore cache before first load — after that, cached data is better than no data
     return !_fbLoadedOnce && navigator.onLine && !!snap?.metadata?.fromCache;
@@ -3467,13 +3480,14 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     // FIX: determine status from Firestore snapshot metadata, not navigator.onLine
     // Don't flip to offline on cached snapshots — Firestore always fires cache first, then server
     if(!_fbAllFromCache && !_fbSyncError && !pendingWrites()) setStorageChip('firebase-live');
-    else setStorageChip(_fbSyncError?'firebase-unavailable':pendingWrites()?'firebase-syncing':'firebase-offline');
+    else setStorageChip(!navigator.onLine?'firebase-offline':_fbSyncError?'firebase-unavailable':pendingWrites()?'firebase-syncing':'firebase-loading');
     scheduleUiRefresh();
   };
   try{
-    _fbUnsubscribe.push(window._FB.onSnapshot(getMetaDocRef(), snap=>{
+    _fbUnsubscribe.push(window._FB.onSnapshot(getMetaDocRef(), {includeMetadataChanges:true}, snap=>{
       if(shouldIgnoreCacheSnapshot(snap)) return;
-      if(_fbWriteInProgress || Object.keys(_fbPendingMetaMerge).length) return;
+      observeConnection('meta',snap);
+      if(_fbWriteInProgress || Object.keys(_fbPendingMetaMerge).length){publishLiveUi();return;}
       applyMetaData(snap.exists() ? snap.data() : {storeInitialized:{}});
       publishLiveUi();
     }, err=>{
@@ -3481,11 +3495,9 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
       setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
     }));
     STORES.forEach(store=>{
-      _fbUnsubscribe.push(window._FB.onSnapshot(getStoreCollectionRef(store), snap=>{
+      _fbUnsubscribe.push(window._FB.onSnapshot(getStoreCollectionRef(store), {includeMetadataChanges:true}, snap=>{
         if(shouldIgnoreCacheSnapshot(snap)) return;
-        // Track Firestore connectivity — non-cache snapshot = live; cache-only = offline/disconnected
-        if(!snap.metadata.fromCache){ _fbAllFromCache=false; _fbLastServerSnapshot=Date.now(); }
-        else if(_fbLoadedOnce){ _fbAllFromCache=true; }
+        observeConnection(store,snap);
         if(_fbWriteInProgress || hasPendingStoreOps(store) || isRecentlyFlushed(store) || snap.metadata.hasPendingWrites){
           mergeListenerSnapshot(store, snap);
           publishLiveUi();
@@ -3772,7 +3784,7 @@ function showFirebaseStatus(){
     'firebase-loading':'Connecting to Firebase live data.',
     'firebase-live':'Firebase is connected and HAMMS uses record-level collections with safe one-time cloud refreshes.',
     'firebase-syncing':'Saving your changes to Firebase...',
-    'firebase-offline':'Internet is offline. This session can keep editing, but cloud save is not confirmed until reconnection.',
+    'firebase-offline':'The browser reports no internet connection. Reconnect to save; unsaved form entries remain available.',
     'firebase-unavailable':'Firebase is currently unavailable or not yet ready.'
   };
   showToast(`Firebase: ${_storageMode||'unknown'} · ${net} — ${statusMap[_storageMode]||'Status unavailable.'}`, 'info');

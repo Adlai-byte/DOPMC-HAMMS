@@ -220,3 +220,11 @@ The earlier four-worker run had one room-view timeout; that test passed alone, a
 At the user's request, application commit 4b5437357ee7baca52b9f72b44819cb657107907 was pushed to origin/codex/reliability-fixes and deployed to Firebase project demoapp-7864a (hosting, Firestore rules, and indexes). Live URL: https://demoapp-7864a.web.app. The main branch was not merged.
 
 Deployment completed successfully. The live index.html and sw.js both returned HTTP 200 and matched the committed files by SHA-256. All five live browser smoke tests passed (37.3 seconds). Live verification blocks service-worker registration to avoid test cleanup races, and fetches the deployed service-worker file directly to verify cache version hamms-v2-10-21. Synthetic UI test records stayed in browser memory with Firebase writes disabled. Administrator claims were not provisioned.
+
+## Connectivity correction — 2026-10-09
+
+Reproduced a false Offline indicator and blocked saves while navigator.onLine was true: an initial cached snapshot from one store overwrote a confirmed server connection from another. The listeners also omitted includeMetadataChanges, so identical cached/server data could leave the indicator stuck.
+
+Listeners now request metadata events and track confirmed connection transitions across stores and metadata. Initial cache delivery does not override a successful server-first load. If all confirmed listeners become cache-only while the browser has internet, the chip says Connecting; a later server confirmation restores Live. Real browser offline events and failed online saves remain protected. Service-worker cache: hamms-v2-10-22.
+
+All three new regression tests failed before the patch and passed afterward. The combined connectivity, sync/session, and reliability suites passed all 24 tests with no retries.
