@@ -214,3 +214,9 @@ Validation completed locally:
 - Inline JavaScript syntax and git diff --check passed.
 
 The earlier four-worker run had one room-view timeout; that test passed alone, and the final two-worker full run was clean. Browser sync failure tests use a deterministic Firebase mock; rules tests use the local emulator. No production writes, deployment, GitHub push, or administrator provisioning were performed. GitHub Actions configuration is prepared but has not run remotely.
+
+## Production release — 2026-10-09
+
+At the user's request, application commit 4b5437357ee7baca52b9f72b44819cb657107907 was pushed to origin/codex/reliability-fixes and deployed to Firebase project demoapp-7864a (hosting, Firestore rules, and indexes). Live URL: https://demoapp-7864a.web.app. The main branch was not merged.
+
+Deployment completed successfully. The live index.html and sw.js both returned HTTP 200 and matched the committed files by SHA-256. All five live browser smoke tests passed (37.3 seconds). Live verification blocks service-worker registration to avoid test cleanup races, and fetches the deployed service-worker file directly to verify cache version hamms-v2-10-21. Synthetic UI test records stayed in browser memory with Firebase writes disabled. Administrator claims were not provisioned.
