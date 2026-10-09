@@ -7,10 +7,24 @@ on:
     branches:
       - main
 jobs:
+  tests:
+    uses: ./.github/workflows/tests.yml
   build_and_deploy:
+    needs: tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Deploy matching Firestore rules and indexes
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEMOAPP_7864A }}
+        run: |
+          credential_file="$RUNNER_TEMP/firebase-service-account.json"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$credential_file"
+          export GOOGLE_APPLICATION_CREDENTIALS="$credential_file"
+          npx --yes firebase-tools@15.10.1 deploy --only firestore --project demoapp-7864a --non-interactive
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}

@@ -1,24 +1,7 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // ─── Bootstrap helper (mirrors qa-fixes.spec.mjs) ────────────────────
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    navigate('dashboard');
-  });
-}
 
 // Major pages to audit
 const PAGES = [

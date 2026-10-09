@@ -1,26 +1,7 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // Helper: bypass login and initialize empty app state
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  // Clear SW cache
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  // Bypass login, init empty DB, show app
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    navigate('dashboard');
-  });
-}
 
 // ═══════════════════════════════════════════════════
 // String/Security Utilities
@@ -185,7 +166,7 @@ test.describe('today', () => {
     const result = await page.evaluate(() => {
       const t = today();
       const now = new Date();
-      const expected = now.toISOString().split('T')[0];
+      const expected = [now.getFullYear(),String(now.getMonth()+1).padStart(2,'0'),String(now.getDate()).padStart(2,'0')].join('-');
       return { today: t, expected };
     });
     expect(result.today).toBe(result.expected);
@@ -193,15 +174,13 @@ test.describe('today', () => {
 });
 
 test.describe('addDays', () => {
-  // Note: addDays uses toISOString() which converts to UTC — results depend on browser timezone.
-  // Tests compute expected values the same way to stay timezone-agnostic.
+  // Calendar arithmetic must preserve the Philippine local date.
 
   test('adds positive days', async ({ page }) => {
     await bootstrapApp(page);
     const { result, expected } = await page.evaluate(() => {
       const result = addDays('2026-03-19', 5);
-      const dt = new Date('2026-03-19T00:00:00'); dt.setDate(dt.getDate()+5);
-      return { result, expected: dt.toISOString().split('T')[0] };
+      return { result, expected: '2026-03-24' };
     });
     expect(result).toBe(expected);
   });
@@ -210,8 +189,7 @@ test.describe('addDays', () => {
     await bootstrapApp(page);
     const { result, expected } = await page.evaluate(() => {
       const result = addDays('2026-03-19', -5);
-      const dt = new Date('2026-03-19T00:00:00'); dt.setDate(dt.getDate()-5);
-      return { result, expected: dt.toISOString().split('T')[0] };
+      return { result, expected: '2026-03-14' };
     });
     expect(result).toBe(expected);
   });
@@ -220,8 +198,7 @@ test.describe('addDays', () => {
     await bootstrapApp(page);
     const { result, expected } = await page.evaluate(() => {
       const result = addDays('2026-01-30', 3);
-      const dt = new Date('2026-01-30T00:00:00'); dt.setDate(dt.getDate()+3);
-      return { result, expected: dt.toISOString().split('T')[0] };
+      return { result, expected: '2026-02-02' };
     });
     expect(result).toBe(expected);
   });
@@ -230,8 +207,7 @@ test.describe('addDays', () => {
     await bootstrapApp(page);
     const { result, expected } = await page.evaluate(() => {
       const result = addDays('2025-12-30', 5);
-      const dt = new Date('2025-12-30T00:00:00'); dt.setDate(dt.getDate()+5);
-      return { result, expected: dt.toISOString().split('T')[0] };
+      return { result, expected: '2026-01-04' };
     });
     expect(result).toBe(expected);
   });
@@ -240,8 +216,7 @@ test.describe('addDays', () => {
     await bootstrapApp(page);
     const { result, expected } = await page.evaluate(() => {
       const result = addDays('2026-06-15', 0);
-      const dt = new Date('2026-06-15T00:00:00'); dt.setDate(dt.getDate());
-      return { result, expected: dt.toISOString().split('T')[0] };
+      return { result, expected: '2026-06-15' };
     });
     expect(result).toBe(expected);
   });
@@ -482,12 +457,12 @@ test.describe('DB.nid', () => {
     expect(result.isIncreasing).toBe(true);
   });
 
-  test('returns IDs based on timestamp (close to Date.now)', async ({ page }) => {
+  test('returns safe integer IDs with a timestamp component', async ({ page }) => {
     await bootstrapApp(page);
     const result = await page.evaluate(() => {
-      const before = Date.now();
+      const before = Math.floor(Date.now()/1000)*2097152;
       const id = DB.nid('wo');
-      const after = Date.now();
+      const after = (Math.floor(Date.now()/1000)+1)*2097152;
       return { id, before, after };
     });
     expect(result.id).toBeGreaterThanOrEqual(result.before);

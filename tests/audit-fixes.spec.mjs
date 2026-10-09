@@ -1,26 +1,6 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    if (!window._FB) window._FB = { enabled: false, db: null };
-    else { window._FB.enabled = false; window._FB.db = null; }
-    window.confirmDialog = async () => true;
-    navigate('dashboard');
-  });
-}
 
 test.describe('Audit Bug Fixes', () => {
 
@@ -824,7 +804,7 @@ test.describe('Audit Bug Fixes', () => {
     expect(result).not.toBeNull();
     expect(result.chlorine).toBe('0.45');
     expect(result.residualChlorine).toBe('0.45');
-    expect(result.code).toBe('ICU-RES-001');
+    expect(result.code).toMatch(/^ICU-RES-001-[A-F0-9]{8}$/);
   });
 
   test('Fix 25: getCensusForDate safely handles entries with null or missing dates', async ({ page }) => {
@@ -864,7 +844,7 @@ test.describe('Audit Bug Fixes', () => {
     });
     expect(result).not.toBeNull();
     expect(result.location).toBe('Laboratory Room 105');
-    expect(result.code).toBe('MECH-HI-0001');
+    expect(result.code).toMatch(/^MECH-HI-0001-[A-F0-9]{8}$/);
   });
 
   test('Fix 27: Effluent, MedWaste, and WWProd imports generate valid module codes', async ({ page }) => {
@@ -896,9 +876,9 @@ test.describe('Audit Bug Fixes', () => {
         wwCode: DB.g('wwProd')[0]?.code
       };
     });
-    expect(results.effCode).toBe('STPEFF-0001');
-    expect(results.mwCode).toBe('AM-0001');
-    expect(results.wwCode).toBe('PM-0001');
+    expect(results.effCode).toMatch(/^STPEFF-0001-[A-F0-9]{8}$/);
+    expect(results.mwCode).toMatch(/^AM-0001-[A-F0-9]{8}$/);
+    expect(results.wwCode).toMatch(/^PM-0001-[A-F0-9]{8}$/);
   });
 
   test('Fix 28: Room View modal escapes assetCode and w.code against XSS', async ({ page }) => {

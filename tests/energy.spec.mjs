@@ -1,35 +1,18 @@
+import { bootstrapApp as bootstrapEmptyApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // Bootstrap helper — mirrors the existing 6 specs but adds 2 seeded assets
 // so calcAssetKwh() returns a non-zero theoretical baseline.
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  await page.evaluate(() => {
-    const loginOverlay = document.getElementById('hamms-login-overlay');
-    if (loginOverlay) loginOverlay.style.cssText = 'display:none !important';
-    const app = document.getElementById('app');
-    if (app) app.style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    if (!window._FB) window._FB = { enabled: false, db: null };
-    else { window._FB.enabled = false; window._FB.db = null; }
-    window.confirmDialog = async () => true;
-    // Seed three assets so the theoretical baseline is non-zero and deterministic.
-    // 1000W × 8h × 30d × 0.8 df = 192 kWh each; 2000W × 8h × 30d × 0.8 df = 384 kWh.
+
+async function bootstrapApp(page){
+  await bootstrapEmptyApp(page);
+  await page.evaluate(()=>{
     _memDB.assets = [
       { id: 9001, name: 'Test AC 1', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
       { id: 9002, name: 'Test AC 2', section: 'HVAC', mainCategory: 'Aircon/Refrigeration', ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' },
       { id: 9003, name: 'Test X-ray', section: 'Radiology', mainCategory: 'Biomedical', ratedWatts: 2000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0.8, qty: 1, condition: 'Good' }
     ];
-    // Note: navigate('dashboard') removed - tests navigate themselves
+
   });
 }
 

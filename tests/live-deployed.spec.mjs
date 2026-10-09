@@ -18,7 +18,7 @@ async function bootstrapLiveApp(page) {
 
 test.describe('Live Deployed Site Verification', () => {
 
-  test('Live Check 1: Deployed site loads with correct Service Worker v2.10.18 and zero console errors', async ({ page }) => {
+  test('Live Check 1: Deployed site loads with correct Service Worker v2.10.21 and zero console errors', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -37,7 +37,7 @@ test.describe('Live Deployed Site Verification', () => {
       const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
       return m ? m[1] : null;
     });
-    expect(swVersion).toBe('hamms-v2-10-20');
+    expect(swVersion).toBe('hamms-v2-10-21');
     console.log('Live Verified SW Version:', swVersion);
 
     // Check for critical console errors (ignore benign network aborts if any)

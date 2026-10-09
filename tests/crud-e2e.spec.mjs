@@ -1,34 +1,7 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // Helper: bypass login and initialize empty app state (matches qa-fixes.spec.mjs pattern)
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  // Clear SW cache
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  // Bypass login, init empty DB, show app
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    // Stub Firebase sync so DB.s() does not attempt Firestore writes
-    if (typeof _fbPendingStoreOps !== 'undefined') {
-      Object.keys(_fbPendingStoreOps).forEach(k => delete _fbPendingStoreOps[k]);
-    }
-    if (!window._FB) window._FB = { enabled: false, db: null };
-    else { window._FB.enabled = false; window._FB.db = null; }
-    // Override confirmDialog for delete tests — auto-confirm
-    window.confirmDialog = async () => true;
-    navigate('dashboard');
-  });
-}
 
 // ═══════════════════════════════════════════════════
 // Module 1 — Work Orders CRUD

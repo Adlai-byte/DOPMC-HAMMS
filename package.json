@@ -4,7 +4,11 @@
     "firebase": "^12.10.0"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@playwright/test": "^1.58.2",
     "playwright": "^1.58.2"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6"
   }
 }

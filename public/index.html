@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   // firebase-analytics removed — not required for core HAMMS operation
   import { getFirestore,
            doc, getDoc, getDocs, getDocFromServer, getDocsFromServer, setDoc, updateDoc, deleteField,
-           collection, writeBatch, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js"; // PATCHED: use server-first reads, live listeners, and disable persistent multi-tab cache to prevent stale snapshot reversion
+           collection, writeBatch, runTransaction, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js"; // PATCHED: use server-first reads, live listeners, and disable persistent multi-tab cache to prevent stale snapshot reversion
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
   // Only initialise if user has filled in config
@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 
     // ── Expose Firebase API to the main app ────────────────────
     window._FB = { db, auth, doc, getDoc, getDocs, getDocFromServer, getDocsFromServer, setDoc, updateDoc, deleteField,
-                   collection, writeBatch, serverTimestamp, onSnapshot, enabled: true }; // PATCHED: expose server-first read helpers and live listeners for safe cross-device loads
+                   collection, writeBatch, runTransaction, serverTimestamp, onSnapshot, enabled: true }; // PATCHED: expose server-first read helpers and live listeners for safe cross-device loads
     // PATCH START: signal login overlay that Firebase is ready
     window._FB.signIn  = (email, pw) => signInWithEmailAndPassword(auth, email, pw);
     window._FB.signOut = () => signOut(auth);
@@ -88,22 +88,28 @@ document.addEventListener('DOMContentLoaded',()=>{
     // PATCH END
 
 
-    onAuthStateChanged(auth, user => {
+    onAuthStateChanged(auth, async user => {
       if (user) {
+        if(window._FB.uid&&window._FB.uid!==user.uid)resetAuthSession();
         console.log('HAMMS: user authenticated');
         window._FB.uid   = user.uid;
         window._FB.email = user.email;
+        let admin=false;try{admin=(await user.getIdTokenResult()).claims.admin===true;}catch(_){}
+        if(auth.currentUser?.uid!==user.uid)return;
+        window._FB.isAdmin=admin;
         // Show logged-in user in sidebar
         const userEl = document.getElementById('sb-user-email');
         if (userEl) userEl.textContent = user.email || user.uid || '';
         // Hide login overlay, show app
         document.getElementById('hamms-login-overlay').style.display = 'none';
+        if(!_fbLoadedOnce)document.getElementById('content')?.style.setProperty('visibility','hidden');
         document.getElementById('app').style.visibility = 'visible';
         // Small delay to ensure app is fully visible before syncing
         setTimeout(() => {
-          if (window._hammsFirebaseReady) window._hammsFirebaseReady();
+          if(auth.currentUser?.uid===user.uid&&window._hammsFirebaseReady)window._hammsFirebaseReady();
         }, 300);
       } else {
+        resetAuthSession();
         // Not logged in — show login overlay, hide app
         document.getElementById('hamms-login-overlay').style.display = 'flex';
         document.getElementById('app').style.visibility = 'hidden';
@@ -858,6 +864,7 @@ async function hammsLogin(){
 }
 async function hammsLogout(){
   if(!window._FB?.signOut) return;
+  if(pendingWrites()||_fbWriteInProgress){showToast('Save or discard pending changes before signing out.','warning');return;}
   try { await window._FB.signOut(); } catch(e) { console.warn('Logout error:', e); }
   showToast('Signed out.','info');
 }
@@ -878,6 +885,7 @@ resetIdleTimer();
 <!-- ══ END LOGIN OVERLAY ══════════════════════════════════════════ -->
 
 <div id="app" style="visibility:hidden;">
+<div id="save-recovery" style="display:none;position:fixed;bottom:40px;right:16px;z-index:99999;background:#fff;padding:12px;border:1px solid #b33;border-radius:8px" role="alert">Save pending. <button onclick="retryPendingChanges()">Retry</button> <button onclick="discardPendingChanges()">Discard and reload</button></div>
 
 <!-- ══════════════════════ SIDEBAR -->
 <!-- Mobile sidebar overlay backdrop -->
@@ -3023,7 +3031,7 @@ function stampChangedRecords(prev,next){
   prev.forEach(r=>{if(r&&r.id!=null)prevMap[r.id]=r;});
   next.forEach(r=>{
     if(!r||typeof r!=='object')return;
-    const old=r.id!=null?prevMap[r.id]:null;
+    const old=r.id!=null?prevMap[r.id]:(prev.length===1&&next.length===1?prev[0]:null);
     if(!old){stampRecord(r);return;}
     const changed=Object.keys(r).some(k=>{
       if(META_KEYS.has(k))return false;
@@ -3091,7 +3099,8 @@ function generateRecordDocId(store){ // PATCHED: Fuel Monitor-style cloud identi
 }
 let _lastGeneratedId=0; // monotonic counter to prevent same-millisecond collisions
 function generateUniqueNumericId(usedIds){ // PATCHED: avoid cross-device record-id collisions when two devices create rows at the same time
-  let candidate=Math.max(Date.now(), _lastGeneratedId+1);
+  const random=new Uint32Array(1);crypto.getRandomValues(random);
+  let candidate=Math.max(Math.floor(Date.now()/1000)*2097152+(random[0]%2097152), _lastGeneratedId+1);
   while(usedIds.has(String(candidate))) candidate++;
   _lastGeneratedId=candidate;
   usedIds.add(String(candidate));
@@ -3104,12 +3113,13 @@ function ensureStoreRecordIdentity(store, arr){ // PATCHED: every record gets a 
     if(!rec || typeof rec!=='object') return rec;
     if(store==='censusLog') rec._docId = rec.date ? String(rec.date) : (rec._docId || generateRecordDocId(store));
     else if(store!=='waterSettings' && !rec._docId) rec._docId=generateRecordDocId(store);
-    if(store==='waterSettings') return rec;
+    if(store==='waterSettings'){rec._docId='current';return rec;}
     const rawId=rec.id;
     const normalized=(rawId===undefined || rawId===null || rawId==='') ? null :
       ((Number.isFinite(Number(rawId)) && String(rawId).trim()!=='') ? Number(rawId) : String(rawId));
     const idKey=normalized===null ? null : String(normalized);
-    if(idKey===null || usedIds.has(idKey)){
+    if(idKey!==null&&(!Number.isSafeInteger(normalized)||normalized<0||usedIds.has(idKey)))throw new Error('Invalid or ambiguous record ID in '+store+'. Administrator repair is required.');
+    if(idKey===null){
       rec.id=generateUniqueNumericId(usedIds);
     }else{
       rec.id=normalized;
@@ -3128,7 +3138,7 @@ function getStoreRecordKey(store, rec, idx=0){ // PATCHED: stable per-record doc
   return generateRecordDocId(store||'row');
 }
 function arrayToStoreMap(store, arr){ // PATCHED: convert UI arrays into record maps keyed per document
-  const out={};
+  const out=Object.create(null);
   (Array.isArray(arr)?arr:[]).forEach((rec,idx)=>{
     const key=getStoreRecordKey(store, rec, idx);
     out[key]=cloneForFirebase(rec);
@@ -3137,6 +3147,7 @@ function arrayToStoreMap(store, arr){ // PATCHED: convert UI arrays into record 
 }
 function normalizeStoreArray(store, arr){ // PATCHED: keep store ordering deterministic after per-record collection reads
   const safe=Array.isArray(arr)?cloneForFirebase(arr):[];
+  if(store==='projects')safe.forEach(p=>{p.fundingSource??=p.funding||'';p.targetDate??=p.targetCompletion||'';p.actualDate??=p.actualCompletion||'';p.remarks??=p.issues||'';});
   if(store==='waterSettings') return safe.length ? [safe[safe.length-1]] : [];
   return safe.sort((a,b)=>{
     const ai=(a&&a.id!=null)?Number(a.id):NaN;
@@ -3147,8 +3158,18 @@ function normalizeStoreArray(store, arr){ // PATCHED: keep store ordering determ
     return ad.localeCompare(bd);
   });
 }
+function validateNumericFields(value){
+  const fields=new Set(["qty","minLevel","qtyIssued","levelPct","tankLevel","tankVolume","volumeL","pumpDeliveredL","ratedLpm","lossPct","effectiveLpm","spikeRatio","minLevelAlertPct","linkedAssetId","invId","physicalPct","financialPct","refInpatient","refOutpatient","refER","refWatcher","refVisitor","refStaff","faucets","toilets","wwtpReturnFactor","pumpRuntimeHrDay","occupiedBeds","totalStaff","staffPresenceFactor","defInpatients","defOutpatients","defER","defWatchers","defVisitors","lpu","upd","lPerUse","usesPerDay"]);
+  function visit(obj){if(!obj||typeof obj!=='object')return;for(const [key,val] of Object.entries(obj)){
+    if(['__proto__','prototype','constructor'].includes(key))throw new Error('Unsafe record field.');
+    if(fields.has(key)&&val!=null&&val!==''){
+      if(typeof val==='boolean'||!Number.isFinite(Number(val)))throw new Error('Invalid numeric value for '+key);
+      obj[key]=Number(val);
+    }else if(val&&typeof val==='object')visit(val);
+  }}visit(value);return value;
+}
 function prepareStoreArray(store, arr){ // PATCHED: centralize store cleanup/analytics before memory write and cloud save
-  const holder={[store]:normalizeStoreArray(store, ensureStoreRecordIdentity(store, arr))};
+  const holder={[store]:normalizeStoreArray(store, ensureStoreRecordIdentity(store, validateNumericFields(cloneForFirebase(arr))))};
   if(store==='waterTank'){
     pruneWaterTankDemoEntries(holder);
     holder[store]=computeTankAnalytics(holder[store]||[]);
@@ -3196,19 +3217,20 @@ function getLegacyMainDocRef(){ // PATCHED: legacy shared document remains read-
 }
 async function safeGetDocFresh(ref){ // PATCHED: one-time startup/focus reads must prefer server data so stale cached snapshots do not revert the UI
   if(navigator.onLine && window._FB?.getDocFromServer){
-    try{ return await window._FB.getDocFromServer(ref); }catch(e){ console.warn('Server doc read fallback:', e.message||e); }
+    return await window._FB.getDocFromServer(ref);
   }
   return await window._FB.getDoc(ref);
 }
 async function safeGetDocsFresh(ref){ // PATCHED: collection reads prefer server on load and focus, with standard getDocs fallback when offline
   if(navigator.onLine && window._FB?.getDocsFromServer){
-    try{ return await window._FB.getDocsFromServer(ref); }catch(e){ console.warn('Server collection read fallback:', e.message||e); }
+    return await window._FB.getDocsFromServer(ref);
   }
   return await window._FB.getDocs(ref);
 }
 function deepMerge(target, source){ // PATCHED: merge pending meta fragments without clobbering sibling fields
   if(!source || typeof source!=='object') return target;
   Object.keys(source).forEach(key=>{
+    if(['__proto__','prototype','constructor'].includes(key))return;
     const src=source[key];
     if(src && typeof src==='object' && !Array.isArray(src)){
       if(!target[key] || typeof target[key]!=='object' || Array.isArray(target[key])) target[key]={};
@@ -3220,6 +3242,7 @@ function deepMerge(target, source){ // PATCHED: merge pending meta fragments wit
   return target;
 }
 function assignMetaFragment(pathArr, value){ // PATCHED: stage nested metadata updates for later batch merge
+  ++_metaGeneration;
   let cursor=_fbPendingMetaMerge;
   pathArr.forEach((part, idx)=>{
     if(idx===pathArr.length-1){
@@ -3241,29 +3264,26 @@ function isRecentlyFlushed(store){ // PATCHED: protect against stale snapshot ov
   delete _fbRecentlyFlushed[store]; // expired — clean up
   return false;
 }
-function queueStoreSync(store, prevArr, nextArr){ // PATCHED: manual saves/imports sync only changed records in the affected store collection
-  const prevMap=arrayToStoreMap(store, prevArr);
-  const nextMap=arrayToStoreMap(store, nextArr);
-  const ops=_fbPendingStoreOps[store] || { upserts:Object.create(null), deletes:new Set() };
-  const prevJson={}; const nextJson={};
-  Object.keys(prevMap).forEach(key=>{ prevJson[key]=JSON.stringify(prevMap[key]); });
-  Object.keys(nextMap).forEach(key=>{ nextJson[key]=JSON.stringify(nextMap[key]); });
-  Object.keys(nextMap).forEach(key=>{
-    if(prevJson[key]!==nextJson[key]){
-      ops.upserts[key]=cloneForFirebase(nextMap[key]);
-      ops.deletes.delete(key);
-    }
-  });
-  Object.keys(prevMap).forEach(key=>{
-    if(!(key in nextMap)){
-      delete ops.upserts[key];
-      ops.deletes.add(key);
-    }
+function queueStoreSync(store, prevArr, nextArr){
+  const prevMap=arrayToStoreMap(store,prevArr),nextMap=arrayToStoreMap(store,nextArr);
+  const ops=_fbPendingStoreOps[store]||{upserts:Object.create(null),deletes:new Set(),bases:Object.create(null),generations:Object.create(null),groups:Object.create(null)};
+  ops.bases ||= Object.create(null); ops.generations ||= Object.create(null); ops.groups ||= Object.create(null);
+  const keys=new Set([...Object.keys(prevMap),...Object.keys(nextMap)]);
+  keys.forEach(key=>{
+    if(JSON.stringify(prevMap[key])===JSON.stringify(nextMap[key]))return;
+    if(!Object.hasOwn(ops.bases,key))ops.bases[key]=cloneForFirebase(prevMap[key]||null);
+    ops.generations[key]=++_operationGeneration;
+    if(!ops.groups[key])ops.groups[key]=new Set();
+    if(_mutationGroup)ops.groups[key].add(_mutationGroup);
+    if(nextMap[key]){ops.upserts[key]=cloneForFirebase(nextMap[key]);ops.deletes.delete(key);}
+    else{delete ops.upserts[key];ops.deletes.add(key);}
   });
   _fbPendingStoreOps[store]=ops;
-  assignMetaFragment(['storeInitialized', store], true);
+  assignMetaFragment(['storeInitialized',store],true);
 }
+
 function queueScalarSync(field, value){ // PATCHED: scalar manual saves update only dedicated metadata fields
+  requireOnlineWrite();
   assignMetaFragment([field], value);
   scheduleFlush();
 }
@@ -3273,10 +3293,13 @@ async function loadLegacyMainData(){ // PATCHED: legacy shared doc is read only 
     _fbLegacyParsed={};
     return _fbLegacyParsed;
   }
+  const session=_sessionGeneration;
   try{
     const snap=await safeGetDocFresh(getLegacyMainDocRef());
+    if(session!==_sessionGeneration)throw new Error('Session changed while loading.');
     _fbLegacyParsed=(snap.exists() && hasFirebasePayload(snap.data())) ? parseFirebaseMainData(snap.data()) : {};
   }catch(e){
+    if(session!==_sessionGeneration)throw e;
     console.warn('Legacy HAMMS fallback load failed:', e);
     _fbLegacyParsed={};
   }
@@ -3321,30 +3344,32 @@ async function loadAllFirebaseData(){ // PATCHED: startup now reads store collec
     applyMetaData(_fbMetaState);
     return;
   }
+  const loadSession=_sessionGeneration;
   const legacy=await loadLegacyMainData();
   let metaData={storeInitialized:{}};
   try{
     const metaSnap=await safeGetDocFresh(getMetaDocRef());
     if(metaSnap.exists()) metaData=deepMerge({storeInitialized:{}}, cloneForFirebase(metaSnap.data()||{}));
   }catch(e){
-    console.warn('HAMMS meta load failed:', e);
+    console.warn('HAMMS meta load failed:', e);throw e;
   }
-  _fbMetaState=metaData;
+  if(loadSession!==_sessionGeneration)throw new Error('Session changed while loading.');
   const results=await Promise.all(STORES.map(async store=>{
     try{
       const snap=await safeGetDocsFresh(getStoreCollectionRef(store));
       return [store, snap.docs.map(docSnap=>({ ...cloneForFirebase(docSnap.data()), _docId: docSnap.id }))];
     }catch(e){
       console.warn(`HAMMS store load failed for ${store}:`, e);
-      return [store, null]; // PATCHED: null = keep existing _memDB data instead of wiping with empty array
+      throw e; // PATCHED: null = keep existing _memDB data instead of wiping with empty array
     }
   }));
+  if(loadSession!==_sessionGeneration)throw new Error('Session changed while loading.');
   results.forEach(([store, arr])=>{
     if(arr===null) return; // PATCHED: load failed — keep existing _memDB data
-    const useLegacy=!arr.length && !storeInitialized(store) && Array.isArray(legacy?.[store]);
+    const useLegacy=!arr.length && !metaData.storeInitialized?.[store] && Array.isArray(legacy?.[store]);
     applyStoreData(store, useLegacy ? legacy[store] : arr);
   });
-  applyMetaData(metaData);
+  applyMetaData(metaData);_fbReadError=null;_fbLoadedOnce=true;_fbAllFromCache=!navigator.onLine;
 }
 function clearFirebaseListeners(){ // PATCHED: detach any legacy realtime subscriptions and focus refresh hooks before writes/reloads
   if(Array.isArray(_fbUnsubscribe)){
@@ -3361,7 +3386,8 @@ function clearFirebaseListeners(){ // PATCHED: detach any legacy realtime subscr
     _fbVisibilityReloadHandler=null;
   }
 }
-async function refreshFromFirebaseSilently(reason='focus'){ // PATCHED: replace persistent realtime listeners with safe one-time reads on focus/return
+async function refreshFromFirebaseSilently(reason='focus'){
+  const session=_sessionGeneration; // PATCHED: replace persistent realtime listeners with safe one-time reads on focus/return
   if(!window._FB?.enabled || !window._FB?.db) return;
   if(!navigator.onLine) return; // PATCHED: don't attempt refresh when known offline — prevents wiping _memDB on navigator.onLine flicker
   if(_fbWriteInProgress || _fbRefreshInProgress) return;
@@ -3372,15 +3398,18 @@ async function refreshFromFirebaseSilently(reason='focus'){ // PATCHED: replace 
     setStorageChip(navigator.onLine?'firebase-loading':'firebase-offline');
     _fbLegacyParsed=null;
     await loadAllFirebaseData();
+    if(session!==_sessionGeneration)return;
     _fbLoadedOnce=true;
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
     {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     scheduleUiRefresh();
   }catch(e){
+    if(session!==_sessionGeneration)return;
+    _fbReadError=e;
     console.warn(`Firebase refresh failed [${reason}]:`, e.message||e);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
   }finally{
-    _fbRefreshInProgress=false;
+    if(session===_sessionGeneration)_fbRefreshInProgress=false;
   }
 }
 function mergeListenerSnapshot(store, snap){ // PATCHED: merge remote changes per-record instead of blocking entire snapshot
@@ -3400,7 +3429,8 @@ function mergeListenerSnapshot(store, snap){ // PATCHED: merge remote changes pe
   const seen=new Set();
   localArr.forEach(r=>{
     const dk=r?._docId;
-    if(dk&&(pendingUpsertKeys.has(dk)||pendingDeleteKeys.has(dk))){
+    if(dk&&pendingDeleteKeys.has(dk)){seen.add(dk);return;}
+    if(dk&&pendingUpsertKeys.has(dk)){
       merged.push(r); // keep local version — pending write
       seen.add(dk);
     }else if(dk&&serverByDocId[dk]){
@@ -3417,7 +3447,7 @@ function mergeListenerSnapshot(store, snap){ // PATCHED: merge remote changes pe
   });
   // Add new server records not in local
   serverArr.forEach(r=>{
-    if(r._docId&&!seen.has(r._docId))merged.push(r);
+    if(r._docId&&!seen.has(r._docId)&&!pendingDeleteKeys.has(r._docId))merged.push(r);
   });
   applyStoreData(store, merged);
 }
@@ -3426,16 +3456,18 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
   if(!window._FB?.enabled || !window._FB?.db || typeof window._FB.onSnapshot!=='function') return;
   clearFirebaseListeners();
   _fbListenersStarted=true;
-  const shouldIgnoreCacheSnapshot=snap=>{ // PATCHED: only ignore cache before first load — after that, cached data is better than no data
+  const listenerSession=_sessionGeneration;
+  const shouldIgnoreCacheSnapshot=snap=>{
+    if(listenerSession!==_sessionGeneration)return true; // PATCHED: only ignore cache before first load — after that, cached data is better than no data
     return !_fbLoadedOnce && navigator.onLine && !!snap?.metadata?.fromCache;
   };
   const publishLiveUi=()=>{
-    _fbLoadedOnce=true;
+    if(!_fbLoadedOnce||_fbReadError){setStorageChip('firebase-unavailable');return;}
     {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     // FIX: determine status from Firestore snapshot metadata, not navigator.onLine
     // Don't flip to offline on cached snapshots — Firestore always fires cache first, then server
-    if(!_fbAllFromCache || _fbLastServerSnapshot>0) setStorageChip('firebase-live');
-    else setStorageChip('firebase-offline');
+    if(!_fbAllFromCache && !_fbSyncError && !pendingWrites()) setStorageChip('firebase-live');
+    else setStorageChip(_fbSyncError?'firebase-unavailable':pendingWrites()?'firebase-syncing':'firebase-offline');
     scheduleUiRefresh();
   };
   try{
@@ -3445,7 +3477,7 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
       applyMetaData(snap.exists() ? snap.data() : {storeInitialized:{}});
       publishLiveUi();
     }, err=>{
-      console.warn('HAMMS meta listener failed:', err);
+      _fbReadError=err;console.warn('HAMMS meta listener failed:', err);
       setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
     }));
     STORES.forEach(store=>{
@@ -3464,7 +3496,7 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
         applyStoreData(store, useLegacy ? cloneForFirebase(_fbLegacyParsed[store]) : arr);
         publishLiveUi();
       }, err=>{
-        console.warn(`HAMMS live listener failed for ${store}:`, err);
+        _fbReadError=err;console.warn(`HAMMS live listener failed for ${store}:`, err);
         setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
       }));
     });
@@ -3477,8 +3509,14 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
 const DB={
   g(k){return _memDB[k]||[];},
   s(k,v){ // PATCHED: persist only explicit user changes for the target store collection
+    requireOnlineWrite();
     const prev=Array.isArray(_cleanStoreState[k]) ? _cleanStoreState[k] : (Array.isArray(_memDB[k]) ? cloneForFirebase(_memDB[k]) : []);
-    const next=prepareStoreArray(k, Array.isArray(v)?v:[]);
+    const supplied=Array.isArray(v)?cloneForFirebase(v):[];
+    supplied.forEach(rec=>{
+      const old=prev.find(p=>p.id!=null&&p.id===rec.id);
+      if(old?._docId) rec._docId=old._docId;
+    });
+    const next=prepareStoreArray(k, supplied);
     stampChangedRecords(prev, next);
     _memDB[k]=next;
     _cleanStoreState[k]=cloneForFirebase(next);
@@ -3536,159 +3574,175 @@ function scheduleFlush(){ // PATCHED: only explicit user edits queue collection/
   clearTimeout(_saveTimer);
   _fbSyncRetryCount=0; // FIX: reset retry count on new user action so stale failures don't inflate delays
   setStorageChip(navigator.onLine?'firebase-syncing':'firebase-offline');
-  _saveTimer=setTimeout(flushAll,100); // reduced from 500ms — faster writes for multi-user safety
+  _saveTimer=setTimeout(()=>flushAll().catch(e=>showToast(e.message,'error',8000)),100); // reduced from 500ms — faster writes for multi-user safety
 }
 let _fbSyncRetryCount=0;
 const _FB_MAX_RETRIES=3;
 let _fbWriteLockTimer=null;
-async function syncToFirebase(){ // PATCHED: per-batch retry, write-lock safety timeout, no silent data loss
-  _fbSyncTimer=null; // FIX: clear stale handle — setTimeout returns a truthy int that persists after firing
-  if(!window._FB?.enabled || !window._FB?.db){
-    setStorageChip('firebase-unavailable');
-    return;
+// Writes are version-checked on the server. Queue entries keep their original
+// base and generation so an acknowledgement cannot erase a newer local edit.
+let _syncPromise=null;
+let _operationGeneration=0;
+let _metaGeneration=0;
+let _mutationGroup=null;
+let _sessionGeneration=0;
+let _fbSyncError=null;
+let _fbReadError=null;
+let _activeSaveUi=null;
+let _replacementMeta=null;
+let _pendingSaveUi=null;
+function pendingWrites(){return Object.keys(_fbPendingMetaMerge).length>0||Object.keys(_fbPendingStoreOps).some(hasPendingStoreOps);}
+function canSave(){
+  if(window._FB?.enabled===false)return true; // Explicit local/test mode only.
+  if(!window._FB?.auth?.currentUser||!_fbLoadedOnce||_fbReadError||!navigator.onLine||_fbAllFromCache){
+    showToast('Reconnect and sign in before saving. Your form entries are still here.','warning');return false;
   }
-  if(_fbWriteInProgress){
-    // FIX: schedule a retry so new pending ops don't get stranded
-    clearTimeout(_fbSyncTimer);
-    _fbSyncTimer=setTimeout(syncToFirebase, 500);
-    return;
-  }
-  const storesWithOps=Object.keys(_fbPendingStoreOps).filter(store=>hasPendingStoreOps(store));
-  const hasMetaOps=Object.keys(_fbPendingMetaMerge).length>0;
-  if(!storesWithOps.length && !hasMetaOps){
-    setStorageChip(navigator.onLine ? (_fbLoadedOnce?'firebase-live':'firebase-loading') : 'firebase-offline');
-    return;
-  }
-  // FIX: don't discard pending ops based on unreliable navigator.onLine
-  // Instead, preserve pending ops and schedule a retry.
-  // Note: _fbWriteInProgress and _fbWriteLockTimer have NOT been set yet at
-  // this point (they're set at line 3316), so no cleanup needed for them.
-  if(!navigator.onLine){
-    setStorageChip('firebase-offline');
-    showToast('You appear to be offline. Will retry when connection is restored.','warning',4000);
-    // Schedule retry — don't destroy pending ops
-    clearTimeout(_fbSyncTimer);
-    _fbSyncTimer=setTimeout(syncToFirebase, 5000);
-    return;
-  }
-  _fbWriteInProgress=true;
-  setSavingState(true);
-  // Safety timeout: release write lock after 10s to prevent deadlock
-  clearTimeout(_fbWriteLockTimer);
-  _fbWriteLockTimer=setTimeout(()=>{
-    if(_fbWriteInProgress){
-      console.warn('HAMMS: Write lock safety timeout — releasing after 10s');
-      _fbWriteInProgress=false;
-      setSavingState(false);
-      setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-      // Schedule one retry for stranded pending ops
-      setTimeout(syncToFirebase, 1000);
-    }
-  },10000);
-  try{
-    const { db, writeBatch, serverTimestamp } = window._FB;
-    const ops=[];
-    storesWithOps.forEach(store=>{
-      const pending=_fbPendingStoreOps[store];
-      Object.keys(pending.upserts).forEach(key=>{
-        ops.push({ type:'set', store, ref:getStoreDocRef(store, key), data:cloneForFirebase(pending.upserts[key]) });
-      });
-      pending.deletes.forEach(key=>{
-        ops.push({ type:'delete', store, ref:getStoreDocRef(store, key) });
-      });
-    });
-    if(hasMetaOps){
-      const metaPayload=deepMerge(cloneForFirebase(_fbPendingMetaMerge), {
-        updatedAt: serverTimestamp(),
-        updatedBy: window._FB.email || window._FB.uid || 'unknown'
-      });
-      ops.push({ type:'set-merge', store:'_meta', ref:getMetaDocRef(), data:metaPayload });
-    }
-    if(!ops.length){
-      _fbWriteInProgress=false; clearTimeout(_fbWriteLockTimer); setSavingState(false);
-      setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
-      return;
-    }
-    setStorageChip('firebase-syncing');
-    const CHUNK_SIZE=450;
-    const committedStores=new Set();
-    let metaCommitted=false;
-    for(let i=0;i<ops.length;i+=CHUNK_SIZE){
-      const chunk=ops.slice(i,i+CHUNK_SIZE);
-      const batch=writeBatch(db);
-      chunk.forEach(op=>{
-        if(op.type==='set') batch.set(op.ref, op.data);
-        else if(op.type==='set-merge') batch.set(op.ref, op.data, { merge:true });
-        else if(op.type==='delete') batch.delete(op.ref);
-      });
-      try{
-        await batch.commit();
-        // Track which stores/meta were committed in this chunk
-        chunk.forEach(op=>{
-          if(op.store==='_meta') metaCommitted=true;
-          else committedStores.add(op.store);
-        });
-      }catch(batchErr){
-        console.warn('HAMMS: Batch commit failed (chunk '+Math.floor(i/CHUNK_SIZE)+'):', batchErr.message||batchErr);
-        // Only clear ops for successfully committed stores/meta
-        const _partialFlushTs=Date.now();
-        committedStores.forEach(store=>{ delete _fbPendingStoreOps[store]; _fbRecentlyFlushed[store]=_partialFlushTs; });
-        if(metaCommitted) _fbPendingMetaMerge={};
-        // Failed ops remain in _fbPendingStoreOps for retry
-        _fbSyncRetryCount++;
-        if(_fbSyncRetryCount<=_FB_MAX_RETRIES){
-          const delay=Math.min(1000*Math.pow(2,_fbSyncRetryCount-1),4000);
-          console.warn('HAMMS: Retrying sync in '+delay+'ms (attempt '+_fbSyncRetryCount+'/'+_FB_MAX_RETRIES+')');
-          setStorageChip('firebase-syncing');
-          _fbWriteInProgress=false;
-          clearTimeout(_fbWriteLockTimer);
-          clearTimeout(_fbSyncTimer);
-          _fbSyncTimer=setTimeout(syncToFirebase, delay);
-          startFirebaseListener();
-          return;
-        }else{
-          _fbSyncRetryCount=0;
-          showToast('Some changes failed to save. Please try again.','error',6000);
-          setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-          _fbWriteInProgress=false;
-          clearTimeout(_fbWriteLockTimer);
-          startFirebaseListener();
-          return;
-        }
+  return true;
+}
+function requireOnlineWrite(){if(!canSave())throw new Error('An online signed-in session is required to save.');}
+function commitLocalChanges(changes){
+  requireOnlineWrite();
+  const prepared=Object.fromEntries(Object.entries(changes).map(([store,rows])=>[store,prepareStoreArray(store,rows)]));
+  const previousGroup=_mutationGroup;
+  _mutationGroup='group-'+(++_operationGeneration);
+  try{Object.entries(prepared).forEach(([store,rows])=>DB.s(store,rows));}
+  finally{_mutationGroup=previousGroup;}
+}
+function snapshotPendingOperations(){
+  const operations=[];
+  Object.entries(_fbPendingStoreOps).forEach(([store,pending])=>{
+    const keys=new Set([...Object.keys(pending.upserts),...pending.deletes]);
+    keys.forEach(key=>operations.push({store,key,ref:getStoreDocRef(store,key),
+      data:pending.deletes.has(key)?null:cloneForFirebase(pending.upserts[key]),
+      base:cloneForFirebase(pending.bases?.[key]??null),generation:pending.generations?.[key],
+      groups:[...(pending.groups?.[key]||[])]}));
+  });
+  return operations;
+}
+function groupWriteChunks(operations){
+  // Merge groups sharing a record so related stock writes cannot straddle chunks.
+  const components=[];
+  operations.forEach(op=>{
+    let group={ops:[op],ids:new Set(op.groups)};
+    for(let i=components.length-1;i>=0;i--){
+      if([...group.ids].some(id=>components[i].ids.has(id))){
+        components[i].ops.forEach(x=>group.ops.push(x));components[i].ids.forEach(id=>group.ids.add(id));components.splice(i,1);
       }
     }
-    // All batches succeeded — mark stores as recently flushed to protect against stale snapshot overwrite
-    const _flushTs=Date.now();
-    storesWithOps.forEach(store=>{ delete _fbPendingStoreOps[store]; _fbRecentlyFlushed[store]=_flushTs; });
-    _fbPendingMetaMerge={};
-    _fbSyncRetryCount=0;
-    setStorageChip('firebase-live');
-  }catch(e){
-    console.warn('Firebase sync failed:', e.message||e);
-    // Don't clear pending ops — they'll be retried
-    _fbSyncRetryCount++;
-    if(_fbSyncRetryCount<=_FB_MAX_RETRIES){
-      const delay=Math.min(1000*Math.pow(2,_fbSyncRetryCount-1),4000);
-      _fbWriteInProgress=false;
-      clearTimeout(_fbWriteLockTimer);
-      clearTimeout(_fbSyncTimer);
-      _fbSyncTimer=setTimeout(syncToFirebase, delay);
-      startFirebaseListener();
-      return;
-    }
-    _fbSyncRetryCount=0;
-    showToast('Changes failed to save after multiple attempts. Please retry.','error',6000);
-    setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-  }finally{
-    _fbWriteInProgress=false;
-    clearTimeout(_fbWriteLockTimer);
-    if(!_fbSyncTimer){setSavingState(false);} // Don't clear saving UI if retry is scheduled
-    startFirebaseListener();
-  }
+    components.push(group);
+  });
+  const chunks=[];let chunk=[];
+  components.forEach(group=>{
+    if(group.ops.length>450)throw new Error('This related operation exceeds 450 records. Split the operation before saving.');
+    if(chunk.length+group.ops.length>450){chunks.push(chunk);chunk=[];}
+    chunk.push(...group.ops);
+  });
+  if(chunk.length)chunks.push(chunk);
+  return chunks;
 }
+function acknowledgeOperation(op,committed){
+  const pending=_fbPendingStoreOps[op.store];if(!pending)return;
+  const same=pending.generations?.[op.key]===op.generation;
+  if(same){
+    delete pending.upserts[op.key];pending.deletes.delete(op.key);
+    delete pending.bases[op.key];delete pending.generations[op.key];delete pending.groups[op.key];
+  }else{
+    // A later edit is based on the version that just committed, not its old base.
+    pending.bases[op.key]=cloneForFirebase(committed);
+  }
+  if(committed){
+    [_memDB[op.store],_cleanStoreState[op.store]].forEach(rows=>{
+      const row=(rows||[]).find(r=>getStoreRecordKey(op.store,r)===op.key);
+      if(row){row._v=committed._v;row._updatedAt=committed._updatedAt;row._updatedBy=committed._updatedBy;}
+    });
+  }
+  if(!hasPendingStoreOps(op.store))delete _fbPendingStoreOps[op.store];
+  _fbRecentlyFlushed[op.store]=Date.now();
+}
+async function syncToFirebase(){
+  _fbSyncTimer=null;
+  if(window._FB?.enabled===false)return; // no network in explicit local/test mode
+  if(_syncPromise)return _syncPromise;
+  requireOnlineWrite();
+  if(!pendingWrites())return;
+  const session=_sessionGeneration;
+  _syncPromise=(async()=>{
+    await Promise.resolve();
+    _fbWriteInProgress=true;setSavingState(true);_fbSyncError=null;
+    setStorageChip('firebase-syncing');
+    try{
+      while(pendingWrites()){
+        if(session!==_sessionGeneration)throw new Error('The signed-in session changed.');
+        const chunks=groupWriteChunks(snapshotPendingOperations());
+        for(const chunk of chunks){
+          const replacement=_replacementMeta,replacementGeneration=_metaGeneration;
+          const committed=await window._FB.runTransaction(window._FB.db,async tx=>{
+            const snapshots=await Promise.all(chunk.map(op=>tx.get(op.ref)));
+            if(session!==_sessionGeneration||!navigator.onLine)throw new Error('Connection or session changed before saving.');
+            const writes=chunk.map((op,i)=>{
+              const snap=snapshots[i],remote=snap.exists()?snap.data():null;
+              if(!!remote!==!!op.base || (remote&&((remote._v||0)!==(op.base?._v||0)))){
+                const error=new Error('Conflict: '+op.store+' changed on another device. Your form is retained; review the latest record before saving again.');error.code='hamms/conflict';throw error;
+              }
+              if(!op.data)return null;
+              const data=cloneForFirebase(op.data);data._v=remote?._v||0;stampRecord(data);return data;
+            });
+            chunk.forEach((op,i)=>{if(writes[i])tx.set(op.ref,writes[i]);else if(snapshots[i].exists())tx.delete(op.ref);});
+            if(replacement)tx.set(getMetaDocRef(),{...replacement,updatedAt:window._FB.serverTimestamp(),updatedBy:window._FB.email},{merge:true});
+            return writes;
+          });
+          if(session!==_sessionGeneration)throw new Error('The signed-in session changed.');
+          chunk.forEach((op,i)=>acknowledgeOperation(op,committed[i]));
+          if(replacement){_replacementMeta=null;if(replacementGeneration===_metaGeneration)_fbPendingMetaMerge={};}
+        }
+        if(Object.keys(_fbPendingMetaMerge).length){
+          const generation=_metaGeneration;
+          const payload=cloneForFirebase(_fbPendingMetaMerge);
+          await window._FB.setDoc(getMetaDocRef(),{...payload,updatedAt:window._FB.serverTimestamp(),updatedBy:window._FB.email},{merge:true});
+          if(session!==_sessionGeneration)throw new Error('The signed-in session changed.');
+          if(generation===_metaGeneration)_fbPendingMetaMerge={};
+        }
+      }
+      _fbSyncError=null;document.getElementById('save-recovery')?.style.setProperty('display','none');setStorageChip('firebase-live');
+    }catch(error){
+      _fbSyncError=error;
+      const recovery=document.getElementById('save-recovery');if(recovery)recovery.style.display='block';
+      setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
+      throw error;
+    }finally{
+      _fbWriteInProgress=false;setSavingState(false);_syncPromise=null;
+    }
+  })();
+  return _syncPromise;
+}
+async function retryPendingChanges(){
+  try{await flushAll();if(_pendingSaveUi){_pendingSaveUi.modals.forEach(closeModal);_pendingSaveUi.messages.forEach(args=>showToast(...args));_pendingSaveUi=null;}else showToast('All pending changes saved.');}
+  catch(error){showToast(error.message||'Save failed. Your pending changes remain in this tab.','error',8000);}
+}
+async function discardPendingChanges(){
+  if(_fbWriteInProgress){showToast('Wait for the active save to finish.','warning');return;}
+  if(!await confirmDialog('Discard pending changes and reload the latest cloud records? Open form entries will remain available.'))return;
+  _fbPendingStoreOps=Object.create(null);_fbPendingMetaMerge={};_fbSyncError=null;_replacementMeta=null;_pendingSaveUi=null;
+  document.getElementById('save-recovery')?.style.setProperty('display','none');
+  await reloadFromFirebase();
+}
+function resetAuthSession(){
+  ++_sessionGeneration;clearFirebaseListeners();
+  clearTimeout(_saveTimer);clearTimeout(_fbSyncTimer);clearTimeout(_renderRefreshTimer);
+  _fbPendingStoreOps=Object.create(null);_fbPendingMetaMerge={};_fbLegacyParsed=null;
+  _fbMetaState={storeInitialized:{}};_fbLoadedOnce=false;_fbRefreshInProgress=false;_fbAllFromCache=true;_fbLastServerSnapshot=0;
+  _fbSyncError=null;_replacementMeta=null;_editSnapshots.clear();
+  STORES.forEach(store=>applyStoreData(store,[]));_memDB.personnel={};_memDB.inpatientToday=0;
+  if(window._FB){window._FB.uid='';window._FB.email='';window._FB.isAdmin=false;}
+  document.querySelectorAll('.modal-overlay.open').forEach(el=>el.classList.remove('open'));
+  document.querySelectorAll('.modal-overlay input,.modal-overlay textarea').forEach(el=>{el.value='';});
+  _woMaterials=[];document._woReport=null;_assetImageData=null;
+  document.getElementById('save-recovery')?.style.setProperty('display','none');
+}
+
 function scheduleFBSync(){
   clearTimeout(_fbSyncTimer);
-  _fbSyncTimer=setTimeout(syncToFirebase, 300);
+  _fbSyncTimer=setTimeout(()=>syncToFirebase().catch(e=>showToast(e.message,'error',8000)),300);
 }
 function setStorageChip(mode){
   _storageMode=mode;
@@ -3699,7 +3753,7 @@ function setStorageChip(mode){
       'firebase-live':'Live',
       'firebase-syncing':'Syncing',
       'firebase-offline':'Offline',
-      'firebase-unavailable':'Offline'
+      'firebase-unavailable':'Save unavailable'
     };
     const classes={
       'firebase-loading':'tb-chip chip-connecting',
@@ -3723,13 +3777,14 @@ function showFirebaseStatus(){
   };
   showToast(`Firebase: ${_storageMode||'unknown'} · ${net} — ${statusMap[_storageMode]||'Status unavailable.'}`, 'info');
 }
-async function reloadFromFirebase(){ // PATCHED: force a fresh read from record-level collections + metadata
+async function reloadFromFirebase(){
+  const session=_sessionGeneration; // PATCHED: force a fresh read from record-level collections + metadata
   if(!window._FB?.enabled || !window._FB?.db){
     showToast('Firebase is not ready yet.','info');
     return;
   }
-  if(_fbWriteInProgress || _fbRefreshInProgress){
-    showToast('A Firebase sync/refresh is already in progress. Please try again in a moment.','info');
+  if(pendingWrites() || _fbWriteInProgress || _fbRefreshInProgress){
+    showToast('Pending changes or a Firebase sync/refresh is already in progress. Please try again in a moment.','info');
     return;
   }
   _fbRefreshInProgress=true;
@@ -3738,41 +3793,48 @@ async function reloadFromFirebase(){ // PATCHED: force a fresh read from record-
     setStorageChip('firebase-loading');
     _fbLegacyParsed=null;
     await loadAllFirebaseData();
+    if(session!==_sessionGeneration)return;
     scheduleUiRefresh();
+    document.getElementById('content')?.style.removeProperty('visibility');
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
     showToast('Firebase data reloaded successfully.','success');
   }catch(e){
+    if(session!==_sessionGeneration)return;
+    _fbReadError=e;
     console.warn('Firebase reload failed:', e);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
     showToast('Data reload failed. Please check your connection and try again.','error');
   }finally{
-    _fbRefreshInProgress=false;
-    startFirebaseListener(); // PATCHED: reattach one stable listener set after manual reload succeeds or fails
+    if(session===_sessionGeneration)_fbRefreshInProgress=false;
+    if(session===_sessionGeneration)startFirebaseListener(); // PATCHED: reattach one stable listener set after manual reload succeeds or fails
   }
 }
-window._hammsFirebaseReady = async function(){ // PATCHED: startup reads collection/meta data only and never seeds Firebase from local memory
+window._hammsFirebaseReady = async function(){
+  const session=_sessionGeneration; // PATCHED: startup reads collection/meta data only and never seeds Firebase from local memory
   try{
     setStorageChip('firebase-loading');
     await loadAllFirebaseData();
+    if(session!==_sessionGeneration)return;
     _fbLoadedOnce=true;
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
     // Navigate to page from URL query param, or default to dashboard
     const _initPage=new URLSearchParams(location.search).get('page')||'dashboard';
     navigate(_initPage);
+    document.getElementById('content')?.style.removeProperty('visibility');
     updateInvAlerts();
     console.log('HAMMS: Firestore collection data loaded ✅');
   }catch(e){
+    if(session!==_sessionGeneration)return;
+    _fbReadError=e;
     console.warn('Firebase initial load failed:', e.message||e);
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
   }
-  startFirebaseListener();
+  if(session===_sessionGeneration)startFirebaseListener();
 };
 
-async function flushAll(){ // PATCHED: only pending per-store/meta operations trigger cloud sync
-  pruneWaterTankDemoEntries(_memDB);
-  const storesWithOps=Object.keys(_fbPendingStoreOps).filter(store=>hasPendingStoreOps(store));
-  if(!storesWithOps.length && !Object.keys(_fbPendingMetaMerge).length) return;
-  scheduleFBSync();
+async function flushAll(){
+  clearTimeout(_saveTimer);clearTimeout(_fbSyncTimer);
+  return syncToFirebase();
 }
 
 async function connectFile(){ showFirebaseStatus(); }
@@ -3786,7 +3848,7 @@ function setOfflineBanner(offline){
       banner=document.createElement('div');
       banner.id='offline-banner';
       banner.style.cssText='background:#f5c518;color:#333;text-align:center;padding:6px 12px;font-size:12px;font-weight:600;position:sticky;top:0;z-index:9999;';
-      banner.textContent="You're offline. Any changes made now will NOT be saved — reconnect and re-enter them.";
+      banner.textContent="You're offline. Reconnect to save. Unsaved form entries remain available in this tab.";
       const main=document.getElementById('main');
       if(main)main.prepend(banner);
     }
@@ -3796,29 +3858,6 @@ function setOfflineBanner(offline){
 }
 window.addEventListener('online',  () => { _fbAllFromCache=false; setStorageChip('firebase-loading'); setOfflineBanner(false); showToast('Connection restored — verifying sync…','info'); if(_fbWriteInProgress || _fbRefreshInProgress) return; clearTimeout(window._onlineDebounce); window._onlineDebounce=setTimeout(()=>refreshFromFirebaseSilently('online'), 2000); });
 window.addEventListener('offline', () => { _fbAllFromCache=true; setStorageChip('firebase-offline'); setOfflineBanner(true); });
-// FIX: periodic connectivity heartbeat — probe network when chip state may be wrong
-setInterval(()=>{
-  if(!_fbLoadedOnce || _fbWriteInProgress || _fbRefreshInProgress) return;
-  // Probe: fetch a tiny resource to detect real connectivity
-  fetch('https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js',{method:'HEAD',mode:'no-cors',cache:'no-store'})
-    .then(()=>{
-      // Network reachable
-      if(_storageMode==='firebase-offline'||_storageMode==='firebase-unavailable'){
-        _fbAllFromCache=false;
-        setStorageChip('firebase-live');
-        setOfflineBanner(false);
-      }
-    })
-    .catch(()=>{
-      // Network unreachable
-      if(_storageMode==='firebase-live'||_storageMode==='firebase-loading'){
-        _fbAllFromCache=true;
-        setStorageChip('firebase-offline');
-        setOfflineBanner(true);
-      }
-    });
-}, 10000);
-
 // ── Install to home screen prompt (PWA) ───────────────────────────
 let _installPrompt = null;
 window.addEventListener('beforeinstallprompt', e => {
@@ -3909,7 +3948,7 @@ function checkEditConflict(store,editId){
   const snap=_editSnapshots.get(store);
   if(!snap||snap.id!==editId)return false;
   const cur=(DB.g(store)||[]).find(x=>x.id===editId);
-  if(!cur)return false;
+  if(!cur){showToast('This record was deleted on another device. Your form entries are retained.','error');return true;}
   const curV=cur._v||0;
   if(curV>snap._v){
     const who=cur._updatedBy||'another user';
@@ -3958,7 +3997,7 @@ function navigate(p, _noPush){
   const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
-  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
+  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetDate})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
   if(r[p])r[p]();
 }
 window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
@@ -3988,8 +4027,9 @@ function copyFuelSystemUrl(){
     prompt('Copy Fuel System URL:', url);
   }
 }
-const today=()=>new Date().toISOString().split('T')[0];
-const addDays=(d,n)=>{const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];};
+const localYMD=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>localYMD(new Date());
+const addDays=(d,n)=>{const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return localYMD(dt);};
 const diffDays=(a,b)=>{if(!a||!b)return null;return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);};
 const fmt=d=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});};
 const woNum=id=>'<span class="mono">WO-'+String(id).padStart(4,'0')+'</span>';
@@ -4007,7 +4047,7 @@ function emblBadge(s){const m={'OK':'bs-ok','Warning':'bs-warn','Critical':'bs-c
 function condBadge(s){if(s==='Good')return'<span class="bs bs-ok">Good</span>';if(s==='Fair')return'<span class="bs bs-warn">Fair</span>';return`<span class="bs bs-poor">${escapeHTML(s)}</span>`;}
 function priSpan(p){return`<span class="pri-${String(p).replace(/[^a-zA-Z0-9-]/g,'')}">${escapeHTML(p)}</span>`;}
 
-function getWeekStart(d){const dt=new Date(d+'T00:00:00'),day=dt.getDay(),diff=dt.getDate()-day+(day===0?-6:1);dt.setDate(diff);return dt.toISOString().split('T')[0];}
+function getWeekStart(d){const dt=new Date(d+'T00:00:00'),day=dt.getDay(),diff=dt.getDate()-day+(day===0?-6:1);dt.setDate(diff);return localYMD(dt);}
 function getISOWeek(d){const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())),dn=dt.getUTCDay()||7;dt.setUTCDate(dt.getUTCDate()+4-dn);const y=new Date(Date.UTC(dt.getUTCFullYear(),0,1));return Math.ceil((((dt-y)/86400000)+1)/7);}
 
 // ── Month/Year filter populator ───────
@@ -4404,7 +4444,7 @@ function updateInvAlerts(){
 //  MODALS
 // ═══════════════════════════════════════
 function openModal(id){const el=document.getElementById(id);el.classList.add('open');if(!el._bdClick){el._bdClick=true;el.addEventListener('click',e=>{if(e.target===el)closeModal(id);});}}
-function closeModal(id){document.getElementById(id).classList.remove('open');}
+function closeModal(id){if(_activeSaveUi){_activeSaveUi.modals.add(id);return;}document.getElementById(id).classList.remove('open');}
 function openModalForRecord(modalId,titleElId,store,id,fieldMap,editLabel,addLabel){
   // Generic modal opener: sets title, populates or clears fields, opens modal
   const titleEl=document.getElementById(titleElId);
@@ -4429,6 +4469,7 @@ document.addEventListener('keydown', e => {
 
 // ── Toast Notifications ─────────────────
 function showToast(msg, type, duration){
+  if(_activeSaveUi&&(!type||type==='success')){_activeSaveUi.messages.push([msg,type,duration]);return;}
   type=type||'success'; duration=duration||4000;
   if(Array.isArray(window._alerts)) window._alerts.push(msg); // test hook
   let c=document.getElementById('toast-container');
@@ -4695,7 +4736,7 @@ function renderMaterialRows(){
   const c=document.getElementById('material-rows');
   if(!_woMaterials.length){c.innerHTML='<div class="empty" style="padding:10px 0;font-size:12px;">No materials added. Click "+ Add Item" to log materials used.</div>';return;}
   c.innerHTML=_woMaterials.map((m,i)=>`<div class="mpicker-row">
-    <select style="flex:2;" onchange="_woMaterials[${i}].invId=parseInt(this.value)||''">
+    <select style="flex:2;" onchange="_woMaterials[${i}].invId=parseInt(this.value)||'';delete _woMaterials[${i}].invDocId">
       <option value="">Select item…</option>
       ${inv.map(it=>`<option value="${it.id}" ${m.invId===it.id?'selected':''}>${escapeHTML(it.description)} (${it.qty} ${escapeHTML(it.unit||'')})</option>`).join('')}
     </select>
@@ -4714,38 +4755,37 @@ function saveWO(){
   if(!sec){showFieldError('m-wo-section','Section is required.');_hasErr=true;}
   if(!desc){showFieldError('m-wo-desc','Description is required.');_hasErr=true;}
   if(_hasErr)return;
-  const inv=DB.g('inventory').map(i=>({...i}));
+  const inv=cloneForFirebase(DB.g('inventory'));
+  const wos=cloneForFirebase(DB.g('wo'));
+  const old=_editWO?wos.find(x=>x.id===_editWO):null;
+  if(_editWO&&!old){showToast('Record no longer exists.','error');return;}
+  for(const m of old?.materials||[]){const item=inv.find(i=>m.invDocId?i._docId===m.invDocId:i.id===m.invId);if(item)item.qty=+(item.qty+Number(m.qty||0)).toFixed(4);}
+  const totals=new Map();
   for(const m of _woMaterials){
-    if(!m.invId){showToast('Please select an item for all material rows, or remove empty rows.','warning');return;}
-    const item=inv.find(i=>i.id===m.invId);
-    if(!item){showToast('Inventory item not found.','warning');return;}
-    if(m.qty>item.qty){showToast(`Insufficient stock for "${item.description}". Available: ${item.qty} ${item.unit||''}`,'warning');return;}
+    if(!m.invId||!Number.isFinite(Number(m.qty))||Number(m.qty)<=0){showToast('Select an item and enter a positive finite quantity for every material row.','warning');return;}
+    m.qty=Number(m.qty);totals.set(m.invId,(totals.get(m.invId)||0)+m.qty);
   }
-  const wos=DB.g('wo');
-  // Restore old deductions if editing
-  if(_editWO){
-    const old=wos.find(x=>x.id===_editWO);
-    if(old?.materials){old.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});}
-  }
+  for(const [id,qty] of totals){const item=inv.find(i=>i.id===id);if(!item||qty>item.qty){showToast('Insufficient stock for the combined material quantities.','warning');return;}}
   // FIX: get WO ID and issuance ID once to avoid double-generation
   const newWoId = _editWO || DB.nid('wo');
-  let issuanceLog=DB.g('issuance');
+  const newWoDocId=old?._docId||generateRecordDocId('wo');
+  let issuanceLog=cloneForFirebase(DB.g('issuance'));
   // FIX: remove old auto-issuance records for this WO before regenerating
   if(_editWO){
     const woRef='WO-'+String(newWoId).padStart(4,'0');
-    issuanceLog=issuanceLog.filter(l=>!(l.woRef===woRef&&l.remarks==='Auto-deducted via Work Order'));
+    issuanceLog=issuanceLog.filter(l=>!((l.woRef===woRef||l.woRef===old?.code||l.woDocId===old?._docId)&&l.remarks==='Auto-deducted via Work Order'));
   }
   const _issUsed=new Set(issuanceLog.map(i=>String(i.id||'')));
   const newWoCode=_editWO?(wos.find(x=>x.id===_editWO)?.code||null):generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[document.getElementById('m-wo-priority').value]||'MD']);
   _woMaterials.forEach(m=>{
-    const item=inv.find(i=>i.id===m.invId);
+    const item=inv.find(i=>m.invDocId?i._docId===m.invDocId:i.id===m.invId);
     if(item){
       item.qty=parseFloat((item.qty-m.qty).toFixed(4));
       stampRecord(item);
-      issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:newWoCode||('WO-'+String(newWoId).padStart(4,'0')),remarks:'Auto-deducted via Work Order'});
+      issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),woDocId:newWoDocId,invDocId:item._docId,invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:newWoCode||('WO-'+String(newWoId).padStart(4,'0')),remarks:'Auto-deducted via Work Order'});
     }
   });
-  DB.s('inventory',inv);DB.s('issuance',issuanceLog);
+
   let woLoc=(document.getElementById('m-wo-loc').value||'').trim();
   const woAsset=document.getElementById('m-wo-asset').value;
   if(!woLoc&&woAsset){
@@ -4753,7 +4793,7 @@ function saveWO(){
     if(selAsset)woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
   }
   const o={
-    id:newWoId,code:newWoCode,section:sec,
+    id:newWoId,_docId:newWoDocId,code:newWoCode,section:sec,
     asset:woAsset,
     location:woLoc,
     priority:document.getElementById('m-wo-priority').value,
@@ -4762,7 +4802,7 @@ function saveWO(){
     targetCompletionDate:document.getElementById('m-wo-target-completion').value||null,
     dateEnd:document.getElementById('m-wo-dend').value,
     description:desc,assigned:document.getElementById('m-wo-assigned').value,
-    materials:_woMaterials.map(m=>{const it=inv.find(i=>i.id===m.invId);return{invId:m.invId,name:it?.description||'',qty:m.qty,unit:it?.unit||'',issuedTo:m.issuedTo};}),
+    materials:_woMaterials.map(m=>{const it=inv.find(i=>m.invDocId?i._docId===m.invDocId:i.id===m.invId);return{invId:m.invId,invDocId:it?._docId,name:it?.description||'',qty:m.qty,unit:it?.unit||'',issuedTo:m.issuedTo};}),
     remarks:document.getElementById('m-wo-remarks').value,
     delayReason:document.getElementById('m-wo-delay-reason').value||null,
     delayReasonOther:document.getElementById('m-wo-delay-reason').value==='Others'?document.getElementById('m-wo-delay-other').value:'',
@@ -4770,22 +4810,24 @@ function saveWO(){
     createdAt:_editWO?wos.find(x=>x.id===_editWO)?.createdAt:today()
   };
   if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wo');return;}wos[idx]=o;}else wos.push(o);
-  DB.s('wo',wos);closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
+  commitLocalChanges({inventory:inv,issuance:issuanceLog,wo:wos});closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
-async function delRecord(store,id,label,...renderFns){if(!await confirmDialog('Delete this '+label+'? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;DB.s(store,DB.g(store).filter(x=>x.id!==id));renderFns.forEach(fn=>fn?.());showToast(label+' deleted.','info');}
+async function delRecord(store,id,label,...renderFns){if(!await confirmDialog('Delete this '+label+'? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;DB.s(store,DB.g(store).filter(x=>x.id!==id));await flushAll();renderFns.forEach(fn=>fn?.());showToast(label+' deleted.','info');}
 async function delWO(id){
   const w=DB.g('wo').find(x=>x.id===id);
   if(!await confirmDialog('Delete this work order? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;
+  requireOnlineWrite();
+  const changes={wo:DB.g('wo').filter(x=>x.id!==id)};
   // Restore inventory and remove auto-issuance if WO had materials
   if(w?.materials?.length){
     const inv=DB.g('inventory').map(i=>({...i}));
     const woRef='WO-'+String(id).padStart(4,'0');
     const woCode=w?.code||null;
-    w.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});
-    DB.s('inventory',inv);
-    DB.s('issuance',DB.g('issuance').filter(l=>!((l.woRef===woRef||(woCode&&l.woRef===woCode))&&l.remarks==='Auto-deducted via Work Order')));
+    w.materials.forEach(m=>{const item=inv.find(i=>m.invDocId?i._docId===m.invDocId:i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});
+    changes.inventory=inv;
+    changes.issuance=DB.g('issuance').filter(l=>!((l.woRef===woRef||(woCode&&l.woRef===woCode))&&l.remarks==='Auto-deducted via Work Order'));
   }
-  DB.s('wo',DB.g('wo').filter(x=>x.id!==id));
+  commitLocalChanges(changes);await flushAll();
   renderWO();renderDash();renderIssuance();renderInventory();updateInvAlerts();showToast('Work order deleted.','info');
 }
 
@@ -4864,18 +4906,18 @@ function saveManualIssue(){
   const invId=parseInt(document.getElementById('m-iss-item').value);
   const qty=parseFloat(document.getElementById('m-iss-qty').value);
   const to=document.getElementById('m-iss-to').value.trim();
-  if(!invId||isNaN(qty)||qty<=0||!to){showToast('Item, Qty, and Issued To are required.','warning');return;}
-  const inv=DB.g('inventory');
+  if(!invId||!Number.isFinite(qty)||qty<=0||!to){showToast('Item, Qty, and Issued To are required.','warning');return;}
+  const inv=cloneForFirebase(DB.g('inventory'));
   const item=inv.find(i=>i.id===invId);
   if(!item){showToast('Item not found.','warning');return;}
   if(qty>item.qty){showToast(`Insufficient stock. Available: ${item.qty} ${item.unit||''}`,'warning');return;}
   item.qty=parseFloat((item.qty-qty).toFixed(4));
   stampRecord(item);
-  DB.s('inventory',inv);
-  const log=DB.g('issuance');
+
+  const log=cloneForFirebase(DB.g('issuance'));
   const issSec=document.getElementById('m-iss-section').value||item.category||'CMW';
-  log.push({id:DB.nid('issuance'),code:generateModuleCode('issuance',[SEC_ABV[issSec]||'GEN']),date:document.getElementById('m-iss-date').value,invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:issSec,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
-  DB.s('issuance',log);closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance recorded.');
+  log.push({id:DB.nid('issuance'),code:generateModuleCode('issuance',[SEC_ABV[issSec]||'GEN']),date:document.getElementById('m-iss-date').value,invId,invDocId:item._docId,description:item.description,category:item.category,unit:item.unit,qtyIssued:qty,issuedTo:to,section:issSec,woRef:document.getElementById('m-iss-wo').value||'—',remarks:document.getElementById('m-iss-remarks').value});
+  commitLocalChanges({inventory:inv,issuance:log});closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance recorded.');
 }
 
 // ── CSV UPLOAD ────────────────────────
@@ -5018,7 +5060,9 @@ function parseCSVLine(line){
 function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, label){
   const f=e.target.files[0];if(!f)return;
   const reader=new FileReader();
-  reader.onload=ev=>{
+  reader.onload=async ev=>{
+    if(!canSave())return;
+    try{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
     if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
@@ -5029,7 +5073,7 @@ function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, labe
       if(required && colIdx[key]<0){showToast('CSV must have a "'+spec.label+'" column.','warning');}
     });
     if(requiredCols.some(s=>s.required && colIdx[s.key]<0))return;
-    const items=DB.g(store);let added=0;
+    const items=cloneForFirebase(DB.g(store));let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
       const row=parseCSVLine(lines[i]);
@@ -5038,16 +5082,20 @@ function genericCSVImport(e, store, requiredCols, recordBuilder, renderFns, labe
       if(!rec)continue;
       items.push(rec);added++;
     }
-    DB.s(store,items);showToast(added+' '+(label||'record')+'(s) imported.','success');
+    DB.s(store,items);await flushAll();showToast(added+' '+(label||'record')+'(s) imported.','success');
     (Array.isArray(renderFns)?renderFns:[renderFns]).forEach(fn=>fn?.());
+    e.target.value='';
+    }catch(error){showToast('Import failed: '+error.message,'error',8000);}
   };
-  reader.readAsText(f);e.target.value='';
+  reader.readAsText(f);
 }
 
 function importAssetCSV(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=ev=>{
+  r.onload=async ev=>{
+    if(!canSave())return;
+    try{
     const rawLines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
     if(!rawLines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(rawLines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
@@ -5083,7 +5131,7 @@ function importAssetCSV(e){
       dutytype:hf('dutytype'),remarks:hf('remarks')
     };
     if(idx.name<0){showToast('CSV must have an Asset_Name column.','warning');return;}
-    const assets=DB.g('assets');let added=0;
+    const assets=cloneForFirebase(DB.g('assets'));let added=0;
     const _usedIds=new Set(assets.map(x=>String(x.id||'')));
     for(let i=1;i<rawLines.length;i++){
       const row=parseCSVLine(rawLines[i]);
@@ -5127,11 +5175,13 @@ function importAssetCSV(e){
       });
       added++;
     }
-    DB.s('assets',assets);
+    DB.s('assets',assets);await flushAll();
     showToast(added+' asset(s) imported successfully.','success');
     renderAssets();renderDash();
+    e.target.value='';
+    }catch(error){showToast('Import failed: '+error.message,'error',8000);}
   };
-  r.readAsText(f);e.target.value='';
+  r.readAsText(f);
 }
 function downloadAssetTemplate(){
   // Template columns match the HAMMS asset form exactly
@@ -5300,6 +5350,8 @@ function renderIssuance(){
 }
 async function deleteIssuanceLog(id){
   if(!await confirmDialog('Delete this issuance log? This cannot be undone.')) return;
+  requireOnlineWrite();
+  const changes={issuance:DB.g('issuance').filter(l=>l.id!==id)};
   const entry=DB.g('issuance').find(l=>l.id===id);
   // FIX: only restore inventory for manual issuances — auto-WO issuances are
   // managed by saveWO() which handles its own restore/re-deduct cycle.
@@ -5307,14 +5359,14 @@ async function deleteIssuanceLog(id){
   const isAutoWO=entry?.remarks==='Auto-deducted via Work Order';
   if(!isAutoWO && entry&&entry.invId&&entry.qtyIssued>0){
     const inv=DB.g('inventory').map(i=>({...i}));
-    const item=inv.find(i=>i.id===entry.invId);
-    if(item){item.qty=parseFloat((item.qty+entry.qtyIssued).toFixed(4));stampRecord(item);DB.s('inventory',inv);}
+    const item=inv.find(i=>entry.invDocId?i._docId===entry.invDocId:i.id===entry.invId);
+    if(item){item.qty=parseFloat((item.qty+entry.qtyIssued).toFixed(4));stampRecord(item);changes.inventory=inv;}
   }
   if(isAutoWO){
     showToast('This entry was auto-deducted from a Work Order. Edit the Work Order to adjust materials.','warning',5000);
     return; // FIX: don't delete auto-WO issuance records — they are managed by saveWO/delWO
   }
-  DB.s('issuance',DB.g('issuance').filter(l=>l.id!==id));
+  commitLocalChanges(changes);await flushAll();
   renderIssuance();
   renderInventory();
   updateInvAlerts();
@@ -5341,11 +5393,11 @@ const WASTE_TYPES=['Infectious','Pathological','Chemical','Pharmaceutical','Shar
 function renderWasteFcast(){
   const wastes=DB.g('waste');
   const avgs={};
-  WASTE_TYPES.forEach(t=>{let total=0,cnt=0;for(let i=3;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i*7);const ws=getWeekStart(dt.toISOString().split('T')[0]);const we=addDays(ws,6);const v=wastes.filter(w=>w.type===t&&w.date>=ws&&w.date<=we).reduce((s,w)=>s+w.volume,0);if(v>0){total+=v;cnt++;}}avgs[t]=cnt>0?total/cnt:0;});
+  WASTE_TYPES.forEach(t=>{let total=0,cnt=0;for(let i=3;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i*7);const ws=getWeekStart(localYMD(dt));const we=addDays(ws,6);const v=wastes.filter(w=>w.type===t&&w.date>=ws&&w.date<=we).reduce((s,w)=>s+w.volume,0);if(v>0){total+=v;cnt++;}}avgs[t]=cnt>0?total/cnt:0;});
   const maxAvg=Math.max(...Object.values(avgs),1);
   document.getElementById('wfc-bars').innerHTML=WASTE_TYPES.map(t=>{const v=avgs[t];if(!v)return'';const pct=Math.round((v/maxAvg)*100);const thresh=WASTE_THRESH[t];const col=v>=thresh?'var(--red)':v>=thresh*0.7?'var(--gold)':'var(--green)';return`<div class="fbar"><span class="fbar-label" style="font-size:12px;">${t}</span><div class="fbar-track"><div class="fbar-fill" style="width:${pct}%;background:${col};"></div></div><span class="fbar-val">${v.toFixed(1)}kg</span></div>`;}).filter(Boolean).join('')||'<div class="empty">No waste data yet.</div>';
   document.getElementById('wfc-risk').innerHTML=WASTE_TYPES.map(t=>{const v=avgs[t];if(!v)return'';const thresh=WASTE_THRESH[t];const risk=v>=thresh?'Critical':v>=thresh*0.7?'Warning':'OK';const next=(v*1.05).toFixed(2);return`<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0f5;"><span style="font-size:13px;font-weight:600;min-width:110px;">${t}</span><span style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">~${next} kg/wk</span>${emblBadge(risk)}</div>`;}).filter(Boolean).join('')||'<div class="empty">No forecast data available.</div>';
-  const rows=[];for(let i=7;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i*7);const ws=getWeekStart(dt.toISOString().split('T')[0]);const we=addDays(ws,6);const ww=wastes.filter(w=>w.date>=ws&&w.date<=we);if(!ww.length&&i>0)continue;const byt={};WASTE_TYPES.forEach(t=>{byt[t]=ww.filter(w=>w.type===t).reduce((s,w)=>s+w.volume,0);});const tot=Object.values(byt).reduce((s,v)=>s+v,0);rows.push(`<tr><td style="white-space:nowrap;font-size:12px;">${fmt(ws)} – ${fmt(we)}</td>${WASTE_TYPES.map(t=>`<td class="mono">${byt[t]>0?byt[t].toFixed(2):'—'}</td>`).join('')}<td class="mono" style="font-weight:700;">${tot>0?tot.toFixed(2):'—'}</td></tr>`);}
+  const rows=[];for(let i=7;i>=0;i--){const dt=new Date();dt.setDate(dt.getDate()-i*7);const ws=getWeekStart(localYMD(dt));const we=addDays(ws,6);const ww=wastes.filter(w=>w.date>=ws&&w.date<=we);if(!ww.length&&i>0)continue;const byt={};WASTE_TYPES.forEach(t=>{byt[t]=ww.filter(w=>w.type===t).reduce((s,w)=>s+w.volume,0);});const tot=Object.values(byt).reduce((s,v)=>s+v,0);rows.push(`<tr><td style="white-space:nowrap;font-size:12px;">${fmt(ws)} – ${fmt(we)}</td>${WASTE_TYPES.map(t=>`<td class="mono">${byt[t]>0?byt[t].toFixed(2):'—'}</td>`).join('')}<td class="mono" style="font-weight:700;">${tot>0?tot.toFixed(2):'—'}</td></tr>`);}
   document.getElementById('wfc-tbody').innerHTML=rows.join('')||'<tr><td colspan="12" class="empty">No data.</td></tr>';
   // PATCH START: populate wfc-entries-tbody with per-entry delete
   const entriesTbody=document.getElementById('wfc-entries-tbody');
@@ -5396,20 +5448,45 @@ function exportCSV(type){
 function exportJSON(){
   const d={..._memDB,inpatientToday:_memDB.inpatientToday||0,exportedAt:new Date().toISOString(),system:'HAMMS v1.5 DOPMC GSD'};
   dl(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),'HAMMS_Backup_'+today()+'.json');
-  _fbMetaState.lastExportDate=new Date().toISOString();
-  queueScalarSync('lastExportDate',_fbMetaState.lastExportDate);
+  if(window._FB?.enabled===false||(window._FB?.auth?.currentUser&&_fbLoadedOnce&&!_fbReadError&&navigator.onLine&&!_fbAllFromCache)){
+    _fbMetaState.lastExportDate=new Date().toISOString();queueScalarSync('lastExportDate',_fbMetaState.lastExportDate);
+  }
 }
-function applyParsed(d){ // C-1 FIX: define missing function so JSON import/restore actually works
-  if(!d || typeof d !== 'object') throw new Error('Invalid backup data');
-  const prev={};
-  STORES.forEach(store=>{
-    prev[store]=Array.isArray(_memDB[store]) ? cloneForFirebase(_memDB[store]) : [];
-    const arr=Array.isArray(d[store]) ? d[store] : [];
-    applyStoreData(store, arr);
-    queueStoreSync(store, prev[store], _memDB[store]);
-  });
-  if(d.inpatientToday != null) { _memDB.inpatientToday = d.inpatientToday; queueScalarSync('inpatientToday', d.inpatientToday); }
-  if(d.personnel) { _memDB.personnel = cloneForFirebase(d.personnel); queueScalarSync('personnel', d.personnel); }
+function requireAdministrator(){
+  if(window._FB?.isAdmin!==true)throw new Error('Administrator access is required for backup replacement and factory reset.');
+  requireOnlineWrite();
+}
+function validateBackup(d){
+  if(!d||Array.isArray(d)||typeof d!=='object'||!String(d.system||'').startsWith('HAMMS'))throw new Error('Invalid HAMMS backup.');
+  for(const store of STORES){
+    if(!Array.isArray(d[store]))throw new Error('Backup is missing store: '+store);
+    const ids=new Set(),keys=new Set();
+    if(store==='waterSettings'&&d[store].length>1)throw new Error('Backup contains multiple settings records.');
+    for(const row of d[store]){
+      if(!row||Array.isArray(row)||typeof row!=='object')throw new Error('Invalid record in '+store);
+      if(row.id!=null&&(!Number.isSafeInteger(Number(row.id))||Number(row.id)<0||ids.has(String(row.id))))throw new Error('Invalid or duplicate record ID in '+store);
+      if(row.id!=null)ids.add(String(row.id));
+      const key=store==='censusLog'?row.date:row._docId;
+      if(store==='censusLog'&&!/^\d{4}-\d{2}-\d{2}$/.test(String(key||'')))throw new Error('Invalid census date.');
+      if(key!=null&&(typeof key!=='string'||!key||key.includes('/')||keys.has(key)))throw new Error('Invalid or duplicate document identity in '+store);
+      if(key!=null)keys.add(key);
+    }
+  }
+  STORES.forEach(store=>prepareStoreArray(store,d[store]));
+  JSON.stringify(d,(key,value)=>{if(['__proto__','constructor','prototype'].includes(key))throw new Error('Unsafe backup field.');return value;});
+  if(d.inpatientToday!=null&&(!Number.isInteger(d.inpatientToday)||d.inpatientToday<0))throw new Error('Invalid census count.');
+}
+function applyParsed(d){
+  validateBackup(d);requireAdministrator();
+  if(pendingWrites())throw new Error('Save or discard pending changes before replacing all data.');
+  // One transaction prevents a partially replaced database. Reserve one write for metadata.
+  const maximum=STORES.reduce((n,store)=>n+DB.g(store).length+d[store].length,0);
+  if(maximum>449)throw new Error('This backup requires more than 449 record operations. Use an administrator migration for large replacements. No records were changed.');
+  commitLocalChanges(Object.fromEntries(STORES.map(store=>[store,cloneForFirebase(d[store])])));
+  if(d.inpatientToday!=null){_memDB.inpatientToday=d.inpatientToday;queueScalarSync('inpatientToday',d.inpatientToday);}
+  if(d.personnel){_memDB.personnel=cloneForFirebase(d.personnel);queueScalarSync('personnel',d.personnel);}
+  queueScalarSync('restoreAt',new Date().toISOString());
+  _replacementMeta=cloneForFirebase(_fbPendingMetaMerge);
 }
 function importJSON(e){
   const f=e.target.files[0];if(!f)return;
@@ -5515,9 +5592,12 @@ const TEST_ABV={Bacteriological:'BAC',Chemical:'CHM',Physical:'PHY',Residual:'RE
 const EFF_POINT_ABV={'STP Effluent':'STPEFF','STP Inlet':'STPIN','Outfall 001':'OUT1','Outfall 002':'OUT2','Chlorine Contact Tank':'CCT'};
 function generateModuleCode(store,parts,padLen){
   const prefix=parts.filter(Boolean).join('-');
-  const existing=DB.g(store).filter(r=>(r.code||'').startsWith(prefix+'-'));
-  return prefix+'-'+String(existing.length+1).padStart(padLen||4,'0');
+  const existing=new Set(DB.g(store).map(r=>r.code));
+  const max=DB.g(store).reduce((n,r)=>{const code=r.code||'';if(!code.startsWith(prefix+'-'))return n;return Math.max(n,parseInt(code.slice(prefix.length+1),10)||0);},0);
+  let code;do{code=prefix+'-'+String(max+1).padStart(padLen||4,'0')+'-'+crypto.randomUUID().slice(0,8).toUpperCase();}while(existing.has(code));
+  return code;
 }
+
 function abvName(name){return(name||'').replace(/[^A-Za-z0-9 ]/g,'').trim().split(/\s+/).map(w=>w.substring(0,3).toUpperCase()).join('').substring(0,6)||'GEN';}
 
 function generateAssetCode(mainCategory,building,floor,roomNo,overrideId){
@@ -5701,7 +5781,7 @@ function getPMSStatus(a){
   let nd=nextDate;
   if(!nd&&lastDate&&freq){
     const dt=new Date(lastDate+'T00:00:00');dt.setDate(dt.getDate()+freq);
-    nd=dt.toISOString().split('T')[0];
+    nd=localYMD(dt);
   }
   if(!nd)return'No Schedule';
   const td=today();
@@ -5715,7 +5795,7 @@ function getPMSStatus(a){
 
 function pmsBadge(s){
   const m={'Normal':'pm-normal','Upcoming':'pm-upcoming','Due Today':'pm-due','Overdue':'pm-overdue','Critical Overdue':'pm-critical','No Schedule':'pm-none'};
-  return`<span class="${m[s]||'pm-none'}">${s}</span>`;
+  return`<span class="${m[s]||'pm-none'}">${escapeHTML(s)}</span>`;
 }
 
 function computeNextMaint(){
@@ -5724,7 +5804,7 @@ function computeNextMaint(){
   const freqVal=freqEl.value==='custom'?parseInt(document.getElementById('m-a-freq-custom').value||0):parseInt(freqEl.value||0);
   if(last&&freqVal){
     const dt=new Date(last+'T00:00:00');dt.setDate(dt.getDate()+freqVal);
-    document.getElementById('m-a-nextmaint').value=dt.toISOString().split('T')[0];
+    document.getElementById('m-a-nextmaint').value=localYMD(dt);
   }
   updatePMSPreview();
 }
@@ -6295,8 +6375,8 @@ function renderDash(){
 // ═══════════════════════════════════════
 // NEW: SAFETY MANAGEMENT CRUD
 // ═══════════════════════════════════════
-function sevBadge(s){const m={'Low':'sev-low','Moderate':'sev-moderate','High':'sev-high','Critical':'sev-critical'};return`<span class="${m[s]||'sev-low'}">${s}</span>`;}
-function ssBadge(s){const m={'Open':'ss-open','Under Action':'ss-action','Resolved':'ss-resolved','Verified':'ss-verified','Closed':'ss-closed'};return`<span class="${m[s]||'ss-open'}">${s}</span>`;}
+function sevBadge(s){const m={'Low':'sev-low','Moderate':'sev-moderate','High':'sev-high','Critical':'sev-critical'};return`<span class="${m[s]||'sev-low'}">${escapeHTML(s)}</span>`;}
+function ssBadge(s){const m={'Open':'ss-open','Under Action':'ss-action','Resolved':'ss-resolved','Verified':'ss-verified','Closed':'ss-closed'};return`<span class="${m[s]||'ss-open'}">${escapeHTML(s)}</span>`;}
 
 function openSafetyModal(id=null){
   _editSafety=id;captureEditSnapshot('safety',id);
@@ -6408,7 +6488,7 @@ function renderSafety(){
 // ═══════════════════════════════════════
 // NEW: PROJECT MONITORING CRUD
 // ═══════════════════════════════════════
-function pjBadge(s){const m={'Proposed':'pj-proposed','For Approval':'pj-approval','Ongoing':'pj-ongoing','Delayed':'pj-delayed','Completed':'pj-completed','Closed':'pj-closed'};return`<span class="${m[s]||'pj-proposed'}">${s}</span>`;}
+function pjBadge(s){const m={'Proposed':'pj-proposed','For Approval':'pj-approval','Ongoing':'pj-ongoing','Delayed':'pj-delayed','Completed':'pj-completed','Closed':'pj-closed'};return`<span class="${m[s]||'pj-proposed'}">${escapeHTML(s)}</span>`;}
 
 function openProjectModal(id=null){
   _editProject=id;captureEditSnapshot('projects',id);
@@ -6462,9 +6542,9 @@ function renderProjects(){
   const st=(document.getElementById('pj-status')||{}).value||'';
   const q=(document.getElementById('pj-search')||{}).value?.toLowerCase()||'';
   if(st)list=list.filter(p=>p.status===st);
-  list=list.filter(p=>matchMonthYear(p.startDate||p.targetCompletion,'pj')); // month/year filter
+  list=list.filter(p=>matchMonthYear(p.startDate||p.targetDate,'pj')); // month/year filter
   if(q)list=list.filter(p=>(p.title||'').toLowerCase().includes(q)||(p.code||'').toLowerCase().includes(q)||(p.location||'').toLowerCase().includes(q));
-  populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');
+  populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetDate})),'_d');
   list.sort((a,b)=>b.id-a.id);
   document.getElementById('projects-tbody').innerHTML=list.length?list.map(p=>{
     const bgt=p.budget?'₱'+Number(p.budget).toLocaleString():'—';
@@ -6472,7 +6552,7 @@ function renderProjects(){
     return`<tr>
       <td class="mono" style="font-size:11px;">${escapeHTML(p.code)}</td>
       <td style="max-width:180px;white-space:normal;font-weight:600;">${escapeHTML(p.title)}</td>
-      <td style="font-size:12px;">${p.category||'—'}</td>
+      <td style="font-size:12px;">${escapeHTML(p.category)||'—'}</td>
       <td style="font-size:12px;">${escapeHTML(p.location)||'—'}</td>
       <td class="mono" style="font-size:12px;">${bgt}</td>
       <td>${pjBadge(p.status)}</td>
@@ -6501,7 +6581,7 @@ function renderProjStats(){
 // ═══════════════════════════════════════
 // NEW: WATER SAFETY CRUD
 // ═══════════════════════════════════════
-function wsBadge(s){const m={'Safe':'ws-safe','Warning':'ws-warning','Fail':'ws-fail'};return`<span class="${m[s]||'ws-safe'}">${s}</span>`;}
+function wsBadge(s){const m={'Safe':'ws-safe','Warning':'ws-warning','Fail':'ws-fail'};return`<span class="${m[s]||'ws-safe'}">${escapeHTML(s)}</span>`;}
 
 function openWaterLogModal(id=null){
   _editWaterLog=id;captureEditSnapshot('waterLogs',id);
@@ -6620,7 +6700,7 @@ function renderWardStatus(){
 // ═══════════════════════════════════════
 // NEW: WATER TANK & PRESSURE CRUD
 // ═══════════════════════════════════════
-function tkBadge(s){const m={'Normal':'ws-safe','Low Level':'ss-action','High Pressure':'sev-high','Low Pressure':'ss-action','Offline':'ss-closed'};return`<span class="${m[s]||'ws-safe'}">${s}</span>`;}
+function tkBadge(s){const m={'Normal':'ws-safe','Low Level':'ss-action','High Pressure':'sev-high','Low Pressure':'ss-action','Offline':'ss-closed'};return`<span class="${m[s]||'ws-safe'}">${escapeHTML(s)}</span>`;}
 
 function openTankModal(id=null){
   _editTank=id;captureEditSnapshot('waterTank',id);
@@ -6706,14 +6786,15 @@ function saveIssuanceEdit(){
   // PATCH: issuance log edit support
   const qty=parseFloat(document.getElementById('m-iss-qty').value);
   const to=document.getElementById('m-iss-to').value.trim();
-  if(isNaN(qty)||qty<=0||!to){showToast('Qty and Issued To are required.','warning');return;}
-  const logs=DB.g('issuance');
-  const inv=DB.g('inventory');
+  if(!Number.isFinite(qty)||qty<=0||!to){showToast('Qty and Issued To are required.','warning');return;}
+  const logs=cloneForFirebase(DB.g('issuance'));
+  const inv=cloneForFirebase(DB.g('inventory'));
   const log=logs.find(x=>x.id===_editIssuance);if(!log)return;
+  if(log.remarks==='Auto-deducted via Work Order'){showToast('Edit materials in the linked work order.','warning');return;}
   const oldQty=log.qtyIssued||0;
   const diff=qty-oldQty; // positive = more issued, negative = returned
   // Adjust inventory stock — M-4 FIX: validate before mutating
-  const item=inv.find(i=>i.id===log.invId);
+  const item=inv.find(i=>log.invDocId?i._docId===log.invDocId:i.id===log.invId);
   if(item){
     const newQty=parseFloat((item.qty-diff).toFixed(4));
     if(newQty<0){showToast('Adjusted quantity would exceed available stock. Check inventory levels.','warning');return;}
@@ -6725,7 +6806,7 @@ function saveIssuanceEdit(){
   log.section=document.getElementById('m-iss-section').value;
   log.woRef=document.getElementById('m-iss-wo').value||'—';
   log.remarks=document.getElementById('m-iss-remarks').value;
-  DB.s('inventory',inv);DB.s('issuance',logs);
+  commitLocalChanges({inventory:inv,issuance:logs});
   closeModal('mo-issue');renderIssuance();renderInventory();updateInvAlerts();showToast('Issuance updated.');
 }
 
@@ -7013,7 +7094,7 @@ function importProjectCSV(e){
     {key:'issues',match:['issue','remark'],label:'Issues'}
   ],(gv,id)=>{
     const title=gv('title');if(!title)return null;
-    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,funding:gv('funding')||'GAA',responsible:gv('person'),startDate:normYMD(gv('start')),targetCompletion:normYMD(gv('target')),actualCompletion:normYMD(gv('actual')),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',issues:gv('issues')};
+    return{id,code:gv('code')||('PROJ-'+String(id).padStart(4,'0')),title,category:gv('cat')||'Infrastructure',location:gv('loc'),budget:parseFloat(gv('budget'))||null,fundingSource:gv('funding')||'GAA',responsible:gv('person'),startDate:normYMD(gv('start')),targetDate:normYMD(gv('target')),actualDate:normYMD(gv('actual')),physicalPct:parseFloat(gv('physical'))||0,financialPct:parseFloat(gv('financial'))||0,status:gv('status')||'Proposed',remarks:gv('issues')};
   },[renderProjects,renderProjStats,renderDash],'project');
 }
 function downloadProjectTemplate(){
@@ -7077,7 +7158,7 @@ function downloadProjectTemplate(){
 // ═══════════════════════════════════════
 // PATCH: Effluent monitoring CRUD + render
 // ═══════════════════════════════════════
-function effluentBadge(s){const m={'Compliant':'ws-safe','Non-Compliant':'ws-fail','Pending Analysis':'ss-action'};return`<span class="${m[s]||'ss-action'}">${s}</span>`;}
+function effluentBadge(s){const m={'Compliant':'ws-safe','Non-Compliant':'ws-fail','Pending Analysis':'ss-action'};return`<span class="${m[s]||'ss-action'}">${escapeHTML(s)}</span>`;}
 let _editEffluent=null;
 
 // ═══════════════════════════════════════════════════════
@@ -8064,7 +8145,9 @@ function downloadEnergyTemplate(){
 function importEnergyCSV(e){
   const f=e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=ev=>{
+  r.onload=async ev=>{
+    if(!canSave())return;
+    try{
     const text=String(ev.target.result||'');
     const lines=text.split(/\r?\n/).filter(l=>l.trim().length);
     if(lines.length<2){showToast('CSV has no data rows.','error');return;}
@@ -8096,7 +8179,7 @@ function importEnergyCSV(e){
       showToast('CSV header must include Period, Actual_kWh, Bill_PHP.','error');
       e.target.value='';return;
     }
-    const list=DB.g('energyBills');
+    const list=cloneForFirebase(DB.g('energyBills'));
     let added=0,updated=0,skipped=0;
     for(let i=1;i<lines.length;i++){
       const cols=split(lines[i]);
@@ -8145,10 +8228,12 @@ function importEnergyCSV(e){
         added++;
       }
     }
-    DB.s('energyBills',list);
+    DB.s('energyBills',list);await flushAll();
     e.target.value='';
     renderEnergy();renderDash();
     showToast(`Imported: ${added} added, ${updated} updated, ${skipped} skipped.`);
+    e.target.value='';
+    }catch(error){showToast('Import failed: '+error.message,'error',8000);}
   };
   r.readAsText(f);
 }
@@ -8256,7 +8341,7 @@ exportCSV=function(type){
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Safety_'+today()+'.csv');
   }else if(type==='projects'){
     const h=['Code','Title','Category','Location','Budget (PHP)','Funding','Responsible','Start','Target','Actual','Physical %','Financial %','Status','Issues'];
-    const rows=DB.g('projects').map(p=>[p.code,p.title,p.category,p.location,p.budget,p.funding,p.responsible,p.startDate,p.targetCompletion,p.actualCompletion,p.physicalPct,p.financialPct,p.status,p.issues]);
+    const rows=DB.g('projects').map(p=>[p.code,p.title,p.category,p.location,p.budget,p.fundingSource,p.responsible,p.startDate,p.targetDate,p.actualDate,p.physicalPct,p.financialPct,p.status,p.remarks]);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Projects_'+today()+'.csv');
   }else if(type==='water'){
     const h=['Log #','Date','Ward/Location','Test Type','Result','Bacteria Count (CFU)','Residual Chlorine (mg/L)','Mitigation','Remarks'];
@@ -8500,7 +8585,9 @@ openTankModal=function(id=null){
 function importWOCSV(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
-  r.onload=ev=>{
+  r.onload=async ev=>{
+    if(!canSave())return;
+    try{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
     if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
@@ -8516,7 +8603,7 @@ function importWOCSV(e){
       delayReason: fi('delay'),
     };
     if(idx.desc<0&&idx.asset<0){showToast('CSV must have a Description or Asset column.','warning');return;}
-    const items=DB.g('wo'); let added=0;
+    const items=cloneForFirebase(DB.g('wo')); let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
     for(let i=1;i<lines.length;i++){
       const row=parseCSVLine(lines[i]);
@@ -8553,11 +8640,13 @@ function importWOCSV(e){
       });
       added++;
     }
-    DB.s('wo',items);
+    DB.s('wo',items);await flushAll();
     showToast(added+' work order(s) imported successfully.','success');
     renderWO(); renderDash();
+    e.target.value='';
+    }catch(error){showToast('Import failed: '+error.message,'error',8000);}
   };
-  r.readAsText(f); e.target.value='';
+  r.readAsText(f);
 }
 
 function downloadWOTemplate(){
@@ -9265,7 +9354,7 @@ renderTankTrends = function(){
           <th scope="col" style="padding:4px 8px;">Flag</th>
         </tr></thead>
         <tbody>${spikeRows.map(s=>`<tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:4px 8px;">${s.date}</td>
+          <td style="padding:4px 8px;">${escapeHTML(s.date)}</td>
           <td class="mono" style="text-align:right;padding:4px 8px;font-weight:700;">${Math.round(s.totalCons).toLocaleString()} L</td>
           <td class="mono" style="text-align:right;padding:4px 8px;color:var(--muted);">${s.rolling7Avg.toLocaleString()} L</td>
           <td class="mono" style="text-align:right;padding:4px 8px;">${s.spikeRatio}×</td>
@@ -9405,7 +9494,7 @@ function renderTankKPIs(){
     if(latestSpike && latestSpike.date >= todayStr){
       alertEl.style.display='block';
       alertEl.innerHTML=`<div style="background:#fde8e8;border:1px solid #f5aaaa;border-radius:6px;padding:10px 16px;font-size:13px;">
-        ⚠️ <strong>Consumption Spike Detected:</strong> ${latestSpike.date} — ${Math.round(latestSpike.totalCons||0).toLocaleString()} L (${latestSpike.spikeRatio}× above 7-day avg of ${latestSpike.rolling7Avg.toLocaleString()} L).
+        ⚠️ <strong>Consumption Spike Detected:</strong> ${escapeHTML(latestSpike.date)} — ${Math.round(latestSpike.totalCons||0).toLocaleString()} L (${latestSpike.spikeRatio}× above 7-day avg of ${latestSpike.rolling7Avg.toLocaleString()} L).
         <span style="color:var(--muted);font-size:11px;">Tag operational factors in the reading form to help diagnose the cause.</span>
       </div>`;
     } else alertEl.style.display='none';
@@ -9877,7 +9966,7 @@ function tkAutoCalc(){
 // openTankModal — raw observation form only
 // ═══════════════════════════════════════════════════════════════
 openTankModal=function(id=null){
-  _editTank=id;
+  _editTank=id;captureEditSnapshot('waterTank',id);
   window._tkLinkedAssetId=null;
   window._tkAssetCap=null;
   window._tkAssetMinAlert=null;
@@ -10399,7 +10488,7 @@ function drawConsVsPatientChart(containerId,dailySummary,censusLog){
   let yticks='',xlabels='';
   for(let i=0;i<=4;i++){const val=maxCons*(i/4);const yy=PT+cH-(val/maxCons)*cH;yticks+=`<line x1="${PL}" x2="${W-PR}" y1="${yy}" y2="${yy}" stroke="#e8edf3" stroke-width="1"/><text x="${PL-5}" y="${yy+4}" text-anchor="end" font-size="10" fill="#6b7f96">${Math.round(val)}</text>`;}
   for(let i=0;i<=4;i++){xlabels+=`<text x="${PL+(i/4)*cW}" y="${H-PT+12}" text-anchor="middle" font-size="10" fill="#5a6e84">${Math.round(maxPat*(i/4))}</text>`;}
-  const dots=points.map(p=>`<circle cx="${px(p)}" cy="${py(p)}" r="5" fill="#1e6fb5" opacity="0.7" stroke="#fff" stroke-width="1.5"><title>${p.date}: ${p.cons.toLocaleString()} L · ${p.pat} pts</title></circle>`).join('');
+  const dots=points.map(p=>`<circle cx="${px(p)}" cy="${py(p)}" r="5" fill="#1e6fb5" opacity="0.7" stroke="#fff" stroke-width="1.5"><title>${escapeHTML(p.date)}: ${p.cons.toLocaleString()} L · ${p.pat} pts</title></circle>`).join('');
   el.innerHTML=`<svg width="${W}" height="${H}" style="font-family:'IBM Plex Sans',sans-serif;overflow:visible;">${yticks}<line x1="${PL}" x2="${W-PR}" y1="${PT+cH}" y2="${PT+cH}" stroke="#d0d8e4" stroke-width="1.5"/><line x1="${PL}" x2="${PL}" y1="${PT}" y2="${PT+cH}" stroke="#d0d8e4" stroke-width="1.5"/><line x1="${PL}" y1="${PT+cH-Math.max(0,intercept/maxCons)*cH}" x2="${PL+cW}" y2="${PT+cH-Math.max(0,(slope*maxPat+intercept)/maxCons)*cH}" stroke="#1e6fb5" stroke-width="1.5" stroke-dasharray="5,3" opacity="0.5"/>${dots}${xlabels}<text x="${W/2}" y="${H-PT+28}" text-anchor="middle" font-size="10" fill="#6b7f96">Inpatient Count</text><text x="${PL-42}" y="${PT+cH/2}" text-anchor="middle" font-size="10" fill="#6b7f96" transform="rotate(-90,${PL-42},${PT+cH/2})">Daily Consumption (L)</text></svg>`;
 }
 
@@ -10894,7 +10983,7 @@ function buildCalcBasisSummary(activity, ws){
   const kitchen = ops.includes('Heavy Kitchen') ? 'Heavy' : 'Normal';
   const cleaning = ops.includes('Heavy Cleaning') ? 'Heavy' : 'Normal';
   const exp = computeExpectedDemand(act, s);
-  return `Expected Daily Demand: Beds=${beds}, Inpatients=${inp}×${s.refInpatient}L, Outpatients=${out}×${s.refOutpatient}L, ER=${er}×${s.refER}L, Watchers=${wat}×${s.refWatcher}L, Visitors=${vis}×${s.refVisitor}L, ActiveStaff=${sta}×${s.refStaff}L, Laundry=${laundry}, Kitchen=${kitchen}, Cleaning=${cleaning}, FixtureMode=${mode}, Faucets=${f.faucets}, Toilets=${f.toilets}, WwtpFactor=${s.wwtpReturnFactor}, Reference=${s.activeReference}, ProfileID=${generateAssumptionProfileId()}, Result=${exp.expectedDailyL.toLocaleString()}L/day`;
+  return `Expected Daily Demand: Beds=${beds}, Inpatients=${inp}×${s.refInpatient}L, Outpatients=${out}×${s.refOutpatient}L, ER=${er}×${s.refER}L, Watchers=${wat}×${s.refWatcher}L, Visitors=${vis}×${s.refVisitor}L, ActiveStaff=${sta}×${s.refStaff}L, Laundry=${laundry}, Kitchen=${kitchen}, Cleaning=${cleaning}, FixtureMode=${mode}, Faucets=${f.faucets}, Toilets=${f.toilets}, WwtpFactor=${s.wwtpReturnFactor}, Reference=${escapeHTML(s.activeReference)}, ProfileID=${generateAssumptionProfileId()}, Result=${exp.expectedDailyL.toLocaleString()}L/day`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -10962,7 +11051,7 @@ function renderExpectedComparison(){
     totalExpected += expectedL;
     daysWithBoth++;
     return `<tr style="border-bottom:1px solid #e8edf3;">
-      <td class="mono" style="padding:5px 8px;font-size:12px;">${d.date}</td>
+      <td class="mono" style="padding:5px 8px;font-size:12px;">${escapeHTML(d.date)}</td>
       <td class="mono" style="padding:5px 8px;font-size:12px;font-weight:700;color:var(--navy);">${Math.round(d.totalActualL).toLocaleString()} L</td>
       <td class="mono" style="padding:5px 8px;font-size:12px;color:var(--muted);">${expectedL.toLocaleString()} L</td>
       <td class="mono" style="padding:5px 8px;font-size:12px;${variance>0?'color:#c0392b':'color:#1a7a44'}">${variance>0?'+':''}${Math.round(variance).toLocaleString()} L</td>
@@ -10989,7 +11078,7 @@ function renderExpectedComparison(){
       <div style="background:#f4f6f9;border-radius:6px;padding:10px 12px;">
         <div style="font-size:10px;color:var(--muted);text-transform:uppercase;font-weight:700;">Avg Expected/Day</div>
         <div style="font-size:20px;font-weight:800;color:var(--muted);">${avgExpected.toLocaleString()} L</div>
-        <div style="font-size:10px;color:var(--muted);">${ws.activeReference}</div>
+        <div style="font-size:10px;color:var(--muted);">${escapeHTML(ws.activeReference)}</div>
       </div>
       <div style="background:${avgVs.bg};border-radius:6px;padding:10px 12px;">
         <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:${avgVs.color};">Avg Variance</div>
@@ -11012,7 +11101,7 @@ function renderExpectedComparison(){
         <div style="font-size:10px;color:var(--muted);">avg expected × return (estimate only)</div>
       </div>
     </div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Showing last ${days.length} days with computed demand. Actual = measured water-balance demand. Expected = ${ws.activeReference}. They are separate layers — actual liters are never split by category.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Showing last ${days.length} days with computed demand. Actual = measured water-balance demand. Expected = ${escapeHTML(ws.activeReference)}. They are separate layers — actual liters are never split by category.</div>
     <div style="overflow-x:auto;">
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr style="background:#f4f6f9;">
@@ -11109,7 +11198,7 @@ function renderCalcBasisPanel(){
         <div style="font-weight:700;color:#7c3aed;margin-bottom:8px;font-size:11px;text-transform:uppercase;letter-spacing:0.8px;">Active Assumption Profile</div>
         <table style="width:100%;border-collapse:collapse;">
           <tr style="background:#f4f6f9;"><td style="padding:4px 8px;font-weight:700;color:var(--navy);">Profile ID</td><td style="padding:4px 8px;font-family:monospace;color:#7c3aed;font-weight:700;">${profileId}</td></tr>
-          <tr><td style="padding:4px 8px;color:var(--muted);">Reference Standard</td><td style="padding:4px 8px;">${ws.activeReference}</td></tr>
+          <tr><td style="padding:4px 8px;color:var(--muted);">Reference Standard</td><td style="padding:4px 8px;">${escapeHTML(ws.activeReference)}</td></tr>
           <tr><td style="padding:4px 8px;color:var(--muted);">Fixture Source Mode</td><td style="padding:4px 8px;font-weight:700;color:${ws.assetLinkedMode===false?'#856404':'#0d7a9a'};">${mode}</td></tr>
           <tr><td style="padding:4px 8px;color:var(--muted);">Occupied Beds</td><td style="padding:4px 8px;font-weight:700;">${ws.occupiedBeds}</td></tr>
           <tr><td style="padding:4px 8px;color:var(--muted);">Total Staff / Active</td><td style="padding:4px 8px;">${ws.totalStaff} × ${ws.staffPresenceFactor} = <strong>${sta}</strong></td></tr>
@@ -11245,7 +11334,7 @@ renderTankKPIs=function(){
   if(alertEl){
     const spiked=latestSpike&&latestSpike.date>=todayStr;
     alertEl.style.display=spiked?'block':'none';
-    if(spiked) alertEl.innerHTML=`<div style="background:#fde8e8;border:1px solid #f5aaaa;border-radius:6px;padding:10px 16px;font-size:13px;">⚠️ <strong>Consumption Spike:</strong> ${latestSpike.date} — ${Math.round(latestSpike.totalCons).toLocaleString()} L (${latestSpike.spikeRatio}× above 7-day avg ${latestSpike.rolling7Avg.toLocaleString()} L)</div>`;
+    if(spiked) alertEl.innerHTML=`<div style="background:#fde8e8;border:1px solid #f5aaaa;border-radius:6px;padding:10px 16px;font-size:13px;">⚠️ <strong>Consumption Spike:</strong> ${escapeHTML(latestSpike.date)} — ${Math.round(latestSpike.totalCons).toLocaleString()} L (${latestSpike.spikeRatio}× above 7-day avg ${latestSpike.rolling7Avg.toLocaleString()} L)</div>`;
   }
 
   // ── L/Patient/Day — Last 7 Days mini table ───────────────────
@@ -11265,7 +11354,7 @@ renderTankKPIs=function(){
         else if(lptD<100) statusHtml=`<span style="color:#b45309;font-weight:700;">${lptD} L <span style="font-size:10px;">⚠ below min</span></span>`;
         else statusHtml=`<span style="color:#1a7a44;font-weight:700;">${lptD} L <span style="font-size:10px;">✅</span></span>`;
         return`<tr style="border-bottom:1px solid #e8edf3;">
-          <td class="mono" style="padding:4px 8px;font-size:12px;">${d.date}</td>
+          <td class="mono" style="padding:4px 8px;font-size:12px;">${escapeHTML(d.date)}</td>
           <td class="mono" style="padding:4px 8px;font-size:12px;color:var(--navy);">${cons.toLocaleString()} L</td>
           <td class="mono" style="padding:4px 8px;font-size:12px;">${pts||'—'}</td>
           <td style="padding:4px 8px;font-size:12px;">${statusHtml}</td>
@@ -11305,7 +11394,9 @@ renderTankKPIs=function(){
 function importWaterTankCSV(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
-  r.onload=ev=>{
+  r.onload=async ev=>{
+    if(!canSave())return;
+    try{
     const lines=ev.target.result.split(/\r?\n/).filter(l=>l.trim());
     if(!lines.length){showToast('Empty file.','warning');return;}
     const header=parseCSVLine(lines[0]).map(h=>h.toLowerCase().replace(/[^a-z0-9]/g,''));
@@ -11325,7 +11416,7 @@ function importWaterTankCSV(e){
 
     if(idx.name<0){showToast('CSV must have a Tank column (e.g. "Tank" or "Tank Name").','warning');return;}
 
-    let items=DB.g('waterTank'); let added=0;
+    let items=cloneForFirebase(DB.g('waterTank')); let added=0;
     const _usedIds=new Set(items.map(x=>String(x.id||'')));
 
     for(let i=1;i<lines.length;i++){
@@ -11378,11 +11469,13 @@ function importWaterTankCSV(e){
       items.push(rec); added++;
     }
 
-    DB.s('waterTank',items); // computeTankAnalytics runs inside prepareStoreArray
+    DB.s('waterTank',items);await flushAll(); // computeTankAnalytics runs inside prepareStoreArray
     showToast(added+' tank reading(s) imported and recalculated.','success');
     renderWaterTank(); renderTankGauges(); renderTankTrends(); renderTankKPIs();
+    e.target.value='';
+    }catch(error){showToast('Import failed: '+error.message,'error',8000);}
   };
-  r.readAsText(f); e.target.value='';
+  r.readAsText(f);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -11476,7 +11569,7 @@ function updateTankFormulaBox(){
     set('tk-f-peak',peakH?`Current peak: ${peakH.hour}:00 (avg ${Math.round(peakH.avgRateLph)} L/hr)`:'Take readings at different hours to map peak');
     const spikeCount=spikes.filter(s=>s.isSpike).length;
     set('tk-f-spike',`${spikeCount} spike day${spikeCount!==1?'s':''} detected${avg7?' (threshold: '+Math.round(avg7*1.3).toLocaleString()+' L)':''}`);
-    set('tk-f-peakday',peakDay?`${peakDay.date} — ${Math.round(peakDay.totalCons).toLocaleString()} L`:'No data yet');
+    set('tk-f-peakday',peakDay?`${escapeHTML(peakDay.date)} — ${Math.round(peakDay.totalCons).toLocaleString()} L`:'No data yet');
   }catch(e){}
 }
 
@@ -11512,6 +11605,7 @@ setTimeout(()=>{
 // ══════════════════════════════════════════════════════
 async function confirmFactoryReset(){
   // PATCHED: verify the currently signed-in Firebase account instead of exposing a client-side admin password
+  try{requireAdministrator();}catch(e){showResetMsg(e.message,'#cc3333');return;}
   const pwd = document.getElementById('reset-pwd-input')?.value || '';
   if(!pwd){
     showResetMsg('Enter your signed-in Firebase account password.', '#cc3333');
@@ -11538,63 +11632,16 @@ async function confirmFactoryReset(){
   showResetMsg('⏳ Resetting...','#7a5000');
 
   try{
-    const STORES_ALL = ['wo','assets','inventory','issuance','waste','safety',
-      'projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills','personnel'];
-    const emptyDB = {};
-    STORES_ALL.forEach(k=>{ emptyDB[k]=[]; });
-    emptyDB.inpatientToday = 0;
-
-    Object.keys(emptyDB).forEach(k=>{ _memDB[k]=emptyDB[k]; });
-
-    if(window._FB?.enabled && window._FB?.db){
-      try{
-        const { db, doc, getDocs, collection, writeBatch, setDoc, serverTimestamp } = window._FB;
-        // H-1 FIX: chunk deletes into batches of 450 to stay under Firestore 500-op limit
-        const allOps=[];
-        for(const store of STORES_ALL){
-          const snap=await getDocs(collection(db,'hammsStores',store,'records'));
-          snap.forEach(ds=>allOps.push({type:'delete',ref:ds.ref}));
-        }
-        allOps.push({type:'set',ref:doc(db,'hammsMeta','state'),data:{
-          storeInitialized: Object.fromEntries(STORES_ALL.map(store=>[store,true])),
-          inpatientToday: 0,
-          personnel: {},
-          updatedAt: serverTimestamp(),
-          updatedBy: window._FB.email || 'FACTORY_RESET',
-          resetAt: new Date().toISOString()
-        }});
-        // Attempt legacy shared document deletion separately so it never blocks store reset
-        try{
-          const legacyBatch=writeBatch(db);
-          legacyBatch.delete(doc(db,'hamms','mainData'));
-          await legacyBatch.commit();
-        }catch(legacyErr){
-          console.warn('HAMMS: Legacy mainData removal skipped:', legacyErr.message||legacyErr);
-        }
-        const CHUNK=450;
-        for(let i=0;i<allOps.length;i+=CHUNK){
-          const batch=writeBatch(db);
-          allOps.slice(i,i+CHUNK).forEach(op=>{
-            if(op.type==='delete') batch.delete(op.ref);
-            else batch.set(op.ref, op.data, {merge:false});
-          });
-          await batch.commit();
-        }
-        _fbLegacyParsed={}; // PATCHED: clear local legacy fallback cache after cloud reset
-        _fbMetaState={storeInitialized:Object.fromEntries(STORES_ALL.map(store=>[store,true]))};
-        _fbPendingStoreOps=Object.create(null);
-        _fbPendingMetaMerge={};
-        setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
-        showResetMsg('✅ All app data cleared and Firebase reset. Reloading...','#1a6b1a');
-      }catch(e){
-        setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
-        showResetMsg('⚠ Session reset completed but Firebase reset failed: '+e.message,'#7a5000');
-      }
-    } else {
-      showResetMsg('⚠ Session reset completed but Firebase is not ready. Reloading...','#7a5000');
-    }
-
-    setTimeout(()=>{ window.location.reload(); }, 1800);
+    requireAdministrator();
+    if(pendingWrites())throw new Error('Save or discard pending changes before resetting.');
+    const emptyDB={system:'HAMMS',personnel:{},inpatientToday:0};
+    STORES.forEach(store=>emptyDB[store]=[]);
+    applyParsed(emptyDB);queueScalarSync('resetAt',new Date().toISOString());
+    _replacementMeta=cloneForFirebase(_fbPendingMetaMerge);
+    await flushAll();
+    _fbLegacyParsed={};
+    showResetMsg('All data cleared. Reloading...','#1a6b1a');
+    setTimeout(()=>window.location.reload(),1800);
 
   }catch(e){
     showResetMsg('Error during reset: '+e.message,'#cc3333');
@@ -12587,6 +12634,31 @@ function wsetUpdateFixtureHints(){
 })();
 </script>
 
+
+<script>
+// Preserve the form until Firebase acknowledges the save. Local test mode stays synchronous.
+(function(){
+ const names=["saveWO","saveInvItem","saveManualIssue","saveWaste","saveInpatient","saveAsset","saveSafety","saveProject","saveWaterLog","saveIssuanceEdit","savePersonnel","saveEffluent","saveMedWaste","saveWWProd","saveEnergy","saveCensus","saveTankReading","saveWaterSettings"];
+ for(const name of names){const original=window[name];if(typeof original!=='function')continue;
+ window[name]=function(...args){
+   if(window._FB?.enabled===false||_activeSaveUi)return original.apply(this,args);
+   if(!canSave())return;
+   if(_fbSyncError&&pendingWrites()){showToast('Retry or discard the pending save before saving again. Your form entries remain available.','warning');return;}
+   const ui={modals:new Set(),messages:[]};_activeSaveUi=ui;
+   let result;
+   try{result=original.apply(this,args);}catch(error){showToast(error.message,'error');return;}
+   finally{_activeSaveUi=null;}
+   return Promise.resolve(result).then(()=>flushAll()).then(()=>{
+     ui.modals.forEach(closeModal);ui.messages.forEach(args=>showToast(...args));
+   }).catch(error=>{_pendingSaveUi=ui;showToast(error.message+' Your form entries remain available.','error',10000);});
+ };
+ }
+for(const name of ["delRecord","delWO","delAsset","delInvItem","delWaste","delWasteFromFcast","deleteIssuanceLog","delSafety","delProject","delWaterLog","delTankReading","delEffluent","delMedWaste","delWWProd","delEnergyBill"]){
+ const original=window[name];if(typeof original!=='function')continue;
+ window[name]=async function(...args){try{return await original.apply(this,args);}catch(error){showToast(error.message,'error',8000);}};
+}
+})();
+</script>
 </body>
 </html>
 

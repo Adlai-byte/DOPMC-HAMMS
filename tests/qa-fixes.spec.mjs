@@ -1,26 +1,7 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // Helper: bypass login and initialize empty app state
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  // Clear SW cache
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  // Bypass login, init empty DB, show app
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    navigate('dashboard');
-  });
-}
 
 // ═══════════════════════════════════════════════════
 // Phase 1 — Critical Bugs
@@ -170,12 +151,12 @@ test.describe('Phase 3 — Sync & Data Integrity', () => {
 
   test('3.2 saveWaterSettings triggers UI refresh', async ({ page }) => {
     await bootstrapApp(page);
-    const src = await page.evaluate(() => document.documentElement.innerHTML);
-    // Function should call renderTankKPIs after saving
-    const fn = await page.evaluate(() => saveWaterSettings.toString());
-    expect(fn).toContain('renderTankKPIs');
-    expect(fn).toContain('renderExpectedComparison');
-    expect(fn).toContain('renderWaterAlarmPanel');
+    const calls=await page.evaluate(()=>{
+      const calls=[];
+      renderTankKPIs=()=>calls.push('tank');renderExpectedComparison=()=>calls.push('comparison');renderWaterAlarmPanel=()=>calls.push('alarms');
+      saveWaterSettings(getWaterSettings());return calls;
+    });
+    expect(calls).toEqual(expect.arrayContaining(['tank','comparison','alarms']));
   });
 
   test('3.3 savePersonnel has explanatory comment', async ({ page }) => {

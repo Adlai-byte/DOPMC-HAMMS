@@ -1,24 +1,7 @@
+import { bootstrapApp } from './helpers/bootstrap.mjs';
 import { test, expect } from '@playwright/test';
 
 // Helper: bypass login and initialize empty app state
-async function bootstrapApp(page) {
-  await page.goto('/?nocache=' + Date.now());
-  await page.evaluate(() => {
-    if (navigator.serviceWorker) navigator.serviceWorker.getRegistrations().then(r => r.forEach(w => w.unregister()));
-    caches.keys().then(k => k.forEach(n => caches.delete(n)));
-  });
-  await page.goto('/?nocache=' + Date.now());
-  await page.waitForLoadState('domcontentloaded');
-  await page.evaluate(() => {
-    document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
-    document.getElementById('app').style.visibility = 'visible';
-    if (typeof _memDB === 'undefined') window._memDB = {};
-    const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
-    if (!_memDB.personnel) _memDB.personnel = {};
-    navigate('dashboard');
-  });
-}
 
 // ═══════════════════════════════════════════════════
 // T1: _fbSyncTimer nulled at syncToFirebase start
@@ -61,11 +44,13 @@ test.describe('T2 — offline handling preserves pending ops', () => {
     expect(result).toBe(true);
   });
 
-  test('offline path schedules 5s retry', async ({ page }) => {
+  test('offline save rejects without scheduling retries', async ({ page }) => {
     await bootstrapApp(page);
     const result = await page.evaluate(() => {
-      const src = syncToFirebase.toString();
-      return src.includes('setTimeout(syncToFirebase, 5000)');
+      window._FB.enabled=true;
+      Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>false});
+      let rejected=false;try{DB.s('assets',[{id:1,name:'Draft'}]);}catch{rejected=true;}
+      return rejected&&DB.g('assets').length===0&&!_fbSyncTimer;
     });
     expect(result).toBe(true);
   });
@@ -323,11 +308,12 @@ test.describe('T8 — negative demandL clamped', () => {
 // ═══════════════════════════════════════════════════
 test.describe('T10 — concurrent save retry', () => {
 
-  test('syncToFirebase schedules retry when write in progress', async ({ page }) => {
+  test('concurrent sync waits for the active promise', async ({ page }) => {
     await bootstrapApp(page);
-    const result = await page.evaluate(() => {
-      const src = syncToFirebase.toString();
-      return src.includes('setTimeout(syncToFirebase, 500)');
+    const result = await page.evaluate(async () => {
+      window._FB.enabled=true;
+      _syncPromise=Promise.resolve('active');
+      return await syncToFirebase()==='active';
     });
     expect(result).toBe(true);
   });

@@ -47,11 +47,11 @@ The file is organized in this order — use line-number ranges to navigate:
 
 ### Data Layer
 
-All data lives in an in-memory object `_memDB` with 14 collections:
+All data lives in an in-memory object `_memDB` with 15 collections:
 
 ```
 wo, assets, inventory, issuance, waste, waterLogs, waterTank,
-effluent, safety, projects, medWasteProd, wwProd, censusLog, waterSettings
+effluent, safety, projects, medWasteProd, wwProd, censusLog, waterSettings, energyBills
 ```
 
 Access pattern:
@@ -91,9 +91,9 @@ Client-side tab navigation via `navigate(pageName)`. Each page is a `<div class=
 
 - **Firebase-only**: Firestore is the sole source of truth. JSON export/import is manual backup only.
 - **Real-time listeners**: Firestore `onSnapshot` listeners update `_memDB` on remote changes.
-- **Write queue**: `queueStoreSync()` diffs previous vs next arrays, batches Firestore writes via `syncToFirebase()` (debounced at 100ms via `scheduleFlush()`).
+- **Write queue**: `queueStoreSync()` diffs previous vs next arrays, commits version-checked Firestore transactions via `syncToFirebase()` (debounced at 100ms via `scheduleFlush()`).
 - **Focus/visibility refresh**: `safeGetDocFresh()` re-reads from Firestore on tab focus to catch changes by other users.
-- **No offline write buffering**: Writes while offline are discarded (multi-user safety). Users must reconnect and re-save.
+- **Online saves only**: Offline attempts leave form input untouched and do not change records. Failed online writes remain in memory for explicit retry or discard; the form closes only after acknowledgement. Pending writes are not persisted across tab closure.
 - **Sync status chip**: top bar shows LIVE, Unavailable, or Offline via `setStorageChip()`.
 
 ### XSS Prevention
@@ -131,7 +131,7 @@ When deploying changes, bump the `CACHE_NAME` constant in `public/sw.js` (e.g., 
 - **CRUD functions** follow: `open{Entity}Modal(id?)` → `save{Entity}()` → `render{Entity}()`. Delete uses `del{Entity}(id)` with `confirmDialog()`.
 - **Badge/tag helpers**: `stBadge()` (status), `condBadge()` (condition), `priSpan()` (priority), `secTag()` (section), `emblBadge()` (compliance)
 - **Charts**: `drawBarLineChart()`, `drawDoubleBarChart()`, `drawTripleBarChart()` — custom canvas-based charting (no library)
-- **CSV import/export**: `exportCSV(type)` for all 14 collections. Per-module importers: `importAssetCSV()`, `importInventoryCSV()`, `importWOCSV()`, etc. Templates via `download{Type}Template()`.
+- **CSV import/export**: `exportCSV(type)` for all 15 collections. Per-module importers: `importAssetCSV()`, `importInventoryCSV()`, `importWOCSV()`, etc. Templates via `download{Type}Template()`.
 - **Asset codes**: auto-generated via `generateAssetCode()` using category abbreviation + building/floor/room + sequential ID
 - **Energy calculations**: `computeEnergy()`, `calcAssetKwh()` estimate power consumption per asset
 - **Modal system**: `openModal(id)` / `closeModal(id)` toggle `.open` class on `.modal-overlay` elements. Modal IDs are prefixed `mo-` (e.g., `mo-wo`, `mo-asset`, `mo-inv`).
@@ -147,3 +147,13 @@ When deploying changes, bump the `CACHE_NAME` constant in `public/sw.js` (e.g., 
 - Functions marked `// PATCHED:` were modified during the per-record Firestore migration — read the comment for context before changing
 - Record versioning: `stampRecord()` increments `_v`, sets `_updatedAt` (epoch ms) and `_updatedBy` (email/uid). `stampChangedRecords()` only stamps actually-changed records in a batch.
 - Cloning: `cloneForFirebase()` (JSON round-trip) is used before any Firestore write to prevent mutation of live references
+
+### Reliability and permissions (2026-10-09)
+
+- Staff share operational record editing and deletion. Restore/reset require the Firebase Auth custom claim `admin: true`, read from the authenticated ID token. Client UI checks do not replace Firestore rules.
+- Transactions compare the original server version; related work-order, stock, and issuance operations commit together. Each acknowledgement clears only its matching queue generation.
+- Backup replacement validates every store before changing memory and uses one transaction, including its protected metadata marker. The conservative preflight limit is **449 combined existing and imported records**. Larger replacements require a reviewed administrator migration; the app rejects them without changing records.
+- `tests/helpers/bootstrap.mjs` isolates Firebase before navigation. Run `npx playwright test` for local checks and `firebase emulators:exec --only firestore --project demo-hamms-tests "node --test tests/rules/firestore.test.mjs"` for rules checks (Java 21). Live-site tests require explicit `--config=playwright.live.config.mjs`.
+- Both hosting workflows require the reusable test workflow. Main deployment publishes matching Firestore rules/indexes before hosting. Ensure the deployment service account can deploy Firestore rules. Provision administrator claims through a trusted Admin SDK environment before enabling restore/reset for those accounts; users must refresh their ID token/sign in again.
+- Old open browser tabs must refresh for the stricter record metadata/version rules. The service worker cache is `hamms-v2-10-21`. Do not use an older client with the new rules.
+- Existing duplicate numeric IDs are rejected for administrator repair rather than silently renumbered and breaking references. New numeric IDs include randomness; document IDs remain authoritative, with document references on newly saved material/issuance links.
