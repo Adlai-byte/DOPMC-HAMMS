@@ -12766,10 +12766,18 @@ function openRoomView(room){
   const allAssets = DB.g('assets');
   const allWOs    = DB.g('wo');
 
-  // Match assets that belong to this room (check all location fields)
   const roomLower = room.toLowerCase().trim();
   const roomClean = roomLower.replace(/[_]+$/, '').trim();
+
+  const matchedLoc = DB.g('locations').find(l => {
+    const rn = (l.roomName || '').toLowerCase().trim();
+    const rno = (l.roomNumber || '').toLowerCase().trim();
+    return rn === roomLower || rn === roomClean || (rno && (rno === roomLower || rno === roomClean));
+  });
+
+  // Match assets that belong to this room (check all location fields)
   const assets = allAssets.filter(a => {
+    if(matchedLoc && a.locationDocId && a.locationDocId === matchedLoc._docId) return true;
     const locs = [a.location, a.roomNumber, a.roomName, a.building].filter(Boolean);
     return locs.some(l => {
       const ll = l.toLowerCase().trim();
@@ -12779,6 +12787,7 @@ function openRoomView(room){
 
   // Match WOs by location FIRST to prevent cross-room data leaks (e.g. RM 317 repair leaking into RM 316/306)
   const wos = allWOs.filter(w => {
+    if(matchedLoc && w.locationDocId && w.locationDocId === matchedLoc._docId) return true;
     const woLoc = (w.location || '').trim();
     if(woLoc){
       const wl = woLoc.toLowerCase();
@@ -12797,12 +12806,6 @@ function openRoomView(room){
   const openWOs    = wos.filter(w => w.status==='Open'||w.status==='In Progress').length;
   const overdueWOs = wos.filter(w => overdue(w)).length;
   const poor       = assets.filter(a => a.condition==='Poor'||a.condition==='For Replacement').length;
-
-  const matchedLoc = DB.g('locations').find(l => {
-    const rn = (l.roomName || '').toLowerCase().trim();
-    const rno = (l.roomNumber || '').toLowerCase().trim();
-    return rn === roomLower || rn === roomClean || (rno && (rno === roomLower || rno === roomClean));
-  });
   const locDetail = matchedLoc ? [matchedLoc.building, matchedLoc.floor, matchedLoc.department, matchedLoc.type].filter(Boolean).join(' · ') : '';
 
   document.getElementById('room-view-title').textContent = '📍 ' + (matchedLoc?.roomName || room);
@@ -14093,6 +14096,207 @@ function assetRepairPlan(){
   workOrders.filter(w=>w.workScope!=='room'&&w.asset&&!w.assetDocId).forEach(w=>{const candidates=legacyAssetCandidates(w);if(candidates.length===1){w.assetDocId=candidates[0]._docId;links.push({id:w.id,asset:w.asset,assetDocId:w.assetDocId});}else ambiguous.push({id:w.id,asset:w.asset,candidateCount:candidates.length});});
   return {assets,workOrders,changes,links,ambiguous};
 }
+let _activeLocMigStore = 'wo';
+let _locMigPlan = null;
+window._locMigrationSnapshot = null;
+
+function switchLocMigStore(storeKey){
+  _activeLocMigStore = storeKey;
+  ['wo','assets','safety','waterLogs'].forEach(s => {
+    const btn = document.getElementById('loc-tab-btn-' + s);
+    if(btn){
+      btn.className = s === storeKey ? 'btn btn-sm btn-outline' : 'btn btn-sm btn-ghost';
+    }
+  });
+  renderLocationMigrationAssistant();
+}
+
+function renderLocationMigrationAssistant(){
+  const locs = DB.g('locations');
+  const stores = ['wo', 'assets', 'safety', 'waterLogs'];
+  const plans = {};
+
+  stores.forEach(s => {
+    const records = DB.g(s) || [];
+    const high = [];
+    const ambiguous = [];
+
+    records.forEach(r => {
+      if(r.locationDocId) return;
+      const rawText = (s === 'waterLogs' ? (r.ward || r.room || r.location) : (r.location || r.roomName || '') || '').trim();
+      if(!rawText) return;
+      const lower = rawText.toLowerCase();
+
+      // Check exact match (100% confidence)
+      const exact = locs.find(l => (l.roomName||'').toLowerCase().trim() === lower || (l.roomNumber||'').toLowerCase().trim() === lower);
+      if(exact){
+        high.push({ record: r, rawText, matchedLoc: exact, confidence: '100% Exact' });
+        return;
+      }
+
+      // Check alias / isSameLocation (90% confidence)
+      const aliases = locs.filter(l => isSameLocation(lower, l.roomName || '') || isSameLocation(lower, l.roomNumber || ''));
+      if(aliases.length === 1){
+        high.push({ record: r, rawText, matchedLoc: aliases[0], confidence: '90% Alias' });
+      } else {
+        ambiguous.push({ record: r, rawText, candidates: aliases.length > 1 ? aliases : locs });
+      }
+    });
+
+    plans[s] = { high, ambiguous, total: records.length };
+    const cntEl = document.getElementById('loc-mig-cnt-' + s);
+    if(cntEl) cntEl.textContent = high.length + ambiguous.length;
+  });
+
+  _locMigPlan = plans;
+  const currentPlan = plans[_activeLocMigStore] || { high: [], ambiguous: [] };
+
+  // Render high confidence table
+  const highContainer = document.getElementById('loc-mig-high-conf');
+  if(highContainer){
+    if(!currentPlan.high.length){
+      highContainer.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No high-confidence matches found.</div>';
+    } else {
+      highContainer.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;">' +
+        '<thead style="background:#f8fafc;position:sticky;top:0;"><tr>' +
+          '<th style="padding:5px 8px;text-align:left;">Record</th>' +
+          '<th style="padding:5px 8px;text-align:left;">Original Text</th>' +
+          '<th style="padding:5px 8px;text-align:left;">Proposed Room</th>' +
+          '<th style="padding:5px 8px;text-align:left;">Confidence</th>' +
+        '</tr></thead><tbody>' +
+        currentPlan.high.map(item => {
+          const recLabel = _activeLocMigStore === 'wo' ? ('WO #' + (item.record.code || item.record.id)) :
+            _activeLocMigStore === 'assets' ? (item.record.assetCode || ('AST-' + item.record.id) + ' — ' + item.record.name) :
+            _activeLocMigStore === 'safety' ? ('SF #' + item.record.id + ' — ' + (item.record.issue || item.record.title || '')) :
+            ('WL #' + item.record.id + ' — ' + (item.record.parameter || 'Water Log'));
+          return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:5px 8px;font-weight:600;">' + escapeHTML(recLabel) + '</td>' +
+            '<td style="padding:5px 8px;color:var(--muted);">' + escapeHTML(item.rawText) + '</td>' +
+            '<td style="padding:5px 8px;color:var(--navy);font-weight:500;">' + escapeHTML(item.matchedLoc.roomName || item.matchedLoc.roomNumber) + '</td>' +
+            '<td style="padding:5px 8px;"><span class="badge badge-success" style="font-size:10px;">' + item.confidence + '</span></td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    }
+  }
+
+  // Render ambiguous table
+  const ambContainer = document.getElementById('loc-mig-ambiguous');
+  if(ambContainer){
+    if(!currentPlan.ambiguous.length){
+      ambContainer.innerHTML = '<div style="padding:10px;text-align:center;color:var(--muted);font-size:12px;">No ambiguous records in this store. All matches resolved!</div>';
+    } else {
+      ambContainer.innerHTML = '<table style="width:100%;font-size:12px;border-collapse:collapse;">' +
+        '<thead style="background:#f8fafc;position:sticky;top:0;"><tr>' +
+          '<th style="padding:5px 8px;text-align:left;">Record</th>' +
+          '<th style="padding:5px 8px;text-align:left;">Original Text</th>' +
+          '<th style="padding:5px 8px;text-align:left;">Assign Target Room</th>' +
+        '</tr></thead><tbody>' +
+        currentPlan.ambiguous.map(item => {
+          const recLabel = _activeLocMigStore === 'wo' ? ('WO #' + (item.record.code || item.record.id)) :
+            _activeLocMigStore === 'assets' ? (item.record.assetCode || ('AST-' + item.record.id) + ' — ' + item.record.name) :
+            _activeLocMigStore === 'safety' ? ('SF #' + item.record.id + ' — ' + (item.record.issue || item.record.title || '')) :
+            ('WL #' + item.record.id + ' — ' + (item.record.parameter || 'Water Log'));
+          const optionsHtml = '<option value="">-- Choose Room --</option>' +
+            locs.map(l => '<option value="' + escapeHTML(l._docId) + '">' + escapeHTML((l.roomName || l.roomNumber) + ' (' + (l.building || 'General') + ')') + '</option>').join('');
+          return '<tr style="border-bottom:1px solid #f1f5f9;">' +
+            '<td style="padding:5px 8px;font-weight:600;">' + escapeHTML(recLabel) + '</td>' +
+            '<td style="padding:5px 8px;color:var(--muted);">' + escapeHTML(item.rawText) + '</td>' +
+            '<td style="padding:5px 8px;">' +
+              '<select class="loc-mig-override" data-store="' + _activeLocMigStore + '" data-id="' + item.record.id + '" aria-label="Assign Target Room" style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;width:100%;max-width:240px;">' +
+                optionsHtml +
+              '</select>' +
+            '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    }
+  }
+
+  // Update undo button display
+  const undoBtn = document.getElementById('loc-mig-undo-btn');
+  if(undoBtn){
+    undoBtn.style.display = window._locMigrationSnapshot ? 'inline-block' : 'none';
+  }
+}
+
+function applyLocationMigrationPlan(){
+  if(!_locMigPlan){
+    showToast('No migration plan available.', 'warning');
+    return;
+  }
+
+  // Capture pre-migration snapshot for rollback
+  window._locMigrationSnapshot = {
+    timestamp: Date.now(),
+    stores: {
+      wo: cloneForFirebase(DB.g('wo')),
+      assets: cloneForFirebase(DB.g('assets')),
+      safety: cloneForFirebase(DB.g('safety')),
+      waterLogs: cloneForFirebase(DB.g('waterLogs'))
+    }
+  };
+
+  let totalBackfilled = 0;
+  const stores = ['wo', 'assets', 'safety', 'waterLogs'];
+
+  stores.forEach(storeKey => {
+    const storeRecords = cloneForFirebase(DB.g(storeKey) || []);
+    const plan = _locMigPlan[storeKey];
+    if(!plan) return;
+
+    // Apply high-confidence matches
+    plan.high.forEach(item => {
+      const r = storeRecords.find(x => x.id === item.record.id);
+      if(r){
+        r.locationDocId = item.matchedLoc._docId;
+        totalBackfilled++;
+      }
+    });
+
+    // Apply any interactive overrides selected by admin
+    const overrides = document.querySelectorAll('.loc-mig-override[data-store="' + storeKey + '"]');
+    overrides.forEach(sel => {
+      const docId = sel.value;
+      if(docId){
+        const recId = parseInt(sel.dataset.id, 10);
+        const r = storeRecords.find(x => x.id === recId);
+        if(r){
+          r.locationDocId = docId;
+          totalBackfilled++;
+        }
+      }
+    });
+
+    DB.s(storeKey, storeRecords);
+  });
+
+  renderLocationMigrationAssistant();
+  const undoBtn = document.getElementById('loc-mig-undo-btn');
+  if(undoBtn) undoBtn.style.display = 'inline-block';
+
+  showToast('Backfilled locationDocId onto ' + totalBackfilled + ' records across all stores.');
+}
+
+function rollbackLocationMigration(){
+  if(!window._locMigrationSnapshot || !window._locMigrationSnapshot.stores){
+    showToast('No active migration snapshot found to rollback.', 'warning');
+    return;
+  }
+
+  const snap = window._locMigrationSnapshot.stores;
+  Object.keys(snap).forEach(storeKey => {
+    DB.s(storeKey, snap[storeKey]);
+  });
+
+  window._locMigrationSnapshot = null;
+  const undoBtn = document.getElementById('loc-mig-undo-btn');
+  if(undoBtn) undoBtn.style.display = 'none';
+
+  renderLocationMigrationAssistant();
+  showToast('Migration rolled back successfully. Records reverted to pre-migration state.');
+}
+
 function openDataReview(){
   const plan=assetRepairPlan();
   renderSeriesTable('data-review-changes',['Asset','Old code','New code','Type'],plan.changes.map(c=>[c.name,c.oldCode,c.newCode,c.type]));
@@ -14101,6 +14305,7 @@ function openDataReview(){
   const select=document.getElementById('legacy-store');select.replaceChildren(new Option('Choose legacy store',''));[..._legacyFallbackStores].forEach(s=>select.add(new Option(s+' ('+DB.g(s).length+' records)',s)));
   document.getElementById('data-repair-apply').disabled=!window._FB?.isAdmin;
   document.getElementById('legacy-migrate').disabled=!window._FB?.isAdmin;
+  renderLocationMigrationAssistant();
   window._assetRepairPreview=plan;openModal('mo-data-review');
 }
 async function applyAssetRepairPlan(){
@@ -14153,7 +14358,7 @@ async function migrateLegacyStore(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-overlay" id="mo-energy-settings" role="dialog" aria-modal="true" aria-labelledby="es-title"><div class="modal report-settings"><div class="modal-header"><h3 id="es-title">Energy reporting settings</h3><button class="modal-close" onclick="closeModal('mo-energy-settings')">×</button></div><div class="modal-body"><p class="report-note">Administrator settings. Add sourced factors with their applicable dates. Provisional or overlapping factors are not used for billed carbon. Saved bill snapshots remain unchanged.</p><div class="form-grid fg-2"><div class="form-group"><label for="es-method">Baseline method</label><select id="es-method"><option value="year">Selected baseline year</option><option value="previous">Previous year</option><option value="manual">Manual full-year kWh</option></select></div><div class="form-group"><label for="es-year">Baseline year</label><input id="es-year" type="number" min="2000" max="2100"></div><div class="form-group"><label for="es-target">Reduction target %</label><input id="es-target" type="number" min="0" max="100"></div><div class="form-group"><label for="es-manual">Manual annual baseline kWh</label><input id="es-manual" type="number" min="0"></div><div class="form-group"><label for="es-factor">New factor kgCO₂e/kWh (optional)</label><input id="es-factor" type="number" min="0" step="0.000001"></div><div class="form-group"><label for="es-grid">Grid</label><input id="es-grid" placeholder="e.g. Mindanao"></div><div class="form-group"><label for="es-from">Applicable from</label><input id="es-from" type="date"></div><div class="form-group"><label for="es-to">Applicable through</label><input id="es-to" type="date"></div><div class="form-group"><label for="es-status">Source verification</label><select id="es-status"><option value="provisional">Provisional — excluded</option><option value="verified">Verified applicable source</option></select></div><div class="form-group"><label for="es-source">Source document / URL and method</label><input id="es-source" placeholder="Source, reporting period and method"></div></div><p class="report-note"><a href="https://doe.gov.ph/national-grid-emission-factor" target="_blank" rel="noopener noreferrer">DOE emission-factor publications</a>. Verify the factor's grid, units, method and reporting period before marking it verified.</p><div id="energy-factor-registry"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-energy-settings')">Cancel</button><button id="energy-settings-save" class="btn btn-primary" onclick="saveEnergySettings()">Save settings</button></div></div></div>
   <div class="modal-overlay" id="mo-conflict-review" role="dialog" aria-modal="true" aria-labelledby="cr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="cr-title">Review latest server records</h3><button class="modal-close" onclick="closeModal('mo-conflict-review')">×</button></div><div class="modal-body"><p class="report-note">Compare these records with your retained form. Using this version as the save base does not save the form. Removed records cannot be edited.</p><div id="conflict-comparison"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-conflict-review')">Close</button><button class="btn btn-primary" onclick="acceptReviewedSaveBase()">Use reviewed version as save base</button></div></div></div>
   <div class="modal-overlay" id="mo-wo-links" role="dialog" aria-modal="true" aria-labelledby="wl-title"><div class="modal report-settings"><div class="modal-header"><h3 id="wl-title">Review asset links</h3><button class="modal-close" onclick="closeModal('mo-wo-links')">×</button></div><div class="modal-body"><p class="report-note">Review existing repairs individually. Select the confirmed registered asset, or room/general maintenance. No repairs or ownership are inferred.</p><div id="wo-link-review"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-wo-links')">Close</button></div></div></div>
-  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
+  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button><div id="loc-migration-section" style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h4 style="margin:0;font-size:14px;color:var(--navy);font-weight:700;">📍 Location Normalization &amp; Historical Backfill</h4><div><button type="button" id="loc-mig-undo-btn" class="btn btn-sm btn-ghost" style="display:none;color:var(--red);border:1px solid #fecaca;" onclick="rollbackLocationMigration()">↩ Undo Migration (Rollback)</button> <button type="button" id="loc-mig-apply-btn" class="btn btn-sm btn-primary" onclick="applyLocationMigrationPlan()">Apply Location Backfill</button></div></div><p class="report-note">Scan unnormalized historical location text across Work Orders, Assets, Safety, and Water Logs to link canonical room references.</p><div style="display:flex;gap:6px;margin-bottom:12px;"><button type="button" id="loc-tab-btn-wo" class="btn btn-sm btn-outline" onclick="switchLocMigStore('wo')">Work Orders (<span id="loc-mig-cnt-wo">0</span>)</button><button type="button" id="loc-tab-btn-assets" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('assets')">Assets (<span id="loc-mig-cnt-assets">0</span>)</button><button type="button" id="loc-tab-btn-safety" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('safety')">Safety (<span id="loc-mig-cnt-safety">0</span>)</button><button type="button" id="loc-tab-btn-waterLogs" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('waterLogs')">Water Logs (<span id="loc-mig-cnt-waterLogs">0</span>)</button></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">High-Confidence Matches (100% Exact &amp; 90% Alias)</div><div id="loc-mig-high-conf" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;background:#fff;"></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">Ambiguous / Unresolved Records (Select Target Room)</div><div id="loc-mig-ambiguous" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:#fff;"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
   for(const page of ['assets','reports']){const button=document.createElement('button');button.type='button';button.className='btn btn-outline mb14';button.textContent='Data review';button.addEventListener('click',openDataReview);document.getElementById('page-'+page).prepend(button);}
   for(const [parent,id] of [['project-progress','project-progress-chart'],['project-budget','project-budget-chart'],['energy-yearly','energy-yearly-chart']]){const chart=document.createElement('div');chart.id=id;document.getElementById(parent).before(chart);}
   const safety=renderSafety;renderSafety=function(){safety();renderSafetyAnalytics();};
@@ -14188,4 +14393,3 @@ for(const name of ["delRecord","delWO","delAsset","delInvItem","delWaste","delWa
 </script>
 </body>
 </html>
-

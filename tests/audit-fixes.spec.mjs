@@ -154,9 +154,10 @@ test.describe('Audit Bug Fixes', () => {
     const counts = await page.evaluate(() => {
       const rows = Array.from(document.querySelectorAll('#asset-tbody tr'));
       return rows.map(r => {
-        const name = r.children[1]?.textContent.trim();
-        const loc = r.children[3]?.textContent.trim();
-        const repCount = r.children[10]?.textContent.trim(); // repair count column (index 10)
+        // With multi-select checkbox column at 0: code is 1, name is 2, loc is 4, repCount is 11
+        const name = r.children[2]?.textContent.trim();
+        const loc = r.children[4]?.textContent.trim();
+        const repCount = r.children[11]?.textContent.trim();
         return { name, loc, repCount };
       });
     });
@@ -430,7 +431,8 @@ test.describe('Audit Bug Fixes', () => {
     });
 
     const renderedNames = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('#asset-tbody tr')).map(r => r.children[1]?.textContent.trim());
+      // With checkbox at col 0, assetCode is col 1, asset name is col 2
+      return Array.from(document.querySelectorAll('#asset-tbody tr')).map(r => r.children[2]?.textContent.trim());
     });
 
     expect(renderedNames).toContain('Suction Machine');
