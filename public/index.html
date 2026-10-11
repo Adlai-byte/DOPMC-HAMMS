@@ -2796,7 +2796,13 @@ resetIdleTimer();
           <select id="m-sf-sev"><option value="">Select…</option><option>Low</option><option>Moderate</option><option>High</option><option>Critical</option></select></div>
         <div class="form-group"><label>Status</label>
           <select id="m-sf-status"><option>Open</option><option>Under Action</option><option>Resolved</option><option>Verified</option><option>Closed</option></select></div>
-        <div class="form-group"><label>Location / Room</label><input type="text" id="m-sf-loc" placeholder="e.g. Ward 2 Room 201, OPD Toilet…"></div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <label for="m-sf-loc" style="margin-bottom:0;">Location / Room</label>
+            <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-sf-loc').value=newLoc.roomName||newLoc.roomNumber||'';})">+ New Room</button>
+          </div>
+          <input type="text" id="m-sf-loc" list="room-loc-list" placeholder="e.g. Ward 2 Room 201, OPD Toilet…">
+        </div>
         <div class="form-group"><label>Linked Asset <span style="font-weight:400;font-style:italic;">(optional)</span></label>
           <input type="text" id="m-sf-asset" placeholder="Asset name if applicable"></div>
         <div class="form-group"><label>Date Logged</label><input type="date" id="m-sf-date"></div>
@@ -2850,8 +2856,15 @@ resetIdleTimer();
     <div class="modal-header"><h3 id="mo-waterlog-title">Log Water Test Result</h3><button type="button" class="modal-close" onclick="closeModal('mo-waterlog')">×</button></div>
     <div class="modal-body">
       <div class="form-grid fg-2">
-        <div class="form-group"><label>Date of Test *</label><input type="date" id="m-wl-date"></div>
-        <div class="form-group"><label>Ward / Location *</label><input type="text" id="m-wl-ward" placeholder="e.g. OB Ward, ICU, Surgical Ward, Kitchen…"></div>
+        <div class="form-group"><label for="m-wl-date">Date of Test *</label><input type="date" id="m-wl-date"></div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <label for="m-wl-ward" style="margin-bottom:0;">Ward / Location *</label>
+            <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-wl-ward').value=newLoc.roomName||newLoc.roomNumber||'';})">+ New Room</button>
+          </div>
+          <input type="text" id="m-wl-ward" list="wl-ward-list" placeholder="e.g. OB Ward, ICU, Surgical Ward, Kitchen…">
+          <datalist id="wl-ward-list"></datalist>
+        </div>
         <div class="form-group"><label>Test Type</label>
           <select id="m-wl-type"><option>Bacteriological</option><option>Chemical</option><option>Physical</option><option>Full Analysis</option><option>Residual Chlorine</option></select></div>
         <div class="form-group"><label>Result</label>
@@ -7001,6 +7014,22 @@ function updateMasterLocationDatalist(){
 
   const roomDl = document.getElementById('room-loc-list');
   if(roomDl) roomDl.innerHTML = [...rooms].sort().map(r => `<option value="${escapeHTML(r)}">`).join('');
+
+  const wardDl = document.getElementById('wl-ward-list');
+  if(wardDl){
+    const wardOptions = [];
+    const prioritizedTypes = ['Patient Ward', 'Intensive Care Unit (ICU)', 'Emergency Room (ER)', 'Dietary / Kitchen'];
+    locs.filter(l => prioritizedTypes.includes(l.type) || (l.type && l.type.toLowerCase().includes('ward')))
+      .forEach(l => {
+        const name = l.roomName || l.roomNumber;
+        if(name && !wardOptions.includes(name)) wardOptions.push(name);
+      });
+    locs.forEach(l => {
+      const name = l.roomName || l.roomNumber;
+      if(name && !wardOptions.includes(name)) wardOptions.push(name);
+    });
+    wardDl.innerHTML = wardOptions.map(w => `<option value="${escapeHTML(w)}">`).join('');
+  }
 }
 
 // ═══════════════════════════════════════
@@ -7109,6 +7138,7 @@ function ssBadge(s){const m={'Open':'ss-open','Under Action':'ss-action','Resolv
 
 function openSafetyModal(id=null){
   _editSafety=id;captureEditSnapshot('safety',id);
+  if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
   document.getElementById('mo-safety-title').textContent=id?'Edit Safety Issue':'Log Safety Issue';
   if(!id){
     ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks','m-sf-target','m-sf-responsible','m-sf-resolved','m-sf-closed'].forEach(x=>document.getElementById(x).value='');
@@ -7361,6 +7391,7 @@ function wsBadge(s){const m={'Safe':'ws-safe','Warning':'ws-warning','Fail':'ws-
 
 function openWaterLogModal(id=null){
   _editWaterLog=id;captureEditSnapshot('waterLogs',id);
+  if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
   document.getElementById('mo-waterlog-title').textContent=id?'Edit Water Test':'Log Water Test Result';
   if(!id){
     ['m-wl-ward','m-wl-bacteria','m-wl-chlorine','m-wl-mitigation','m-wl-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
