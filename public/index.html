@@ -3737,6 +3737,9 @@ async function refreshFromFirebaseSilently(reason='focus'){
     setStorageChip(navigator.onLine?'firebase-live':'firebase-offline');
     {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}}
     scheduleUiRefresh();
+    if(typeof checkAndRunStartupLocationMigration === 'function'){
+      setTimeout(() => checkAndRunStartupLocationMigration(), 600);
+    }
   }catch(e){
     if(session!==_sessionGeneration)return;
     _fbReadError=e;
@@ -4183,6 +4186,9 @@ window._hammsFirebaseReady = async function(){
     document.getElementById('content')?.style.removeProperty('visibility');
     updateInvAlerts();
     console.log('HAMMS: Firestore collection data loaded ✅');
+    if(typeof checkAndRunStartupLocationMigration === 'function'){
+      setTimeout(() => checkAndRunStartupLocationMigration(), 600);
+    }
   }catch(e){
     if(session!==_sessionGeneration)return;
     _fbReadError=e;
@@ -7440,6 +7446,169 @@ function seedLocationsFromAssets(){
   renderLocations();
   updateMasterLocationDatalist();
   showToast(`Successfully seeded ${count} room(s) from Asset Registry.`, 'success');
+}
+
+const DOPMC_STANDARD_LOCATIONS = [
+  { roomName: 'Emergency Room (ER)', roomNumber: 'ER-101', building: 'Main Hospital Building', floor: 'Ground Floor', department: 'Emergency Medicine', type: 'Emergency Room (ER)', status: 'Active' },
+  { roomName: 'ER Triage & Trauma', roomNumber: 'ER-102', building: 'Main Hospital Building', floor: 'Ground Floor', department: 'Emergency Medicine', type: 'Emergency Room (ER)', status: 'Active' },
+  { roomName: 'Operating Room 1 (Major)', roomNumber: 'OR-201', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Surgery', type: 'Operating Suite', status: 'Active' },
+  { roomName: 'Operating Room 2 (Minor)', roomNumber: 'OR-202', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Surgery', type: 'Operating Suite', status: 'Active' },
+  { roomName: 'Operating Room 1', roomNumber: 'OR-1', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Surgery', type: 'Operating Suite', status: 'Active' },
+  { roomName: 'Delivery Room (DR)', roomNumber: 'DR-203', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Obstetrics', type: 'Operating Suite', status: 'Active' },
+  { roomName: 'Intensive Care Unit (ICU)', roomNumber: 'ICU-204', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Critical Care', type: 'Intensive Care Unit (ICU)', status: 'Active', capacityBeds: 8 },
+  { roomName: 'Neonatal ICU (NICU)', roomNumber: 'NICU-205', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Pediatrics', type: 'Intensive Care Unit (ICU)', status: 'Active', capacityBeds: 6 },
+  { roomName: 'Pediatric ICU (PICU)', roomNumber: 'PICU-206', building: 'Main Hospital Building', floor: '2nd Floor', department: 'Pediatrics', type: 'Intensive Care Unit (ICU)', status: 'Active', capacityBeds: 4 },
+  { roomName: 'Dialysis Center', roomNumber: 'DC-101', building: 'East Wing', floor: '1st Floor', department: 'Nephrology', type: 'Specialized Treatment Room', status: 'Active', capacityBeds: 12 },
+  { roomName: 'Clinical Laboratory', roomNumber: 'LAB-102', building: 'Main Hospital Building', floor: '1st Floor', department: 'Pathology', type: 'Laboratory / Diagnostic', status: 'Active' },
+  { roomName: 'Radiology / X-Ray', roomNumber: 'RAD-103', building: 'Main Hospital Building', floor: '1st Floor', department: 'Radiology', type: 'Laboratory / Diagnostic', status: 'Active' },
+  { roomName: 'Ultrasound & Imaging', roomNumber: 'RAD-104', building: 'Main Hospital Building', floor: '1st Floor', department: 'Radiology', type: 'Laboratory / Diagnostic', status: 'Active' },
+  { roomName: 'Central Pharmacy', roomNumber: 'PHARM-105', building: 'Main Hospital Building', floor: '1st Floor', department: 'Pharmacy', type: 'Pharmacy / Supplies', status: 'Active' },
+  { roomName: 'Medical Ward (Male)', roomNumber: 'W3-301', building: 'Main Hospital Building', floor: '3rd Floor', department: 'Internal Medicine', type: 'Patient Ward', status: 'Active', capacityBeds: 16 },
+  { roomName: 'Medical Ward (Female)', roomNumber: 'W3-302', building: 'Main Hospital Building', floor: '3rd Floor', department: 'Internal Medicine', type: 'Patient Ward', status: 'Active', capacityBeds: 16 },
+  { roomName: 'Pediatric Ward', roomNumber: 'W3-303', building: 'Main Hospital Building', floor: '3rd Floor', department: 'Pediatrics', type: 'Patient Ward', status: 'Active', capacityBeds: 12 },
+  { roomName: 'Surgical Ward', roomNumber: 'W3-304', building: 'Main Hospital Building', floor: '3rd Floor', department: 'Surgery', type: 'Patient Ward', status: 'Active', capacityBeds: 14 },
+  { roomName: 'OB-Gyne Ward', roomNumber: 'W3-305', building: 'Main Hospital Building', floor: '3rd Floor', department: 'Obstetrics', type: 'Patient Ward', status: 'Active', capacityBeds: 12 },
+  { roomName: 'Outpatient Department (OPD)', roomNumber: 'OPD-101', building: 'Annex Building', floor: '1st Floor', department: 'OPD Services', type: 'Outpatient Clinic', status: 'Active' },
+  { roomName: 'Dietary Kitchen', roomNumber: 'KIT-001', building: 'Support Building', floor: 'Ground Floor', department: 'Nutrition & Dietetics', type: 'Dietary / Kitchen', status: 'Active' },
+  { roomName: 'Medical Records Office', roomNumber: 'MR-101', building: 'Admin Building', floor: '1st Floor', department: 'Health Information', type: 'Office / Administrative', status: 'Active' },
+  { roomName: 'Central Supply & Bodega', roomNumber: 'CSR-001', building: 'Support Building', floor: 'Ground Floor', department: 'Materials Management', type: 'Storage', status: 'Active' },
+  { roomName: 'Powerhouse & Generator Room', roomNumber: 'ENG-001', building: 'Engineering Plant', floor: 'Ground Floor', department: 'GSD / Engineering', type: 'Plant / Utility / Engineering', status: 'Active' },
+  { roomName: 'Main Chiller & HVAC Plant', roomNumber: 'ENG-002', building: 'Engineering Plant', floor: 'Ground Floor', department: 'GSD / Engineering', type: 'Plant / Utility / Engineering', status: 'Active' },
+  { roomName: 'Water Pump & Tank Station', roomNumber: 'ENG-003', building: 'Engineering Plant', floor: 'Ground Floor', department: 'GSD / Engineering', type: 'Plant / Utility / Engineering', status: 'Active' },
+  { roomName: 'Sewage & Effluent Treatment (STP)', roomNumber: 'ENG-004', building: 'Engineering Plant', floor: 'Ground Floor', department: 'GSD / Engineering', type: 'Plant / Utility / Engineering', status: 'Active' },
+  { roomName: 'Hospital Waste Holding Area', roomNumber: 'WST-001', building: 'Support Building', floor: 'Ground Floor', department: 'Pollution Control', type: 'Storage', status: 'Active' }
+];
+
+async function checkAndRunStartupLocationMigration(){
+  if(!window._FB?.isAdmin) return;
+  if(_fbMetaState?.locationAutoMigratedAt) return;
+
+  const stores = ['wo', 'assets', 'projects', 'safety', 'waterLogs'];
+  let locs = DB.g('locations').map(x => ({...x}));
+  let seededCount = 0;
+
+  // 1. If locations is empty, auto-seed standard hospital locations
+  if(locs.length === 0){
+    const usedIds = new Set();
+    DOPMC_STANDARD_LOCATIONS.forEach(s => {
+      const id = generateUniqueNumericId(usedIds);
+      usedIds.add(String(id));
+      const bldAbv = abvName(s.building) || 'BLD';
+      const rmAbv = (s.roomNumber ? s.roomNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : abvName(s.roomName)) || 'RM';
+      const code = `LOC-${bldAbv}-${rmAbv}-${String(id).padStart(3, '0')}`;
+      locs.push({
+        ...s,
+        id,
+        _docId: generateRecordDocId('locations'),
+        code,
+        remarks: 'Initialized from standard DOPMC Master Hospital Directory.'
+      });
+      seededCount++;
+    });
+
+    // Also extract any custom rooms from existing assets
+    DB.s('locations', locs);
+  }
+
+  // 2. Exact-match backfill across stores
+  const counts = { assets: 0, wo: 0, projects: 0, safety: 0, waterLogs: 0 };
+  let totalLinked = 0;
+  let totalAmbiguous = 0;
+
+  stores.forEach(storeKey => {
+    const records = cloneForFirebase(DB.g(storeKey) || []);
+    let modified = false;
+
+    records.forEach(r => {
+      if(r.locationDocId) return;
+      const rawText = (storeKey === 'waterLogs' ? (r.ward || r.room || r.location) : (r.location || r.roomName || '') || '').trim();
+      if(!rawText) return;
+      const lower = rawText.toLowerCase();
+
+      // 100% Exact match
+      const exact = locs.find(l => (l.roomName || '').toLowerCase().trim() === lower || (l.roomNumber || '').toLowerCase().trim() === lower);
+      if(exact){
+        r.locationDocId = exact._docId;
+        counts[storeKey] = (counts[storeKey] || 0) + 1;
+        totalLinked++;
+        modified = true;
+      } else {
+        totalAmbiguous++;
+      }
+    });
+
+    if(modified){
+      DB.s(storeKey, records);
+    }
+  });
+
+  // 3. Record metadata flag so this never runs again
+  const timestamp = new Date().toISOString();
+  if(!_fbMetaState) _fbMetaState = {};
+  _fbMetaState.locationAutoMigratedAt = timestamp;
+  if(window._FB?.enabled !== false && typeof queueScalarSync === 'function'){
+    queueScalarSync('locationAutoMigratedAt', timestamp);
+  }
+  if(typeof flushAll === 'function') await flushAll();
+
+  // 4. Update UI filters and tables
+  if(typeof populateLocationFilters === 'function') populateLocationFilters();
+  if(typeof renderLocations === 'function') renderLocations();
+  if(typeof updateMasterLocationDatalist === 'function') updateMasterLocationDatalist();
+  if(typeof renderWO === 'function') renderWO();
+  if(typeof renderAssets === 'function') renderAssets();
+  if(typeof renderProjects === 'function') renderProjects();
+
+  // 5. Open Summary Modal
+  showStartupLocationSummaryModal(seededCount, counts, totalLinked, totalAmbiguous);
+}
+
+function showStartupLocationSummaryModal(seededCount, counts, totalLinked, totalAmbiguous){
+  const el = document.getElementById('mo-loc-auto-summary');
+  if(!el) return;
+
+  const contentEl = document.getElementById('loc-auto-sum-content');
+  if(contentEl){
+    contentEl.innerHTML = `
+      <div style="font-size:13px;color:var(--text);margin-bottom:12px;line-height:1.5;">
+        Welcome to the upgraded HAMMS Master Location architecture. The system has automatically initialized standard hospital rooms and linked existing historical records.
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:8px;margin-bottom:14px;">
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:#16a34a;">${totalLinked}</div>
+          <div style="font-size:10px;color:#15803d;font-weight:600;">Records Linked</div>
+        </div>
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:#2563eb;">${seededCount}</div>
+          <div style="font-size:10px;color:#1d4ed8;font-weight:600;">Rooms Initialized</div>
+        </div>
+        <div style="background:#fefce8;border:1px solid #fef08a;border-radius:6px;padding:8px;text-align:center;">
+          <div style="font-size:20px;font-weight:700;color:#ca8a04;">${totalAmbiguous}</div>
+          <div style="font-size:10px;color:#a16207;font-weight:600;">Custom / Unlinked</div>
+        </div>
+      </div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;margin-bottom:12px;">
+        <thead>
+          <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+            <th style="padding:5px 8px;text-align:left;">Module</th>
+            <th style="padding:5px 8px;text-align:right;">Exact Matches Linked</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:4px 8px;">🏥 Equipment Assets</td><td style="padding:4px 8px;text-align:right;font-weight:600;">${counts.assets || 0}</td></tr>
+          <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:4px 8px;">📋 Work Orders</td><td style="padding:4px 8px;text-align:right;font-weight:600;">${counts.wo || 0}</td></tr>
+          <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:4px 8px;">🏗️ Infrastructure Projects</td><td style="padding:4px 8px;text-align:right;font-weight:600;">${counts.projects || 0}</td></tr>
+          <tr style="border-bottom:1px solid #f1f5f9;"><td style="padding:4px 8px;">⚠️ Safety Issues</td><td style="padding:4px 8px;text-align:right;font-weight:600;">${counts.safety || 0}</td></tr>
+          <tr><td style="padding:4px 8px;">💧 Water Supply Logs</td><td style="padding:4px 8px;text-align:right;font-weight:600;">${counts.waterLogs || 0}</td></tr>
+        </tbody>
+      </table>
+      ${totalAmbiguous > 0 ? `
+      <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:8px 10px;font-size:11px;color:#92400e;">
+        ℹ️ <strong>${totalAmbiguous} records</strong> have custom or non-standard room labels. You can review and assign them anytime in <strong>Settings → Data Review</strong>.
+      </div>` : ''}
+    `;
+  }
+  openModal('mo-loc-auto-summary');
 }
 
 function downloadLocationTemplate(){
@@ -15258,7 +15427,8 @@ async function migrateLegacyStore(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-overlay" id="mo-energy-settings" role="dialog" aria-modal="true" aria-labelledby="es-title"><div class="modal report-settings"><div class="modal-header"><h3 id="es-title">Energy reporting settings</h3><button class="modal-close" onclick="closeModal('mo-energy-settings')">×</button></div><div class="modal-body"><p class="report-note">Administrator settings. Add sourced factors with their applicable dates. Provisional or overlapping factors are not used for billed carbon. Saved bill snapshots remain unchanged.</p><div class="form-grid fg-2"><div class="form-group"><label for="es-method">Baseline method</label><select id="es-method"><option value="year">Selected baseline year</option><option value="previous">Previous year</option><option value="manual">Manual full-year kWh</option></select></div><div class="form-group"><label for="es-year">Baseline year</label><input id="es-year" type="number" min="2000" max="2100"></div><div class="form-group"><label for="es-target">Reduction target %</label><input id="es-target" type="number" min="0" max="100"></div><div class="form-group"><label for="es-manual">Manual annual baseline kWh</label><input id="es-manual" type="number" min="0"></div><div class="form-group"><label for="es-factor">New factor kgCO₂e/kWh (optional)</label><input id="es-factor" type="number" min="0" step="0.000001"></div><div class="form-group"><label for="es-grid">Grid</label><input id="es-grid" placeholder="e.g. Mindanao"></div><div class="form-group"><label for="es-from">Applicable from</label><input id="es-from" type="date"></div><div class="form-group"><label for="es-to">Applicable through</label><input id="es-to" type="date"></div><div class="form-group"><label for="es-status">Source verification</label><select id="es-status"><option value="provisional">Provisional — excluded</option><option value="verified">Verified applicable source</option></select></div><div class="form-group"><label for="es-source">Source document / URL and method</label><input id="es-source" placeholder="Source, reporting period and method"></div></div><p class="report-note"><a href="https://doe.gov.ph/national-grid-emission-factor" target="_blank" rel="noopener noreferrer">DOE emission-factor publications</a>. Verify the factor's grid, units, method and reporting period before marking it verified.</p><div id="energy-factor-registry"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-energy-settings')">Cancel</button><button id="energy-settings-save" class="btn btn-primary" onclick="saveEnergySettings()">Save settings</button></div></div></div>
   <div class="modal-overlay" id="mo-conflict-review" role="dialog" aria-modal="true" aria-labelledby="cr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="cr-title">Review latest server records</h3><button class="modal-close" onclick="closeModal('mo-conflict-review')">×</button></div><div class="modal-body"><p class="report-note">Compare these records with your retained form. Using this version as the save base does not save the form. Removed records cannot be edited.</p><div id="conflict-comparison"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-conflict-review')">Close</button><button class="btn btn-primary" onclick="acceptReviewedSaveBase()">Use reviewed version as save base</button></div></div></div>
   <div class="modal-overlay" id="mo-wo-links" role="dialog" aria-modal="true" aria-labelledby="wl-title"><div class="modal report-settings"><div class="modal-header"><h3 id="wl-title">Review asset links</h3><button class="modal-close" onclick="closeModal('mo-wo-links')">×</button></div><div class="modal-body"><p class="report-note">Review existing repairs individually. Select the confirmed registered asset, or room/general maintenance. No repairs or ownership are inferred.</p><div id="wo-link-review"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-wo-links')">Close</button></div></div></div>
-  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button><div id="loc-migration-section" style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h4 style="margin:0;font-size:14px;color:var(--navy);font-weight:700;">📍 Location Normalization &amp; Historical Backfill</h4><div><button type="button" id="loc-mig-undo-btn" class="btn btn-sm btn-ghost" style="display:none;color:var(--red);border:1px solid #fecaca;" onclick="rollbackLocationMigration()">↩ Undo Migration (Rollback)</button> <button type="button" id="loc-mig-apply-btn" class="btn btn-sm btn-primary" onclick="applyLocationMigrationPlan()">Apply Location Backfill</button></div></div><p class="report-note">Scan unnormalized historical location text across Work Orders, Assets, Safety, and Water Logs to link canonical room references.</p><div style="display:flex;gap:6px;margin-bottom:12px;"><button type="button" id="loc-tab-btn-wo" class="btn btn-sm btn-outline" onclick="switchLocMigStore('wo')">Work Orders (<span id="loc-mig-cnt-wo">0</span>)</button><button type="button" id="loc-tab-btn-assets" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('assets')">Assets (<span id="loc-mig-cnt-assets">0</span>)</button><button type="button" id="loc-tab-btn-projects" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('projects')">Projects (<span id="loc-mig-cnt-projects">0</span>)</button><button type="button" id="loc-tab-btn-safety" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('safety')">Safety (<span id="loc-mig-cnt-safety">0</span>)</button><button type="button" id="loc-tab-btn-waterLogs" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('waterLogs')">Water Logs (<span id="loc-mig-cnt-waterLogs">0</span>)</button></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">High-Confidence Matches (100% Exact &amp; 90% Alias)</div><div id="loc-mig-high-conf" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;background:#fff;"></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">Ambiguous / Unresolved Records (Select Target Room)</div><div id="loc-mig-ambiguous" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:#fff;"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
+  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button><div id="loc-migration-section" style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h4 style="margin:0;font-size:14px;color:var(--navy);font-weight:700;">📍 Location Normalization &amp; Historical Backfill</h4><div><button type="button" id="loc-mig-undo-btn" class="btn btn-sm btn-ghost" style="display:none;color:var(--red);border:1px solid #fecaca;" onclick="rollbackLocationMigration()">↩ Undo Migration (Rollback)</button> <button type="button" id="loc-mig-apply-btn" class="btn btn-sm btn-primary" onclick="applyLocationMigrationPlan()">Apply Location Backfill</button></div></div><p class="report-note">Scan unnormalized historical location text across Work Orders, Assets, Safety, and Water Logs to link canonical room references.</p><div style="display:flex;gap:6px;margin-bottom:12px;"><button type="button" id="loc-tab-btn-wo" class="btn btn-sm btn-outline" onclick="switchLocMigStore('wo')">Work Orders (<span id="loc-mig-cnt-wo">0</span>)</button><button type="button" id="loc-tab-btn-assets" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('assets')">Assets (<span id="loc-mig-cnt-assets">0</span>)</button><button type="button" id="loc-tab-btn-projects" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('projects')">Projects (<span id="loc-mig-cnt-projects">0</span>)</button><button type="button" id="loc-tab-btn-safety" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('safety')">Safety (<span id="loc-mig-cnt-safety">0</span>)</button><button type="button" id="loc-tab-btn-waterLogs" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('waterLogs')">Water Logs (<span id="loc-mig-cnt-waterLogs">0</span>)</button></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">High-Confidence Matches (100% Exact &amp; 90% Alias)</div><div id="loc-mig-high-conf" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;background:#fff;"></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">Ambiguous / Unresolved Records (Select Target Room)</div><div id="loc-mig-ambiguous" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:#fff;"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>
+  <div class="modal-overlay" id="mo-loc-auto-summary" role="dialog" aria-modal="true" aria-labelledby="loc-auto-sum-title"><div class="modal report-settings" style="max-width:520px;"><div class="modal-header" style="background:var(--navy);color:#fff;"><h3 id="loc-auto-sum-title" style="margin:0;font-size:16px;">🏥 Master Location Registry Initialized</h3><button class="modal-close" style="color:#fff;" onclick="closeModal('mo-loc-auto-summary')">×</button></div><div class="modal-body" id="loc-auto-sum-content" style="padding:16px;"></div><div class="modal-footer" style="display:flex;justify-content:space-between;padding:12px 16px;background:#f8fafc;border-top:1px solid var(--border);"><button type="button" class="btn btn-outline" id="loc-auto-sum-review" onclick="closeModal('mo-loc-auto-summary');openDataReview();">Review in Data Review</button><button type="button" class="btn btn-primary" id="loc-auto-sum-dismiss" onclick="closeModal('mo-loc-auto-summary');">Continue to Dashboard</button></div></div></div>`);
   for(const page of ['assets','reports']){const button=document.createElement('button');button.type='button';button.className='btn btn-outline mb14';button.textContent='Data review';button.addEventListener('click',openDataReview);document.getElementById('page-'+page).prepend(button);}
   for(const [parent,id] of [['project-progress','project-progress-chart'],['project-budget','project-budget-chart'],['energy-yearly','energy-yearly-chart']]){const chart=document.createElement('div');chart.id=id;document.getElementById(parent).before(chart);}
   const safety=renderSafety;renderSafety=function(){safety();renderSafetyAnalytics();};
