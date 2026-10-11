@@ -1125,7 +1125,7 @@ resetIdleTimer();
           <button type="button" class="btn btn-outline" onclick="exportCSV('locations')">📥 Export CSV</button>
           <button type="button" class="btn btn-outline" onclick="document.getElementById('loc-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="loc-csv-upload" accept=".csv" style="display:none;" onchange="importLocationCSV(event)">
-          <button type="button" class="btn btn-ghost" onclick="seedLocationsFromAssets()" title="Auto-populate rooms and buildings extracted from existing assets">⚡ Seed from Assets</button>
+          <button type="button" id="loc-seed-btn" class="btn btn-outline" onclick="seedLocationsFromAssets()" title="Auto-populate rooms and buildings extracted from existing assets" style="color:var(--blue);font-weight:600;">⚡ Seed from Assets</button>
           <button type="button" class="btn btn-primary" onclick="openLocationModal()">+ Add Room / Space</button>
         </div>
       </div>
@@ -7015,7 +7015,23 @@ function renderLocations(){
   if(!tbody) return;
 
   if(!filtered.length){
-    tbody.innerHTML = '<tr><td colspan="12" class="empty">No rooms or spaces found. Click <strong>+ Add Room / Space</strong> or <strong>⚡ Seed from Assets</strong> to populate.</td></tr>';
+    if(!locs.length){
+      tbody.innerHTML = `<tr>
+        <td colspan="12" class="empty" style="padding:48px 20px;text-align:center;">
+          <div style="font-size:36px;margin-bottom:12px;">🏢</div>
+          <div style="font-size:16px;font-weight:700;color:var(--navy);margin-bottom:8px;">No rooms or spaces found</div>
+          <p style="font-size:13px;color:var(--muted);max-width:520px;margin:0 auto 16px;line-height:1.5;">
+            Your hospital room directory has not been populated yet. Click <strong>⚡ Seed from Assets</strong> to automatically discover and register all buildings, floors, and rooms from your registered hospital equipment (1-click), or add a room manually.
+          </p>
+          <div style="display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" onclick="seedLocationsFromAssets()">⚡ Seed from Assets (Auto-Populate)</button>
+            <button type="button" class="btn btn-outline" onclick="openLocationModal()">+ Add Room Manually</button>
+          </div>
+        </td>
+      </tr>`;
+    } else {
+      tbody.innerHTML = '<tr><td colspan="12" class="empty">No rooms or spaces match the current filter criteria.</td></tr>';
+    }
     return;
   }
 
