@@ -2360,6 +2360,10 @@ resetIdleTimer();
           <div class="form-group"><label>Condition</label>
             <select id="m-a-condition"><option>Good</option><option>Fair</option><option>Poor</option><option>For Replacement</option></select></div>
           <div class="form-group"><label>Date Acquired <span style="font-weight:400;font-style:italic;">(optional)</span></label><input type="date" id="m-a-acquired"></div>
+          <div class="form-group">
+            <label>Quantity <span style="font-weight:400;font-size:11px;color:var(--muted);">(e.g. 3 faucets, 6 bulbs)</span></label>
+            <input type="number" id="m-a-qty" min="1" step="1" placeholder="1" style="width:100%;" oninput="computeEnergy()">
+          </div>
           <div class="form-group" style="grid-column:1/-1;"><label>Remarks</label><textarea id="m-a-remarks" style="min-height:44px;"></textarea></div>
           <div class="form-group" style="grid-column:1/-1;">
             <label for="m-a-parent">Parent Equipment / System <span style="font-weight:400;font-size:11px;color:var(--muted);">(optional sub-assembly link)</span></label>
@@ -2368,20 +2372,28 @@ resetIdleTimer();
             </select>
             <div class="form-hint">Link this asset as a component/sub-system of a larger asset (e.g. Pump belonging to Chiller Plant).</div>
           </div>
-          <div class="form-group">
-            <div style="display:flex;justify-content:space-between;align-items:center;">
-              <label for="m-a-loc" style="margin-bottom:0;">Location / Room * <span style="font-weight:400;font-size:11px;color:var(--muted);">(e.g. Room 101, ICU)</span></label>
-              <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-a-loc').value=newLoc.roomName||newLoc.roomNumber||'';if(document.getElementById('m-a-building'))document.getElementById('m-a-building').value=newLoc.building||'';if(document.getElementById('m-a-floor'))document.getElementById('m-a-floor').value=newLoc.floor||'';if(document.getElementById('m-a-roomno'))document.getElementById('m-a-roomno').value=newLoc.roomNumber||'';updateMasterLocationDatalist();})">+ New Room</button>
+          <div class="form-group" style="grid-column:1/-1;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <label for="m-a-loc" style="margin-bottom:0;">Location / Room * <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected combo box)</span></label>
+              <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToAsset(newLoc);})">+ New Room</button>
             </div>
-            <input type="text" id="m-a-loc" list="room-loc-list"
-              placeholder="e.g. Room 101, Ward 3, ICU, Toilet CR-2…"
-              oninput="updateRoomDatalist()">
-            <datalist id="room-loc-list"></datalist>
-            <div class="form-hint">Use a consistent room name — click it in the table to see all assets + repairs in that room.</div>
-          </div>
-          <div class="form-group">
-            <label>Quantity <span style="font-weight:400;font-size:11px;color:var(--muted);">(e.g. 3 faucets, 6 bulbs)</span></label>
-            <input type="number" id="m-a-qty" min="1" step="1" placeholder="1" style="width:100%;" oninput="computeEnergy()">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <select id="m-a-loc-select" style="width:100%;" onchange="onAssetLocationSelect(this.value)">
+                  <option value="">🏢 Choose from Buildings & Rooms…</option>
+                </select>
+              </div>
+              <div>
+                <input type="text" id="m-a-loc" list="room-loc-list"
+                  placeholder="Or search / type room name…"
+                  oninput="onAssetLocationInput(this.value)"
+                  onchange="onAssetLocationInput(this.value)">
+                <datalist id="room-loc-list"></datalist>
+              </div>
+            </div>
+            <input type="hidden" id="m-a-loc-docid">
+            <div id="m-a-loc-badge" style="margin-top:6px;font-size:11px;min-height:18px;"></div>
+            <div class="form-hint">Select a registered room from Buildings & Rooms to auto-fill building & floor, or type a custom space.</div>
           </div>
         </div>
       </div>
@@ -6421,18 +6433,21 @@ function openAssetModal(id=null){
   // Reset tabs — null-safe (modal may not be visible yet)
   const firstTab=document.querySelector('#mo-asset .modal-tab-btn');
   if(firstTab)switchAssetTab('basic',firstTab);
-  // Reset all fields
+   // Reset all fields
   ['m-a-name','m-a-loc','m-a-brand','m-a-serial','m-a-serialno','m-a-acquired',
    'm-a-lastmaint','m-a-nextmaint','m-a-remarks','m-a-class','m-a-type',
    'm-a-building','m-a-floor','m-a-roomno','m-a-roomname','m-a-dept',
    'm-a-qty','m-a-watts','m-a-hp','m-a-ophrs','m-a-opdays','m-a-demand','m-a-tempset',
    'm-a-freq-custom',
    // PATCHED: clear advanced water/hydraulic fields so prior entries do not carry over
-   'm-a-tank-cap','m-a-safe-lvl','m-a-low-lvl','m-a-pump-gpm','m-a-pump-psi','m-a-pipe-len','m-a-head-m','m-a-suction','m-a-runtime-day'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
+   'm-a-tank-cap','m-a-safe-lvl','m-a-low-lvl','m-a-pump-gpm','m-a-pump-psi','m-a-pipe-len','m-a-head-m','m-a-suction','m-a-runtime-day',
+   'm-a-loc-docid'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
   ['m-a-section','m-a-maincat','m-a-condition','m-a-roomtype','m-a-opmode','m-a-freq','m-a-template',
    // PATCHED: clear remaining advanced selects that previously stayed stale
    'm-a-duty-type','m-a-tank-type','m-a-linked-pump'].forEach(x=>{
     const el=document.getElementById(x);if(el)el.selectedIndex=0;});
+  const locSel=document.getElementById('m-a-loc-select');if(locSel)locSel.value='';
+  const locBadge=document.getElementById('m-a-loc-badge');if(locBadge)locBadge.innerHTML='';
   document.getElementById('mo-asset-code-display').style.display='none';
   document.getElementById('asset-img-preview-wrap').style.display='none';
   document.getElementById('asset-img-placeholder').style.display='';
@@ -6440,6 +6455,7 @@ function openAssetModal(id=null){
   document.getElementById('freq-custom-wrap').style.display='none';
   setTimeout(()=>{ if(typeof populateLinkedPumpDropdown==='function') populateLinkedPumpDropdown(); },0);
   if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
+  if(typeof populateAssetLocationControls==='function') populateAssetLocationControls(id ? DB.g('assets').find(x=>x.id===id) : null);
   const parentSelect = document.getElementById('m-a-parent');
   if(parentSelect){
     const allAssets = DB.g('assets');
@@ -6464,6 +6480,8 @@ function openAssetModal(id=null){
     sv('m-a-dept',a.department);
     sv('m-a-qty',a.qty??1);
     sv('m-a-loc',a.location||a.roomNumber||a.roomName||'');
+    sv('m-a-loc-docid',a.locationDocId);
+    if(typeof populateAssetLocationControls==='function') populateAssetLocationControls(a);
     sv('m-a-watts',a.ratedWatts);sv('m-a-hp',a.hp);
     sv('m-a-ophrs',a.opHoursDay);sv('m-a-opdays',a.opDaysMonth);
     sv('m-a-demand',a.demandFactor);sv('m-a-tempset',a.tempSetting);
@@ -6529,14 +6547,31 @@ function saveAsset(){
   const gn=fid=>{const v=parseFloat(document.getElementById(fid)?.value);return isNaN(v)?null:v;};
 
   const maincat=gv('m-a-maincat');
-  const building=gv('m-a-building');
-  const floor=gv('m-a-floor');
+  let building=gv('m-a-building');
+  let floor=gv('m-a-floor');
   const locRaw=(gv('m-a-loc')||'').trim();
+  let locDocId=gv('m-a-loc-docid');
   let roomNo=gv('m-a-roomno');
   if(!roomNo&&locRaw){
     const rm=locRaw.match(/\b(?:room|rm|rm\.)\s*([0-9]+[a-z]?)\b/i);
     if(rm)roomNo=rm[1];
     else if(/^\d+[a-z]?$/i.test(locRaw))roomNo=locRaw;
+  }
+  if(!locDocId && locRaw){
+    const locs = DB.g('locations') || [];
+    const q = locRaw.toLowerCase();
+    const matched = locs.find(l => 
+      (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+      (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+      (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q)
+    );
+    if(matched){
+      locDocId = matched._docId || ('loc_' + matched.id);
+      if(!building) building = matched.building || '';
+      if(!floor) floor = matched.floor || '';
+      if(!roomNo) roomNo = matched.roomNumber || '';
+    }
   }
 
   // Frequency
@@ -6582,6 +6617,7 @@ function saveAsset(){
     qty:qty2,
     assetCode,
     parentAssetDocId: gv('m-a-parent') || null,
+    locationDocId: locDocId || null,
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
     // Location — single field (m-a-loc) is the canonical location
@@ -7323,6 +7359,185 @@ function updateMasterLocationDatalist(){
     });
     wardDl.innerHTML = wardOptions.map(w => `<option value="${escapeHTML(w)}">`).join('');
   }
+  if(typeof populateAssetLocationControls === 'function') populateAssetLocationControls();
+}
+
+// ═══════════════════════════════════════
+// ASSET LOCATION COMBO BOX CONTROLS
+// ═══════════════════════════════════════
+function populateAssetLocationControls(currentAsset = null){
+  const select = document.getElementById('m-a-loc-select');
+  const locInput = document.getElementById('m-a-loc');
+  const docIdInput = document.getElementById('m-a-loc-docid');
+  const badge = document.getElementById('m-a-loc-badge');
+  if(!select) return;
+
+  const locs = DB.g('locations') || [];
+  const byBld = {};
+  locs.forEach(l => {
+    const bld = l.building || 'General / Unassigned';
+    if(!byBld[bld]) byBld[bld] = [];
+    byBld[bld].push(l);
+  });
+
+  const bldNames = Object.keys(byBld).sort();
+  let html = `<option value="">🏢 Choose from Buildings & Rooms (${locs.length} registered)…</option>`;
+  bldNames.forEach(b => {
+    html += `<optgroup label="${escapeHTML(b)}">`;
+    byBld[b].sort((a,b) => (a.roomName || a.roomNumber || '').localeCompare(b.roomName || b.roomNumber || ''))
+      .forEach(l => {
+        const title = (l.roomName || l.roomNumber || 'Unnamed Space');
+        const extra = [l.floor, l.roomNumber && l.roomNumber !== l.roomName ? `RM ${l.roomNumber}` : ''].filter(Boolean).join(', ');
+        const docId = l._docId || ('loc_' + l.id);
+        html += `<option value="${escapeHTML(docId)}">${escapeHTML(title)}${extra ? ' (' + escapeHTML(extra) + ')' : ''}</option>`;
+      });
+    html += `</optgroup>`;
+  });
+  select.innerHTML = html;
+
+  if(!currentAsset){
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  let matched = null;
+  if(currentAsset.locationDocId){
+    matched = locs.find(l => (l._docId === currentAsset.locationDocId || ('loc_' + l.id) === currentAsset.locationDocId));
+  }
+  if(!matched && currentAsset.location){
+    const q = currentAsset.location.trim().toLowerCase();
+    matched = locs.find(l => (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+                             (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q));
+  }
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    renderAssetLocationBadge(matched);
+  } else {
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(currentAsset.location && badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space (not linked to Buildings & Rooms)</span>`;
+    } else if(badge) {
+      badge.innerHTML = '';
+    }
+  }
+}
+
+function onAssetLocationSelect(docId){
+  const locInput = document.getElementById('m-a-loc');
+  const docIdInput = document.getElementById('m-a-loc-docid');
+  const bldInput = document.getElementById('m-a-building');
+  const flrInput = document.getElementById('m-a-floor');
+  const rmInput = document.getElementById('m-a-roomno');
+  const deptInput = document.getElementById('m-a-dept');
+  const badge = document.getElementById('m-a-loc-badge');
+
+  if(!docId){
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  const locs = DB.g('locations') || [];
+  const loc = locs.find(l => (l._docId === docId || ('loc_' + l.id) === docId));
+  if(!loc) return;
+
+  if(locInput) locInput.value = loc.roomName || loc.roomNumber || '';
+  if(docIdInput) docIdInput.value = loc._docId || ('loc_' + loc.id);
+  if(bldInput) bldInput.value = loc.building || '';
+  if(flrInput) flrInput.value = loc.floor || '';
+  if(rmInput) rmInput.value = loc.roomNumber || '';
+  if(deptInput) deptInput.value = loc.department || '';
+
+  renderAssetLocationBadge(loc);
+}
+
+function onAssetLocationInput(val){
+  const select = document.getElementById('m-a-loc-select');
+  const docIdInput = document.getElementById('m-a-loc-docid');
+  const bldInput = document.getElementById('m-a-building');
+  const flrInput = document.getElementById('m-a-floor');
+  const rmInput = document.getElementById('m-a-roomno');
+  const deptInput = document.getElementById('m-a-dept');
+  const badge = document.getElementById('m-a-loc-badge');
+
+  const q = (val || '').trim().toLowerCase();
+  if(!q){
+    if(select) select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  const locs = DB.g('locations') || [];
+  const matched = locs.find(l => 
+    (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+    (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+    (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+    (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+    (`${l.roomName || ''} (${l.building || ''})`.trim().toLowerCase() === q)
+  );
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    if(select) select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    if(bldInput) bldInput.value = matched.building || '';
+    if(flrInput) flrInput.value = matched.floor || '';
+    if(rmInput) rmInput.value = matched.roomNumber || '';
+    if(deptInput) deptInput.value = matched.department || '';
+    renderAssetLocationBadge(matched);
+  } else {
+    if(select) select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space (not linked to Buildings & Rooms) — use [+ New Room] to register</span>`;
+    }
+  }
+}
+
+function applyLocationToAsset(newLoc){
+  if(!newLoc) return;
+  if(typeof updateMasterLocationDatalist === 'function') updateMasterLocationDatalist();
+  if(typeof populateAssetLocationControls === 'function') populateAssetLocationControls();
+
+  const select = document.getElementById('m-a-loc-select');
+  const locInput = document.getElementById('m-a-loc');
+  const docIdInput = document.getElementById('m-a-loc-docid');
+  const bldInput = document.getElementById('m-a-building');
+  const flrInput = document.getElementById('m-a-floor');
+  const rmInput = document.getElementById('m-a-roomno');
+  const deptInput = document.getElementById('m-a-dept');
+
+  const docId = newLoc._docId || ('loc_' + newLoc.id);
+  if(select) select.value = docId;
+  if(locInput) locInput.value = newLoc.roomName || newLoc.roomNumber || '';
+  if(docIdInput) docIdInput.value = docId;
+  if(bldInput) bldInput.value = newLoc.building || '';
+  if(flrInput) flrInput.value = newLoc.floor || '';
+  if(rmInput) rmInput.value = newLoc.roomNumber || '';
+  if(deptInput) deptInput.value = newLoc.department || '';
+
+  renderAssetLocationBadge(newLoc);
+}
+
+function renderAssetLocationBadge(loc){
+  const badge = document.getElementById('m-a-loc-badge');
+  if(!badge) return;
+  const bld = loc.building || 'General';
+  const flr = loc.floor || 'Floor N/A';
+  const rm = loc.roomNumber ? `RM ${loc.roomNumber}` : '';
+  const details = [bld, flr, rm].filter(Boolean).join(' • ');
+  badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:2px 8px;border-radius:4px;font-weight:500;">
+    <span style="font-size:12px;">✓</span> Linked: ${escapeHTML(details)}
+  </span>`;
 }
 
 // ═══════════════════════════════════════
