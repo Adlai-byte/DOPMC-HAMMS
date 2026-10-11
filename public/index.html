@@ -1067,6 +1067,8 @@ resetIdleTimer();
         <div class="filter-bar">
           <select id="af-section" onchange="renderAssets()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select>
           <input type="hidden" id="af-maincat">
+          <select id="af-bld" onchange="renderAssets()"><option value="">All Buildings</option></select>
+          <select id="af-floor" onchange="renderAssets()"><option value="">All Floors</option></select>
           <select id="af-pms" onchange="renderAssets()"><option value="">All PMS Status</option><option>Normal</option><option>Upcoming</option><option>Due Today</option><option>Overdue</option><option>Critical Overdue</option><option>No Schedule</option></select>
           <select id="af-condition" onchange="renderAssets()"><option value="">All Conditions</option><option>Good</option><option>Fair</option><option>Poor</option><option>For Replacement</option></select>
           <select id="af-month" onchange="renderAssets()"><option value="">All Months</option></select>
@@ -1079,9 +1081,24 @@ resetIdleTimer();
           <button type="button" class="btn btn-ghost" onclick="downloadAssetTemplate()">⬇ Asset Template</button>
       </div>
       <div class="card">
+        <!-- Asset Bulk Actions Bar -->
+        <div id="asset-bulk-bar" style="display:none;background:#eef6fc;border:1px solid #c8e1f5;border-radius:6px;padding:8px 14px;margin-bottom:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <span style="font-weight:600;color:var(--navy);font-size:13px;" id="asset-bulk-count">0 assets selected</span>
+            <button type="button" class="btn btn-sm btn-ghost" onclick="clearAssetSelection()">Deselect All</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+            <label for="asset-bulk-room" style="font-size:12px;font-weight:600;color:var(--navy);margin:0;">Move to Room:</label>
+            <input type="text" list="room-loc-list" id="asset-bulk-room" placeholder="Search or select room..." style="width:220px;padding:5px 8px;font-size:12px;border:1px solid var(--border);border-radius:4px;">
+            <button type="button" class="btn btn-sm btn-primary" id="asset-bulk-move-btn" onclick="applyBulkAssetReassignment()">Move to Room</button>
+          </div>
+        </div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Asset Registry</caption>
-          <thead><tr><th scope="col">Asset Code</th><th scope="col">Asset Name</th><th scope="col">Category</th><th scope="col" style="cursor:pointer;" title="Click a room to see all assets & repairs">Location/Room ↗</th><th scope="col">Qty</th><th scope="col">Brand / Model</th><th scope="col">Condition</th><th scope="col">PMS Status</th><th scope="col">Next PMS</th><th scope="col">kWh/mo</th><th scope="col">WOs</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr>
+            <th scope="col" style="width:36px;text-align:center;"><input type="checkbox" id="asset-select-all" title="Select all visible" onchange="toggleSelectAllAssets(this.checked)" aria-label="Select all assets"></th>
+            <th scope="col">Asset Code</th><th scope="col">Asset Name</th><th scope="col">Category</th><th scope="col" style="cursor:pointer;" title="Click a room to see all assets & repairs">Location/Room ↗</th><th scope="col">Qty</th><th scope="col">Brand / Model</th><th scope="col">Condition</th><th scope="col">PMS Status</th><th scope="col">Next PMS</th><th scope="col">kWh/mo</th><th scope="col">WOs</th><th scope="col">Remarks</th><th scope="col">Actions</th>
+          </tr></thead>
           <tbody id="asset-tbody"></tbody>
         </table></div>
       </div>
@@ -1125,6 +1142,7 @@ resetIdleTimer();
             <th scope="col">Type</th>
             <th scope="col">Status</th>
             <th scope="col">Assets</th>
+            <th scope="col">PMS Status</th>
             <th scope="col">Repairs</th>
             <th scope="col">Actions</th>
           </tr></thead>
@@ -2341,6 +2359,13 @@ resetIdleTimer();
             <select id="m-a-condition"><option>Good</option><option>Fair</option><option>Poor</option><option>For Replacement</option></select></div>
           <div class="form-group"><label>Date Acquired <span style="font-weight:400;font-style:italic;">(optional)</span></label><input type="date" id="m-a-acquired"></div>
           <div class="form-group" style="grid-column:1/-1;"><label>Remarks</label><textarea id="m-a-remarks" style="min-height:44px;"></textarea></div>
+          <div class="form-group" style="grid-column:1/-1;">
+            <label for="m-a-parent">Parent Equipment / System <span style="font-weight:400;font-size:11px;color:var(--muted);">(optional sub-assembly link)</span></label>
+            <select id="m-a-parent">
+              <option value="">None (Top-Level Equipment)</option>
+            </select>
+            <div class="form-hint">Link this asset as a component/sub-system of a larger asset (e.g. Pump belonging to Chiller Plant).</div>
+          </div>
           <div class="form-group">
             <div style="display:flex;justify-content:space-between;align-items:center;">
               <label for="m-a-loc" style="margin-bottom:0;">Location / Room * <span style="font-weight:400;font-size:11px;color:var(--muted);">(e.g. Room 101, ICU)</span></label>
@@ -2563,7 +2588,39 @@ resetIdleTimer();
 
       <!-- Assets in this room -->
       <div style="padding:14px 18px 6px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--teal);margin-bottom:8px;">Assets in this Room</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--teal);">Assets in this Room</div>
+          <button type="button" class="btn btn-sm btn-outline" id="btn-room-assign-assets" onclick="toggleRoomAssetPicker()">+ Assign / Move Assets Here</button>
+        </div>
+
+        <!-- Inline Assign Assets Panel -->
+        <div id="room-asset-picker-panel" style="display:none;background:#f8fafc;border:1px solid #d2dbe5;border-radius:6px;padding:12px 14px;margin-bottom:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <span style="font-weight:700;font-size:13px;color:var(--navy);">Quick Move Assets to this Room</span>
+              <span style="font-size:11px;color:var(--muted);display:block;">Select equipment from storage, unassigned areas, or other rooms to move here.</span>
+            </div>
+            <div style="display:flex;gap:6px;">
+              <button type="button" class="btn btn-sm btn-primary" id="btn-room-picker-confirm" onclick="applyRoomAssetPicker()">Move Selected (<span id="room-picker-count">0</span>)</button>
+              <button type="button" class="btn btn-sm btn-ghost" onclick="toggleRoomAssetPicker(false)">Cancel</button>
+            </div>
+          </div>
+          <div style="margin-bottom:8px;">
+            <input type="text" id="room-picker-search" placeholder="Filter equipment by code, name, or current location..." oninput="renderRoomAssetPickerList()" style="width:100%;max-width:400px;font-size:12px;padding:5px 8px;border:1px solid var(--border);border-radius:4px;">
+          </div>
+          <div style="max-height:220px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:4px;background:#fff;">
+            <table style="width:100%;font-size:12px;border-collapse:collapse;">
+              <thead><tr style="background:#f1f5f9;border-bottom:1px solid #e2e8f0;position:sticky;top:0;">
+                <th scope="col" style="padding:6px 10px;width:30px;text-align:center;"><input type="checkbox" id="room-picker-select-all" onchange="toggleSelectAllRoomPicker(this.checked)" aria-label="Select all candidate assets"></th>
+                <th scope="col" style="padding:6px 10px;text-align:left;">Code</th>
+                <th scope="col" style="padding:6px 10px;text-align:left;">Asset Name</th>
+                <th scope="col" style="padding:6px 10px;text-align:left;">Current Location</th>
+                <th scope="col" style="padding:6px 10px;text-align:left;">Condition</th>
+              </tr></thead>
+              <tbody id="room-asset-picker-list"></tbody>
+            </table>
+          </div>
+        </div>
         <div style="overflow-x:auto;">
           <table style="width:100%;min-width:500px;">
             <thead><tr style="background:#f0f2f5;">
@@ -6312,10 +6369,19 @@ function openAssetModal(id=null){
   document.getElementById('freq-custom-wrap').style.display='none';
   setTimeout(()=>{ if(typeof populateLinkedPumpDropdown==='function') populateLinkedPumpDropdown(); },0);
   if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
+  const parentSelect = document.getElementById('m-a-parent');
+  if(parentSelect){
+    const allAssets = DB.g('assets');
+    const candidates = allAssets.filter(x => !id || x.id !== id);
+    parentSelect.innerHTML = '<option value="">None (Top-Level Equipment)</option>' +
+      candidates.map(x => `<option value="${escapeHTML(x._docId)}">${escapeHTML(x.assetCode || assNum(x.id))} — ${escapeHTML(x.name)}${x.location ? ' (' + escapeHTML(x.location) + ')' : ''}</option>`).join('');
+    parentSelect.value = '';
+  }
   computeEnergy();
 
   if(id){
     const a=DB.g('assets').find(x=>x.id===id);if(!a)return;
+    if(parentSelect && a.parentAssetDocId) parentSelect.value = a.parentAssetDocId;
     const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v??'';};
     sv('m-a-name',a.name);sv('m-a-loc',a.location);sv('m-a-brand',a.brand);
     sv('m-a-serial',a.serial);sv('m-a-serialno',a.serialNumber);
@@ -6444,6 +6510,7 @@ function saveAsset(){
     acquired:gv('m-a-acquired'),remarks:gv('m-a-remarks'),
     qty:qty2,
     assetCode,
+    parentAssetDocId: gv('m-a-parent') || null,
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
     // Location — single field (m-a-loc) is the canonical location
@@ -6488,6 +6555,36 @@ function saveAsset(){
 // ═══════════════════════════════════════
 function renderAssets(){
   let assets=DB.g('assets');
+  const bldSelect = document.getElementById('af-bld');
+  if(bldSelect){
+    const curBld = bldSelect.value;
+    const blds = Array.from(new Set([
+      ...DB.g('locations').map(l => (l.building || '').trim()),
+      ...DB.g('assets').map(a => (a.building || '').trim())
+    ])).filter(Boolean).sort();
+    const html = '<option value="">All Buildings</option>' + blds.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b)}</option>`).join('');
+    if(bldSelect.innerHTML !== html){
+      bldSelect.innerHTML = html;
+      if(blds.includes(curBld)) bldSelect.value = curBld;
+    }
+  }
+  const floorSelect = document.getElementById('af-floor');
+  if(floorSelect){
+    const curFloor = floorSelect.value;
+    const floors = Array.from(new Set([
+      ...DB.g('locations').map(l => (l.floor || '').trim()),
+      ...DB.g('assets').map(a => (a.floor || '').trim())
+    ])).filter(Boolean).sort();
+    const html = '<option value="">All Floors</option>' + floors.map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+    if(floorSelect.innerHTML !== html){
+      floorSelect.innerHTML = html;
+      if(floors.includes(curFloor)) floorSelect.value = curFloor;
+    }
+  }
+  const fbld = (document.getElementById('af-bld')||{}).value||'';
+  const fflr = (document.getElementById('af-floor')||{}).value||'';
+  if(fbld) assets = assets.filter(a => (a.building || '').toLowerCase().trim() === fbld.toLowerCase().trim());
+  if(fflr) assets = assets.filter(a => (a.floor || '').toLowerCase().trim() === fflr.toLowerCase().trim());
   const sec=(document.getElementById('af-section')||{}).value||'';
   const maincat=(document.getElementById('af-maincat')||{}).value||'';
   const pmsf=(document.getElementById('af-pms')||{}).value||'';
@@ -6529,6 +6626,8 @@ function renderAssets(){
     const candidates=w.assetDocId?DB.g('assets').filter(a=>a._docId===w.assetDocId):legacyAssetCandidates(w);
     if(candidates.length===1){const key=candidates[0]._docId;woCntMap[key]=(woCntMap[key]||0)+1;}
   });
+  const assetDocMap = Object.create(null);
+  DB.g('assets').forEach(x => { if(x._docId) assetDocMap[x._docId] = x; });
   document.getElementById('asset-tbody').innerHTML=assets.length?assets.map(a=>{
     const cnt=woCntMap[a._docId]||0;
     const pms=getPMSStatus(a);
@@ -6539,9 +6638,13 @@ function renderAssets(){
     const imgBtn=safeImg?`<button type="button" class="btn btn-sm btn-outline" title="View photo" data-photo-src="${escapeHTML(safeImg)}" onclick="document.getElementById('photo-view-img').src=this.dataset.photoSrc;openModal('mo-photo')">📷</button>`:'';
     const locLabel=a.location||a.roomNumber||a.roomName||'—';
     const locCell=locLabel!=='—'?`<span class="room-tag" style="cursor:pointer;" data-loc="${escapeHTML(locLabel)}" onclick="openRoomView(this.dataset.loc)" title="Click to view all assets & repairs in this room">${escapeHTML(locLabel)} ↗</span>`:'—';
+    const isChecked = _selectedAssetIds.has(a.id);
+      const parentAst = a.parentAssetDocId ? assetDocMap[a.parentAssetDocId] : null;
+      const parentSub = parentAst ? `<div style="font-size:11px;color:var(--muted);font-weight:normal;margin-top:2px;">↳ Component of: <span style="font-weight:600;color:var(--navy);">${escapeHTML(parentAst.name)}</span></div>` : '';
     return`<tr>
+      <td style="text-align:center;"><input type="checkbox" class="asset-cb" value="${a.id}" data-docid="${a._docId}" ${isChecked?'checked':''} onchange="onAssetCheckChanged(${a.id}, this.checked)" aria-label="Select ${escapeHTML(a.name)}"></td>
       <td><span class="asset-code">${escapeHTML(a.assetCode)||assNum(a.id)}</span></td>
-      <td style="font-weight:600;">${escapeHTML(a.name)}${imgBtn?'&nbsp;'+imgBtn:''}</td>
+      <td style="font-weight:600;">${escapeHTML(a.name)}${imgBtn?'&nbsp;'+imgBtn:''}${parentSub}</td>
       <td style="font-size:12px;">${escapeHTML(catDisplay)}</td>
       <td>${locCell}</td>
       <td style="text-align:center;font-weight:600;">${a.qty??1}</td>
@@ -6559,7 +6662,93 @@ function renderAssets(){
         <button type="button" class="btn btn-sm btn-danger" onclick="delAsset(${a.id})">Del</button>
       </td>
     </tr>`;
-  }).join(''):'<tr><td colspan="13" class="empty">No assets found. Click <strong>+ Register Asset</strong> or import a CSV to get started.</td></tr>';
+  }).join(''):'<tr><td colspan="14" class="empty">No assets found. Click <strong>+ Register Asset</strong> or import a CSV to get started.</td></tr>';
+  updateAssetBulkBar();
+}
+
+let _selectedAssetIds = new Set();
+
+function toggleSelectAllAssets(checked){
+  const cbs = document.querySelectorAll('.asset-cb');
+  cbs.forEach(cb => {
+    cb.checked = checked;
+    const id = parseInt(cb.value, 10);
+    if(checked) _selectedAssetIds.add(id);
+    else _selectedAssetIds.delete(id);
+  });
+  updateAssetBulkBar();
+}
+
+function onAssetCheckChanged(id, checked){
+  if(checked) _selectedAssetIds.add(id);
+  else _selectedAssetIds.delete(id);
+  updateAssetBulkBar();
+}
+
+function updateAssetBulkBar(){
+  const bar = document.getElementById('asset-bulk-bar');
+  const countEl = document.getElementById('asset-bulk-count');
+  const sa = document.getElementById('asset-select-all');
+  const cbs = document.querySelectorAll('.asset-cb');
+  const totalOnPage = cbs.length;
+  const count = _selectedAssetIds.size;
+  if(bar) bar.style.display = count > 0 ? 'flex' : 'none';
+  if(countEl) countEl.textContent = count + ' asset' + (count === 1 ? '' : 's') + ' selected';
+  if(sa && totalOnPage > 0){
+    let checkedOnPage = 0;
+    cbs.forEach(cb => { if(cb.checked) checkedOnPage++; });
+    sa.checked = checkedOnPage > 0 && checkedOnPage === totalOnPage;
+    sa.indeterminate = checkedOnPage > 0 && checkedOnPage < totalOnPage;
+  }
+}
+
+function clearAssetSelection(){
+  _selectedAssetIds.clear();
+  document.querySelectorAll('.asset-cb').forEach(cb => { cb.checked = false; });
+  const sa = document.getElementById('asset-select-all');
+  if(sa){ sa.checked = false; sa.indeterminate = false; }
+  updateAssetBulkBar();
+}
+
+function applyBulkAssetReassignment(){
+  const targetRoom = (document.getElementById('asset-bulk-room')?.value || '').trim();
+  if(!targetRoom){
+    showToast('Please select or enter a target room.', 'warning');
+    return;
+  }
+  if(_selectedAssetIds.size === 0){
+    showToast('No assets selected.', 'warning');
+    return;
+  }
+  const allAssets = DB.g('assets');
+  const locs = DB.g('locations');
+  const targetLower = targetRoom.toLowerCase().trim();
+  const matchedLoc = locs.find(l => {
+    const rn = (l.roomName || '').toLowerCase().trim();
+    const rno = (l.roomNumber || '').toLowerCase().trim();
+    return rn === targetLower || (rno && rno === targetLower) || isSameLocation(l.roomName || '', targetRoom);
+  });
+  const destRoom = matchedLoc ? (matchedLoc.roomName || matchedLoc.roomNumber) : targetRoom;
+  const changedAssets = [];
+  allAssets.forEach(a => {
+    if(_selectedAssetIds.has(a.id)){
+      a.location = destRoom;
+      if(matchedLoc){
+        if(matchedLoc.building) a.building = matchedLoc.building;
+        if(matchedLoc.floor) a.floor = matchedLoc.floor;
+        if(matchedLoc.roomNumber) a.roomNumber = matchedLoc.roomNumber;
+        if(matchedLoc.roomName) a.roomName = matchedLoc.roomName;
+      }
+      changedAssets.push(a);
+    }
+  });
+  if(changedAssets.length) DB.s('assets', allAssets);
+  clearAssetSelection();
+  const roomInput = document.getElementById('asset-bulk-room');
+  if(roomInput) roomInput.value = '';
+  renderAssets();
+  if(typeof renderLocations === 'function') renderLocations();
+  showToast('Successfully moved ' + changedAssets.length + ' asset(s) to ' + destRoom + '.');
 }
 
 // ═══════════════════════════════════════
@@ -6798,6 +6987,22 @@ function renderLocations(){
     });
   });
 
+  const pmsOverdueMap = Object.create(null);
+  allAssets.forEach(a => {
+    const aLoc = (a.location || a.roomName || a.roomNumber || '').toLowerCase().trim();
+    if(!aLoc) return;
+    const st = getPMSStatus(a);
+    if(st === 'Overdue' || st === 'Critical Overdue'){
+      locs.forEach(l => {
+        const rName = (l.roomName || '').toLowerCase().trim();
+        const rNo = (l.roomNumber || '').toLowerCase().trim();
+        if((rName && (aLoc === rName || isSameLocation(aLoc, rName))) ||
+           (rNo && (aLoc === rNo || isSameLocation(aLoc, rNo)))){
+          pmsOverdueMap[l.id] = (pmsOverdueMap[l.id] || 0) + 1;
+        }
+      });
+    }
+  });
   filtered.sort((a, b) => {
     const bldDiff = (a.building || '').localeCompare(b.building || '');
     if(bldDiff !== 0) return bldDiff;
@@ -6810,7 +7015,7 @@ function renderLocations(){
   if(!tbody) return;
 
   if(!filtered.length){
-    tbody.innerHTML = '<tr><td colspan="11" class="empty">No rooms or spaces found. Click <strong>+ Add Room / Space</strong> or <strong>⚡ Seed from Assets</strong> to populate.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="12" class="empty">No rooms or spaces found. Click <strong>+ Add Room / Space</strong> or <strong>⚡ Seed from Assets</strong> to populate.</td></tr>';
     return;
   }
 
@@ -6837,6 +7042,7 @@ function renderLocations(){
       <td><span class="badge badge-subtle" style="font-size:11px;">${escapeHTML(l.type || '—')}</span></td>
       <td>${statusBadge}</td>
       <td style="text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace;">${assetCount}</td>
+      <td>${(pmsOverdueMap[l.id] || 0) > 0 ? `<span class="badge badge-danger" style="font-weight:700;font-size:11px;" title="${pmsOverdueMap[l.id]} asset(s) with PMS overdue">${pmsOverdueMap[l.id]} Overdue</span>` : (assetCount > 0 ? '<span class="badge badge-success" style="font-size:11px;">PMS OK</span>' : '<span style="color:var(--muted);font-size:12px;">—</span>')}</td>
       <td style="text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace;">${woCount}</td>
       <td style="white-space:nowrap;">
         <button type="button" class="btn btn-sm btn-outline" onclick="openRoomView('${clickLoc}')">View</button>
@@ -12547,8 +12753,16 @@ function updateWORemarksMeta(){
 // ══════════════════════════════════════════════════════
 //  ROOM VIEW — click a room tag to see all assets & WOs
 // ══════════════════════════════════════════════════════
+let _currentRoomView = '';
+let _roomPickerSelectedIds = new Set();
+
 function openRoomView(room){
   if(!room) return;
+  _currentRoomView = room;
+  _roomPickerSelectedIds.clear();
+  const pickerPanel = document.getElementById('room-asset-picker-panel');
+  if(pickerPanel) pickerPanel.style.display = 'none';
+
   const allAssets = DB.g('assets');
   const allWOs    = DB.g('wo');
 
@@ -12657,7 +12871,132 @@ function openRoomView(room){
       }).join('')
     : '<tr><td colspan="8" class="empty">No recorded repairs for this room. Registered assets are listed above; use Create work order when maintenance is needed.</td></tr>';
 
+
   openModal('mo-room-view');
+}
+
+function toggleRoomAssetPicker(show){
+  const panel = document.getElementById('room-asset-picker-panel');
+  if(!panel) return;
+  const isShown = panel.style.display !== 'none';
+  const target = show !== undefined ? show : !isShown;
+  if(target){
+    _roomPickerSelectedIds.clear();
+    const searchInput = document.getElementById('room-picker-search');
+    if(searchInput) searchInput.value = '';
+    renderRoomAssetPickerList();
+    panel.style.display = 'block';
+  } else {
+    panel.style.display = 'none';
+    _roomPickerSelectedIds.clear();
+  }
+}
+
+function renderRoomAssetPickerList(){
+  const listEl = document.getElementById('room-asset-picker-list');
+  if(!listEl) return;
+  const q = (document.getElementById('room-picker-search')?.value || '').toLowerCase().trim();
+  const allAssets = DB.g('assets');
+  const currentLower = (_currentRoomView || '').toLowerCase().trim();
+  const currentClean = currentLower.replace(/[_]+$/, '').trim();
+  const candidates = allAssets.filter(a => {
+    const locs = [a.location, a.roomNumber, a.roomName, a.building].filter(Boolean);
+    const inCurrent = locs.some(l => {
+      const ll = l.toLowerCase().trim();
+      return ll === currentLower || ll === currentClean || isSameLocation(l, _currentRoomView) || isSameLocation(l, currentClean);
+    });
+    if(inCurrent) return false;
+    if(q){
+      const name = (a.name || '').toLowerCase();
+      const code = (a.assetCode || '').toLowerCase();
+      const loc = (a.location || a.roomNumber || a.roomName || '').toLowerCase();
+      return name.includes(q) || code.includes(q) || loc.includes(q);
+    }
+    return true;
+  });
+  const countEl = document.getElementById('room-picker-count');
+  if(countEl) countEl.textContent = _roomPickerSelectedIds.size;
+  if(!candidates.length){
+    listEl.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:12px;color:var(--muted);">No candidate assets found.</td></tr>';
+    return;
+  }
+  listEl.innerHTML = candidates.map(a => {
+    const isChecked = _roomPickerSelectedIds.has(a.id);
+    const locLabel = [a.building, a.roomNumber, a.location].filter(Boolean).join(' · ') || 'Unassigned';
+    return `<tr style="border-bottom:1px solid #edf0f5;">
+      <td style="padding:6px 10px;text-align:center;">
+        <input type="checkbox" class="room-picker-cb" value="${a.id}" ${isChecked ? 'checked' : ''} onchange="onRoomPickerCheckChanged(${a.id}, this.checked)" aria-label="Select ${escapeHTML(a.name)}">
+      </td>
+      <td style="padding:6px 10px;font-family:monospace;font-size:11px;">${escapeHTML(a.assetCode || assNum(a.id))}</td>
+      <td style="padding:6px 10px;font-weight:600;">${escapeHTML(a.name)}</td>
+      <td style="padding:6px 10px;color:var(--muted);">${escapeHTML(locLabel)}</td>
+      <td style="padding:6px 10px;">${condBadge(a.condition)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function onRoomPickerCheckChanged(id, checked){
+  if(checked) _roomPickerSelectedIds.add(id);
+  else _roomPickerSelectedIds.delete(id);
+  const countEl = document.getElementById('room-picker-count');
+  if(countEl) countEl.textContent = _roomPickerSelectedIds.size;
+  const sa = document.getElementById('room-picker-select-all');
+  const cbs = document.querySelectorAll('.room-picker-cb');
+  if(sa && cbs.length){
+    let checkedCount = 0;
+    cbs.forEach(cb => { if(cb.checked) checkedCount++; });
+    sa.checked = checkedCount > 0 && checkedCount === cbs.length;
+    sa.indeterminate = checkedCount > 0 && checkedCount < cbs.length;
+  }
+}
+
+function toggleSelectAllRoomPicker(checked){
+  const cbs = document.querySelectorAll('.room-picker-cb');
+  cbs.forEach(cb => {
+    cb.checked = checked;
+    const id = parseInt(cb.value, 10);
+    if(checked) _roomPickerSelectedIds.add(id);
+    else _roomPickerSelectedIds.delete(id);
+  });
+  const countEl = document.getElementById('room-picker-count');
+  if(countEl) countEl.textContent = _roomPickerSelectedIds.size;
+}
+
+function applyRoomAssetPicker(){
+  if(_roomPickerSelectedIds.size === 0){
+    showToast('Please select at least one asset to move.', 'warning');
+    return;
+  }
+  const allAssets = DB.g('assets');
+  const locs = DB.g('locations');
+  const roomLower = (_currentRoomView || '').toLowerCase().trim();
+  const roomClean = roomLower.replace(/[_]+$/, '').trim();
+  const matchedLoc = locs.find(l => {
+    const rn = (l.roomName || '').toLowerCase().trim();
+    const rno = (l.roomNumber || '').toLowerCase().trim();
+    return rn === roomLower || rn === roomClean || (rno && (rno === roomLower || rno === roomClean)) || isSameLocation(l.roomName || '', _currentRoomView);
+  });
+  const destRoomName = matchedLoc ? (matchedLoc.roomName || matchedLoc.roomNumber) : _currentRoomView;
+  const changedAssets = [];
+  allAssets.forEach(a => {
+    if(_roomPickerSelectedIds.has(a.id)){
+      a.location = destRoomName;
+      if(matchedLoc){
+        if(matchedLoc.building) a.building = matchedLoc.building;
+        if(matchedLoc.floor) a.floor = matchedLoc.floor;
+        if(matchedLoc.roomNumber) a.roomNumber = matchedLoc.roomNumber;
+        if(matchedLoc.roomName) a.roomName = matchedLoc.roomName;
+      }
+      changedAssets.push(a);
+    }
+  });
+  if(changedAssets.length) DB.s('assets', allAssets);
+  _roomPickerSelectedIds.clear();
+  toggleRoomAssetPicker(false);
+  openRoomView(_currentRoomView);
+  renderAssets();
+  if(typeof renderLocations === 'function') renderLocations();
+  showToast('Moved ' + changedAssets.length + ' asset(s) into ' + destRoomName + '.');
 }
 
 // ── Room datalist autocomplete ────────────────────────
