@@ -14,12 +14,12 @@ service cloud.firestore {
         && request.resource.data._updatedAt is int
         && request.resource.data._updatedBy == request.auth.token.email;
     }
-    function validBillFactor(store) {
+    function validBillFactor(store, metaRoot) {
       let incoming = request.resource.data.get('carbonFactor', null);
       return store != 'energyBills' || incoming == null
         || (resource != null && incoming == resource.data.get('carbonFactor', null))
         || (incoming is map && incoming.id is string
-          && incoming == getAfter(/databases/$(database)/documents/hammsMeta/state).data
+          && incoming == getAfter(/databases/$(database)/documents/$(metaRoot)/state).data
             .get('energySettings', {}).get('factorById', {}).get(incoming.id, null));
     }
     match /hamms/mainData {
@@ -27,22 +27,22 @@ service cloud.firestore {
       allow delete: if isAdmin();
       allow create, update: if false;
     }
-    match /hammsStores/{store}/records/{docId} {
-      allow read: if isNamedUser() && validStore(store);
-      allow create: if isNamedUser() && validStore(store) && validRecord(docId) && validBillFactor(store)
+    match /{storeRoot}/{store}/records/{docId} {
+      allow read: if isNamedUser() && storeRoot in ['hammsStores', 'hammsStores_staging'] && validStore(store);
+      allow create: if isNamedUser() && storeRoot in ['hammsStores', 'hammsStores_staging'] && validStore(store) && validRecord(docId) && validBillFactor(store, storeRoot == 'hammsStores_staging' ? 'hammsMeta_staging' : 'hammsMeta')
         && request.resource.data._v == 1;
-      allow update: if isNamedUser() && validStore(store) && validRecord(docId) && validBillFactor(store)
+      allow update: if isNamedUser() && storeRoot in ['hammsStores', 'hammsStores_staging'] && validStore(store) && validRecord(docId) && validBillFactor(store, storeRoot == 'hammsStores_staging' ? 'hammsMeta_staging' : 'hammsMeta')
         && request.resource.data._v == resource.data.get('_v', 0) + 1;
       // Operational records are shared: any authorized staff member may delete.
-      allow delete: if isNamedUser() && validStore(store);
+      allow delete: if isNamedUser() && storeRoot in ['hammsStores', 'hammsStores_staging'] && validStore(store);
     }
-    match /hammsMeta/state {
-      allow read: if isNamedUser();
-      allow create: if isNamedUser() && validMeta()
+    match /{metaRoot}/state {
+      allow read: if isNamedUser() && metaRoot in ['hammsMeta', 'hammsMeta_staging'];
+      allow create: if isNamedUser() && metaRoot in ['hammsMeta', 'hammsMeta_staging'] && validMeta()
         && (isAdmin() || !request.resource.data.keys().hasAny(['resetAt','restoreAt','energySettings','legacyMigrations']));
-      allow update: if isNamedUser() && validMeta()
+      allow update: if isNamedUser() && metaRoot in ['hammsMeta', 'hammsMeta_staging'] && validMeta()
         && (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['resetAt','restoreAt','energySettings','legacyMigrations']));
-      allow delete: if isAdmin();
+      allow delete: if isAdmin() && metaRoot in ['hammsMeta', 'hammsMeta_staging'];
       function validMeta() {
         return request.resource.data.keys().size() < 50
           && request.resource.data.updatedBy == request.auth.token.email

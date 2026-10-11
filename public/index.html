@@ -960,6 +960,8 @@ resetIdleTimer();
       <span id="page-title">Dashboard</span>
     </div>
     <div class="tb-right">
+      <span id="staging-badge" class="tb-chip" style="display:none;background:#fef3c7;color:#92400e;border:1px solid #fcd34d;font-weight:700;font-size:11px;" title="Connected to isolated staging database: hammsStores_staging">🧪 STAGING SANDBOX</span>
+      <button type="button" id="staging-clone-btn" class="btn btn-sm btn-outline" style="display:none;padding:2px 8px;font-size:11px;color:#92400e;border-color:#fcd34d;background:#fff8ee;" onclick="copyProductionToStaging()" title="Copy all records from Production into this isolated staging sandbox">📋 Clone Production Data</button>
       <span class="tb-chip chip-connecting" id="storage-chip" onclick="showFirebaseStatus()" style="cursor:pointer;" title="Click for connection details">Connecting…</span>
       <span class="tb-chip chip-date" id="today-chip"></span>
       <button type="button" id="btn-install-pwa" onclick="installPWA()" style="display:inline-flex;background:#1e3a5f;color:#fff;border:none;border-radius:4px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;align-items:center;">⬇ Install App</button><span id="install-help" class="install-help">If install does not appear, use browser menu → Add to Home Screen.</span>
@@ -3427,17 +3429,85 @@ function hasFirebasePayload(raw){ // PATCHED: accept either legacy mainData payl
     (raw.storeInitialized && typeof raw.storeInitialized==='object')
   ));
 }
-function getStoreCollectionRef(store){ // PATCHED: each store now uses its own collection of record documents
-  return window._FB.collection(window._FB.db,'hammsStores',store,'records');
+function isStagingEnvironment(){
+  if(window._forceStagingEnv !== undefined) return window._forceStagingEnv;
+  return window.location.hostname.includes('--normalized') ||
+         window.location.search.includes('env=staging') ||
+         localStorage.getItem('hamms_env') === 'staging';
 }
-function getStoreDocRef(store, key){ // PATCHED: record-level Firestore path per store/item
-  return window._FB.doc(window._FB.db,'hammsStores',store,'records',String(key));
+
+function updateStagingUiState(){
+  const isStg = isStagingEnvironment();
+  const badge = document.getElementById('staging-badge');
+  const cloneBtn = document.getElementById('staging-clone-btn');
+  if(badge) badge.style.display = isStg ? 'inline-flex' : 'none';
+  if(cloneBtn) cloneBtn.style.display = (isStg && (window._FB?.isAdmin || window._forceStagingEnv)) ? 'inline-flex' : 'none';
 }
-function getMetaDocRef(){ // PATCHED: scalar state and migration flags live in a dedicated metadata document
-  return window._FB.doc(window._FB.db,'hammsMeta','state');
+
+function getStoreCollectionRef(store, forceProduction = false){ // PATCHED: routes to hammsStores_staging in isolated staging environment
+  const root = (!forceProduction && isStagingEnvironment()) ? 'hammsStores_staging' : 'hammsStores';
+  return window._FB.collection(window._FB.db, root, store, 'records');
+}
+function getStoreDocRef(store, key, forceProduction = false){ // PATCHED: record-level Firestore path per store/item
+  const root = (!forceProduction && isStagingEnvironment()) ? 'hammsStores_staging' : 'hammsStores';
+  return window._FB.doc(window._FB.db, root, store, 'records', String(key));
+}
+function getMetaDocRef(forceProduction = false){ // PATCHED: scalar state and migration flags live in a dedicated metadata document
+  const root = (!forceProduction && isStagingEnvironment()) ? 'hammsMeta_staging' : 'hammsMeta';
+  return window._FB.doc(window._FB.db, root, 'state');
 }
 function getLegacyMainDocRef(){ // PATCHED: legacy shared document remains read-only fallback only
   return window._FB.doc(window._FB.db,'hamms','mainData');
+}
+
+async function copyProductionToStaging(){
+  try{
+    if(!isStagingEnvironment()){
+      showToast('You are in Production. Clone to staging is only available in the Staging Sandbox.', 'warning');
+      return;
+    }
+    if(!window._FB?.isAdmin){
+      showToast('Administrator privileges required to clone data into Staging.', 'warning');
+      return;
+    }
+    requireOnlineWrite();
+
+    const confirmed = await confirmDialog(
+      'Clone all live records from the Production database into this isolated Staging Sandbox? This allows you to test location seeding and historical backfills on real data with zero risk to production.',
+      { title: 'Clone Production Data to Staging', confirmText: 'Clone into Staging', confirmClass: 'btn btn-primary' }
+    );
+    if(!confirmed) return;
+
+    showToast('Reading production records...', 'info', 4000);
+
+    const STORES_TO_COPY = ['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
+
+    let totalCopied = 0;
+    for(const store of STORES_TO_COPY){
+      const prodColRef = getStoreCollectionRef(store, true);
+      const snap = await safeGetDocsFresh(prodColRef);
+      if(!snap.empty){
+        const rows = snap.docs.map(d => ({ ...d.data(), _docId: d.id }));
+        DB.s(store, rows);
+        totalCopied += rows.length;
+      }
+    }
+
+    const prodMetaRef = getMetaDocRef(true);
+    const metaSnap = await safeGetDocFresh(prodMetaRef);
+    if(metaSnap.exists()){
+      const metaData = metaSnap.data();
+      const stagingMetaRef = getMetaDocRef(false);
+      await window._FB.setDoc(stagingMetaRef, metaData, { merge: true });
+    }
+
+    await flushAll();
+    scheduleUiRefresh();
+    showToast(`Successfully cloned ${totalCopied} records from Production into Staging Sandbox!`, 'success', 8000);
+  }catch(e){
+    console.error('Error cloning production to staging:', e);
+    showToast('Failed to clone production data: ' + e.message, 'error', 10000);
+  }
 }
 async function safeGetDocFresh(ref){ // PATCHED: one-time startup/focus reads must prefer server data so stale cached snapshots do not revert the UI
   if(navigator.onLine && window._FB?.getDocFromServer){
@@ -4015,6 +4085,7 @@ function setStorageChip(mode){
     chip.textContent=labels[mode]||'LIVE';
     chip.className=classes[mode]||'tb-chip chip-firebase';
   }
+  updateStagingUiState();
 }
 function showFirebaseStatus(){
   const net=navigator.onLine?'Online':'Offline';
