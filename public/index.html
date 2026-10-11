@@ -447,6 +447,51 @@ tr.row-warn td{background:#fffdf0;}
 .form-group textarea{resize:vertical;min-height:64px;}
 .form-hint{font-size:11px;color:var(--muted);margin-top:2px;}
 
+/* ── Unified Custom Combobox ── */
+.combobox-wrap{position:relative;width:100%;}
+.combobox-input-wrap{position:relative;display:flex;align-items:center;width:100%;}
+.combobox-input-wrap input{padding-right:32px;width:100%;}
+.combobox-toggle-btn{
+  position:absolute;right:0;top:0;bottom:0;width:30px;
+  background:none;border:none;cursor:pointer;
+  color:var(--muted);font-size:12px;line-height:1;
+  display:flex;align-items:center;justify-content:center;
+  transition:color 0.15s ease;
+}
+.combobox-toggle-btn:hover{color:var(--teal);}
+.combobox-popup{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  max-height:240px;overflow-y:auto;background:#fff;
+  border:1px solid var(--border);border-radius:4px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:1050;
+  display:none;
+}
+.combobox-group-header{
+  padding:6px 10px 4px;font-size:10px;font-weight:700;
+  color:var(--muted);text-transform:uppercase;letter-spacing:0.7px;
+  background:#f8fafc;border-bottom:1px solid #edf2f7;border-top:1px solid #edf2f7;
+  position:sticky;top:0;z-index:1;
+}
+.combobox-group-header:first-child{border-top:none;}
+.combobox-item{
+  padding:7px 10px;cursor:pointer;font-size:12px;
+  display:flex;flex-direction:column;gap:2px;
+  border-bottom:1px solid #f1f5f9;transition:background 0.12s ease;
+}
+.combobox-item:last-child{border-bottom:none;}
+.combobox-item:hover, .combobox-item.active{
+  background:#f0fdf9;color:var(--navy);
+}
+.combobox-item-title{
+  font-weight:600;display:flex;align-items:center;gap:6px;justify-content:space-between;
+}
+.combobox-item-sub{
+  font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;
+}
+.combobox-empty{
+  padding:14px 12px;text-align:center;font-size:12px;color:var(--muted);
+}
+
 /* ── MODALS ─────────────────────────── */
 .modal-overlay{position:fixed;inset:0;background:rgba(8,18,32,0.55);z-index:500;display:none;align-items:center;justify-content:center;}
 .modal-overlay.open{display:flex;}
@@ -2254,11 +2299,19 @@ resetIdleTimer();
             <label for="m-wo-loc" style="margin-bottom:0;">Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected room)</span></label>
             <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToWO(newLoc);})">+ New Room</button>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <select id="m-wo-loc-select" style="font-size:12px;width:100%;" onchange="onWOLocationSelect(this.value)">
+          <div class="combobox-wrap" id="m-wo-loc-combobox">
+            <div class="combobox-input-wrap">
+              <input type="text" id="m-wo-loc" placeholder="Search or type room…" autocomplete="off"
+                onfocus="openLocationCombobox('wo')"
+                oninput="onLocationComboboxInput('wo', this.value)"
+                onchange="onWOLocationInput(this.value)"
+                onkeydown="onLocationComboboxKey('wo', event)">
+              <button type="button" class="combobox-toggle-btn" tabindex="-1" onclick="toggleLocationCombobox('wo', event)" title="Select registered room">▾</button>
+            </div>
+            <select id="m-wo-loc-select" style="display:none;" tabindex="-1" aria-hidden="true" onchange="onWOLocationSelect(this.value)">
               <option value="">🏢 Choose room…</option>
             </select>
-            <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Or type room…" oninput="onWOLocationInput(this.value)" onchange="onWOLocationInput(this.value)" autocomplete="off">
+            <div id="m-wo-loc-popup" class="combobox-popup" style="display:none;"></div>
           </div>
           <input type="hidden" id="m-wo-loc-docid">
           <div id="m-wo-loc-badge" style="margin-top:4px;font-size:11px;min-height:16px;"></div>
@@ -2391,19 +2444,19 @@ resetIdleTimer();
               <label for="m-a-loc" style="margin-bottom:0;">Location / Room * <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected combo box)</span></label>
               <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToAsset(newLoc);})">+ New Room</button>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-              <div>
-                <select id="m-a-loc-select" style="width:100%;" onchange="onAssetLocationSelect(this.value)">
-                  <option value="">🏢 Choose from Buildings & Rooms…</option>
-                </select>
+            <div class="combobox-wrap" id="m-a-loc-combobox">
+              <div class="combobox-input-wrap">
+                <input type="text" id="m-a-loc" placeholder="Search or type room name…" autocomplete="off"
+                  onfocus="openLocationCombobox('asset')"
+                  oninput="onLocationComboboxInput('asset', this.value)"
+                  onchange="onAssetLocationInput(this.value)"
+                  onkeydown="onLocationComboboxKey('asset', event)">
+                <button type="button" class="combobox-toggle-btn" tabindex="-1" onclick="toggleLocationCombobox('asset', event)" title="Select registered room">▾</button>
               </div>
-              <div>
-                <input type="text" id="m-a-loc" list="room-loc-list"
-                  placeholder="Or search / type room name…"
-                  oninput="onAssetLocationInput(this.value)"
-                  onchange="onAssetLocationInput(this.value)">
-                <datalist id="room-loc-list"></datalist>
-              </div>
+              <select id="m-a-loc-select" style="display:none;" tabindex="-1" aria-hidden="true" onchange="onAssetLocationSelect(this.value)">
+                <option value="">🏢 Choose from Buildings & Rooms…</option>
+              </select>
+              <div id="m-a-loc-popup" class="combobox-popup" style="display:none;"></div>
             </div>
             <input type="hidden" id="m-a-loc-docid">
             <div id="m-a-loc-badge" style="margin-top:6px;font-size:11px;min-height:18px;"></div>
@@ -2918,11 +2971,19 @@ resetIdleTimer();
             <label for="m-pj-loc" style="margin-bottom:0;">Location / Space <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected room or area)</span></label>
             <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToProject(newLoc);})">+ New Room</button>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-            <select id="m-pj-loc-select" style="font-size:12px;width:100%;" onchange="onProjectLocationSelect(this.value)">
+          <div class="combobox-wrap" id="m-pj-loc-combobox">
+            <div class="combobox-input-wrap">
+              <input type="text" id="m-pj-loc" placeholder="Search or type room/area name…" autocomplete="off"
+                onfocus="openLocationCombobox('project')"
+                oninput="onLocationComboboxInput('project', this.value)"
+                onchange="onProjectLocationInput(this.value)"
+                onkeydown="onLocationComboboxKey('project', event)">
+              <button type="button" class="combobox-toggle-btn" tabindex="-1" onclick="toggleLocationCombobox('project', event)" title="Select registered room">▾</button>
+            </div>
+            <select id="m-pj-loc-select" style="display:none;" tabindex="-1" aria-hidden="true" onchange="onProjectLocationSelect(this.value)">
               <option value="">🏢 Choose registered room…</option>
             </select>
-            <input type="text" id="m-pj-loc" list="room-loc-list" placeholder="Or type room/area name…" oninput="onProjectLocationInput(this.value)" onchange="onProjectLocationInput(this.value)" autocomplete="off">
+            <div id="m-pj-loc-popup" class="combobox-popup" style="display:none;"></div>
           </div>
           <input type="hidden" id="m-pj-loc-docid">
           <div id="m-pj-loc-badge" style="margin-top:4px;font-size:11px;min-height:16px;"></div>
@@ -4931,6 +4992,7 @@ function toggleDelayOther(){
 }
 // ── WO ────────────────────────────────
 function openWOModal(id=null){
+  if(typeof closeLocationCombobox === 'function') closeLocationCombobox('wo');
   clearTimeout(window._fadTimer);
   document.getElementById('wo-selected-asset').textContent='';
   _editWO=id;_woMaterials=[];captureEditSnapshot('wo',id);
@@ -6558,6 +6620,7 @@ function getDescendantAssetDocIds(assetDocId, allAssets = DB.g('assets')){
 // NEW: ENHANCED ASSET MODAL open/save
 // ═══════════════════════════════════════
 function openAssetModal(id=null){
+  if(typeof closeLocationCombobox === 'function') closeLocationCombobox('asset');
   _editAsset=id;captureEditSnapshot('assets',id);
   _assetImageData=null;
   document.getElementById('mo-asset-title').textContent=id?'Edit Asset':'Add Asset';
@@ -7721,6 +7784,218 @@ function updateMasterLocationDatalist(){
 }
 
 // ═══════════════════════════════════════
+// UNIFIED LOCATION COMBOBOX ENGINE
+// ═══════════════════════════════════════
+
+function _getLocCbPrefix(mode){
+  return mode === 'asset' ? 'm-a' : mode === 'project' ? 'm-pj' : 'm-wo';
+}
+
+function openLocationCombobox(mode){
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  const input = document.getElementById(`${pfx}-loc`);
+  if(!popup || !input) return;
+  renderLocationComboboxPopup(mode, input.value);
+  popup.style.display = 'block';
+}
+
+function closeLocationCombobox(mode){
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  if(popup) popup.style.display = 'none';
+}
+
+function toggleLocationCombobox(mode, event){
+  if(event){ event.preventDefault(); event.stopPropagation(); }
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  const input = document.getElementById(`${pfx}-loc`);
+  if(!popup || !input) return;
+  if(popup.style.display === 'block'){
+    popup.style.display = 'none';
+  } else {
+    renderLocationComboboxPopup(mode, input.value);
+    popup.style.display = 'block';
+    input.focus();
+  }
+}
+
+function renderLocationComboboxPopup(mode, query = ''){
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  const docIdInput = document.getElementById(`${pfx}-loc-docid`);
+  if(!popup) return;
+
+  const locs = DB.g('locations') || [];
+  const q = (query || '').trim().toLowerCase();
+  const currentDocId = docIdInput?.value || '';
+
+  let filtered = locs;
+  if(q){
+    filtered = locs.filter(l => {
+      const name = (l.roomName || '').toLowerCase();
+      const num = (l.roomNumber || '').toLowerCase();
+      const bld = (l.building || '').toLowerCase();
+      const flr = (l.floor || '').toLowerCase();
+      const dept = (l.department || '').toLowerCase();
+      const type = (l.type || '').toLowerCase();
+      return name.includes(q) || num.includes(q) || bld.includes(q) || flr.includes(q) || dept.includes(q) || type.includes(q);
+    });
+  }
+
+  if(!filtered.length){
+    popup.innerHTML = `
+      <div class="combobox-empty">
+        <div>No registered room matching "<strong>${escapeHTML(query)}</strong>"</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">Will be recorded as a custom space. Use <strong>+ New Room</strong> above to register it.</div>
+      </div>`;
+    return;
+  }
+
+  const byBld = {};
+  filtered.forEach(l => {
+    const bld = l.building || 'General / Unassigned';
+    if(!byBld[bld]) byBld[bld] = [];
+    byBld[bld].push(l);
+  });
+
+  const bldNames = Object.keys(byBld).sort();
+  let html = '';
+  bldNames.forEach(b => {
+    html += `<div class="combobox-group-header">🏢 ${escapeHTML(b)}</div>`;
+    byBld[b].sort((a,b) => (a.roomName || a.roomNumber || '').localeCompare(b.roomName || b.roomNumber || ''))
+      .forEach(l => {
+        const title = l.roomName || l.roomNumber || 'Unnamed Space';
+        const docId = l._docId || ('loc_' + l.id);
+        const isSelected = (currentDocId && currentDocId === docId);
+        const extraParts = [];
+        if(l.floor) extraParts.push(l.floor);
+        if(l.department) extraParts.push(l.department);
+        if(l.capacityBeds) extraParts.push(`${l.capacityBeds} beds`);
+        const sub = extraParts.join(' · ');
+
+        html += `
+          <div class="combobox-item${isSelected ? ' active' : ''}" data-doc-id="${escapeHTML(docId)}" onmousedown="selectLocationComboboxItem('${mode}','${escapeHTML(docId)}')">
+            <div class="combobox-item-title">
+              <span>${escapeHTML(title)}</span>
+              ${l.roomNumber && l.roomNumber !== l.roomName ? `<span class="badge badge-sm" style="font-size:10px;background:#e0f2fe;color:#0369a1;">RM ${escapeHTML(l.roomNumber)}</span>` : ''}
+            </div>
+            ${sub ? `<div class="combobox-item-sub">${escapeHTML(sub)}</div>` : ''}
+          </div>`;
+      });
+  });
+  popup.innerHTML = html;
+}
+
+function selectLocationComboboxItem(mode, docId){
+  const pfx = _getLocCbPrefix(mode);
+  const locInput = document.getElementById(`${pfx}-loc`);
+  const docIdInput = document.getElementById(`${pfx}-loc-docid`);
+  const select = document.getElementById(`${pfx}-loc-select`);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+
+  const locs = DB.g('locations') || [];
+  const loc = locs.find(l => (l._docId === docId || ('loc_' + l.id) === docId));
+  if(!loc) return;
+
+  const roomName = loc.roomName || loc.roomNumber || '';
+  const resolvedDocId = loc._docId || ('loc_' + loc.id);
+
+  if(locInput) locInput.value = roomName;
+  if(docIdInput) docIdInput.value = resolvedDocId;
+  if(select) select.value = resolvedDocId;
+  if(popup) popup.style.display = 'none';
+
+  if(mode === 'wo'){
+    renderWOLocationBadge(loc);
+    if(typeof fillAssetDrop === 'function') fillAssetDrop();
+  } else if(mode === 'asset'){
+    renderAssetLocationBadge(loc);
+    const bldInput = document.getElementById('m-a-bld');
+    const flrInput = document.getElementById('m-a-floor');
+    if(bldInput && loc.building) bldInput.value = loc.building;
+    if(flrInput && loc.floor) flrInput.value = loc.floor;
+  } else if(mode === 'project'){
+    renderProjectLocationBadge(loc);
+  }
+}
+
+function onLocationComboboxInput(mode, val){
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  if(popup){
+    renderLocationComboboxPopup(mode, val);
+    popup.style.display = 'block';
+  }
+  if(mode === 'wo'){
+    onWOLocationInput(val);
+  } else if(mode === 'asset'){
+    onAssetLocationInput(val);
+  } else if(mode === 'project'){
+    onProjectLocationInput(val);
+  }
+}
+
+function onLocationComboboxKey(mode, event){
+  const pfx = _getLocCbPrefix(mode);
+  const popup = document.getElementById(`${pfx}-loc-popup`);
+  if(!popup) return;
+
+  if(event.key === 'ArrowDown'){
+    event.preventDefault();
+    if(popup.style.display !== 'block'){
+      openLocationCombobox(mode);
+      return;
+    }
+    const items = [...popup.querySelectorAll('.combobox-item')];
+    if(!items.length) return;
+    const activeIdx = items.findIndex(el => el.classList.contains('active'));
+    if(activeIdx >= 0) items[activeIdx].classList.remove('active');
+    const nextIdx = (activeIdx + 1) % items.length;
+    items[nextIdx].classList.add('active');
+    items[nextIdx].scrollIntoView({ block: 'nearest' });
+  } else if(event.key === 'ArrowUp'){
+    event.preventDefault();
+    if(popup.style.display !== 'block') return;
+    const items = [...popup.querySelectorAll('.combobox-item')];
+    if(!items.length) return;
+    const activeIdx = items.findIndex(el => el.classList.contains('active'));
+    if(activeIdx >= 0) items[activeIdx].classList.remove('active');
+    const prevIdx = (activeIdx - 1 + items.length) % items.length;
+    items[prevIdx].classList.add('active');
+    items[prevIdx].scrollIntoView({ block: 'nearest' });
+  } else if(event.key === 'Enter'){
+    if(popup.style.display === 'block'){
+      const activeItem = popup.querySelector('.combobox-item.active');
+      if(activeItem && activeItem.dataset?.docId){
+        event.preventDefault();
+        selectLocationComboboxItem(mode, activeItem.dataset.docId);
+      } else {
+        popup.style.display = 'none';
+      }
+    }
+  } else if(event.key === 'Escape'){
+    if(popup.style.display === 'block'){
+      event.preventDefault();
+      popup.style.display = 'none';
+    }
+  }
+}
+
+// Global click-outside listener to close location combobox popups
+document.addEventListener('mousedown', function(e){
+  ['wo', 'asset', 'project'].forEach(mode => {
+    const pfx = _getLocCbPrefix(mode);
+    const wrap = document.getElementById(`${pfx}-loc-combobox`);
+    const popup = document.getElementById(`${pfx}-loc-popup`);
+    if(popup && popup.style.display !== 'none' && wrap && !wrap.contains(e.target)){
+      popup.style.display = 'none';
+    }
+  });
+});
+
+// ═══════════════════════════════════════
 // ASSET LOCATION COMBO BOX CONTROLS
 // ═══════════════════════════════════════
 function populateAssetLocationControls(currentAsset = null){
@@ -8463,6 +8738,7 @@ function renderSafety(){
 function pjBadge(s){const m={'Proposed':'pj-proposed','For Approval':'pj-approval','Ongoing':'pj-ongoing','Delayed':'pj-delayed','Completed':'pj-completed','Closed':'pj-closed'};return`<span class="${m[s]||'pj-proposed'}">${escapeHTML(s)}</span>`;}
 
 function openProjectModal(id=null){
+  if(typeof closeLocationCombobox === 'function') closeLocationCombobox('project');
   _editProject=id;captureEditSnapshot('projects',id);
   document.getElementById('mo-project-title').textContent=id?'Edit Project':'Add Project';
   if(!id){
