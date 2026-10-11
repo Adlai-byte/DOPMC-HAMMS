@@ -18,7 +18,7 @@ async function bootstrapLiveApp(page) {
 
 test.describe('Live Deployed Site Verification', () => {
 
-  test('Live Check 1: Deployed site loads with correct Service Worker v2.11.2 and zero console errors', async ({ page }) => {
+  test('Live Check 1: Deployed site loads with correct Service Worker v2.13.4 and zero console errors', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -37,7 +37,7 @@ test.describe('Live Deployed Site Verification', () => {
       const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
       return m ? m[1] : null;
     });
-    expect(swVersion).toBe('hamms-v2-11-2');
+    expect(swVersion).toBe('hamms-v2-13-4');
     console.log('Live Verified SW Version:', swVersion);
 
     // Check for critical console errors (ignore benign network aborts if any)
@@ -265,5 +265,28 @@ test.describe('Live Deployed Site Verification', () => {
       return {before,selected,saved:DB.g('wo')[0]?.assetDocId,tubeStatus:assetRepairStatus(DB.g('assets')[0]),bulbStatus:assetRepairStatus(DB.g('assets')[1])};
     });
     expect(result.before).toContain('OT-ELEC-DIETAR-09');expect(result.before).toContain('OT-ELEC-DIETAR-10');expect(result.before).toContain('No recorded repairs');expect(result.before).not.toContain('GENERAL-01');expect(result.selected).toBe('synthetic-rsa-bulb');expect(result.saved).toBe('synthetic-rsa-bulb');expect(result.tubeStatus).toBe('No recorded repairs');expect(result.bulbStatus).toBe('1 linked work order');
+  });
+
+  test('Live Check 8: Live deployment contains locations store, 28 DOPMC rooms, cycle detection, and startup migration', async ({ page }) => {
+    await bootstrapLiveApp(page);
+
+    const checks = await page.evaluate(() => {
+      return {
+        hasLocationsStore: typeof STORES !== 'undefined' && STORES.includes('locations'),
+        standardRoomCount: typeof DOPMC_STANDARD_LOCATIONS !== 'undefined' ? DOPMC_STANDARD_LOCATIONS.length : 0,
+        hasAutoMigration: typeof checkAndRunStartupLocationMigration === 'function',
+        hasDescendantHelper: typeof getDescendantAssetDocIds === 'function',
+        hasAutoSummaryModal: !!document.getElementById('mo-loc-auto-summary'),
+        hasLocationModal: !!document.getElementById('mo-loc')
+      };
+    });
+
+    console.log('Live Check 8 Results:', checks);
+    expect(checks.hasLocationsStore).toBe(true);
+    expect(checks.standardRoomCount).toBe(28);
+    expect(checks.hasAutoMigration).toBe(true);
+    expect(checks.hasDescendantHelper).toBe(true);
+    expect(checks.hasAutoSummaryModal).toBe(true);
+    expect(checks.hasLocationModal).toBe(true);
   });
 });
