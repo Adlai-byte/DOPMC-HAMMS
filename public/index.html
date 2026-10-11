@@ -628,6 +628,7 @@ tr.row-warn td{background:#fffdf0;}
   /* ── Forms: full width inputs ── */
   .form-row{flex-direction:column!important;gap:8px!important;}
   .form-group{width:100%!important;min-width:0!important;}
+  #mo-wo .fg-3{grid-template-columns:1fr!important;}
   input,select,textarea{width:100%!important;box-sizing:border-box;font-size:16px!important;}
   /* font-size:16px prevents iOS auto-zoom on focus */
 
@@ -647,6 +648,16 @@ tr.row-warn td{background:#fffdf0;}
   .filter-bar{flex-wrap:wrap;gap:6px;}
 
   /* ── Water tank gauges: single column ── */
+  #page-workorders > .mb14:first-child,
+  #page-safety > .mb14:first-child,
+  #page-projects > .mb14:first-child,
+  #page-energy > .mb14:first-child{flex-direction:column;align-items:stretch!important;gap:10px;}
+  #page-workorders > .mb14:first-child > div,
+  #page-safety > .mb14:first-child > div,
+  #page-projects > .mb14:first-child > div,
+  #page-energy > .mb14:first-child > div{width:100%;min-width:0;flex-wrap:wrap;}
+  #topbar .install-help{display:none;}
+  #btn-install-pwa{white-space:nowrap;flex-shrink:0;}
   .tank-gauge-grid{grid-template-columns:1fr!important;}
 
   /* ── Generic two-column cards: stack safely on mobile ── */
@@ -885,7 +896,7 @@ resetIdleTimer();
 <!-- ══ END LOGIN OVERLAY ══════════════════════════════════════════ -->
 
 <div id="app" style="visibility:hidden;">
-<div id="save-recovery" style="display:none;position:fixed;bottom:40px;right:16px;z-index:99999;background:#fff;padding:12px;border:1px solid #b33;border-radius:8px" role="alert">Save pending. <button onclick="retryPendingChanges()">Retry</button> <button onclick="discardPendingChanges()">Discard and reload</button></div>
+<div id="save-recovery" style="display:none;position:fixed;bottom:40px;right:16px;z-index:99999;background:#fff;padding:12px;border:1px solid #b33;border-radius:8px;max-width:calc(100vw - 32px)" role="alert"><span id="save-recovery-detail">Save pending.</span> <button onclick="retryPendingChanges()">Retry</button> <button onclick="reviewPendingConflict()">Review latest</button> <button onclick="discardPendingChanges()">Discard and reload</button></div>
 
 <!-- ══════════════════════ SIDEBAR -->
 <!-- Mobile sidebar overlay backdrop -->
@@ -906,6 +917,7 @@ resetIdleTimer();
     <div class="nav-group-label">Maintenance</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('workorders')"><span class="ni-icon">📋</span>Work Orders</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('assets')"><span class="ni-icon">🔩</span>Asset Registry</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('locations')"><span class="ni-icon">🏢</span>Buildings &amp; Rooms</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('forecast')"><span class="ni-icon">📈</span>WO Forecast</div>
     <div class="nav-group-label">Inventory</div>
     <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('inventory')"><span class="ni-icon">📦</span>Materials Inventory<span class="nav-badge" id="nb-inv">0</span></div>
@@ -1031,6 +1043,7 @@ resetIdleTimer();
         </div>
         <div style="display:flex;gap:7px;align-items:center;">
           <button type="button" class="btn btn-ghost" onclick="downloadWOTemplate()">⬇ CSV Template</button>
+          <button type="button" class="btn btn-outline" id="wo-link-review-button" onclick="reviewWorkOrderLinks()">Review asset links</button>
           <button type="button" class="btn btn-outline" onclick="document.getElementById('wo-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="wo-csv-upload" accept=".csv" style="display:none;" onchange="importWOCSV(event)">
           <button type="button" class="btn btn-primary" onclick="openWOModal()">+ New Work Order</button>
@@ -1070,6 +1083,52 @@ resetIdleTimer();
           <caption class="sr-only">Asset Registry</caption>
           <thead><tr><th scope="col">Asset Code</th><th scope="col">Asset Name</th><th scope="col">Category</th><th scope="col" style="cursor:pointer;" title="Click a room to see all assets & repairs">Location/Room ↗</th><th scope="col">Qty</th><th scope="col">Brand / Model</th><th scope="col">Condition</th><th scope="col">PMS Status</th><th scope="col">Next PMS</th><th scope="col">kWh/mo</th><th scope="col">WOs</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
           <tbody id="asset-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ══════ BUILDINGS & ROOMS (LOCATIONS) -->
+    <div id="page-locations" class="page">
+      <div class="stat-grid mb14" id="loc-stat-row">
+        <div class="stat-card" style="border-left-color:var(--primary);"><div class="stat-label">Total Spaces</div><div class="stat-val" id="loc-stat-total">0</div><div class="stat-sub">Registered rooms &amp; areas</div></div>
+        <div class="stat-card" style="border-left-color:#1e6fb5;"><div class="stat-label">Unique Buildings</div><div class="stat-val" id="loc-stat-bld">0</div><div class="stat-sub">Hospital structures</div></div>
+        <div class="stat-card" style="border-left-color:var(--green);"><div class="stat-label">Active Wards</div><div class="stat-val" id="loc-stat-wards">0</div><div class="stat-sub">Inpatient care spaces</div></div>
+        <div class="stat-card" style="border-left-color:var(--gold);"><div class="stat-label">Under Renovation</div><div class="stat-val" id="loc-stat-renov">0</div><div class="stat-sub">Temporary off-service</div></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;" class="mb14">
+        <div class="filter-bar" style="flex-wrap:wrap;">
+          <select id="locf-bld" onchange="renderLocations()"><option value="">All Buildings</option></select>
+          <select id="locf-floor" onchange="renderLocations()"><option value="">All Floors</option></select>
+          <select id="locf-type" onchange="renderLocations()"><option value="">All Types</option></select>
+          <select id="locf-status" onchange="renderLocations()"><option value="">All Status</option><option>Active</option><option>Under Renovation</option><option>Decommissioned</option></select>
+          <input type="text" id="locf-search" placeholder="Search room, building, dept…" oninput="renderLocations()" style="width:200px;">
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-ghost" onclick="downloadLocationTemplate()">⬇ Template</button>
+          <button type="button" class="btn btn-outline" onclick="exportCSV('locations')">📥 Export CSV</button>
+          <button type="button" class="btn btn-outline" onclick="document.getElementById('loc-csv-upload').click()">📤 Upload CSV</button>
+          <input type="file" id="loc-csv-upload" accept=".csv" style="display:none;" onchange="importLocationCSV(event)">
+          <button type="button" class="btn btn-ghost" onclick="seedLocationsFromAssets()" title="Auto-populate rooms and buildings extracted from existing assets">⚡ Seed from Assets</button>
+          <button type="button" class="btn btn-primary" onclick="openLocationModal()">+ Add Room / Space</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="tbl-wrap"><table>
+          <caption class="sr-only">Hospital Buildings and Rooms</caption>
+          <thead><tr>
+            <th scope="col">Code</th>
+            <th scope="col">Building</th>
+            <th scope="col">Floor</th>
+            <th scope="col">Room #</th>
+            <th scope="col">Room Name / Space</th>
+            <th scope="col">Department</th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col">Assets</th>
+            <th scope="col">Repairs</th>
+            <th scope="col">Actions</th>
+          </tr></thead>
+          <tbody id="loc-tbody"></tbody>
         </table></div>
       </div>
     </div>
@@ -1542,7 +1601,7 @@ resetIdleTimer();
               WHO water per inpatient: 100–300 L/patient/day<br>
               DOH low-level alert: ≤ 20% tank capacity<br>
               DOH residual chlorine: 0.2–0.5 mg/L (AO 2007-0012)<br>
-              CO₂ factor: 0.491 kg/kWh (DOE PH grid)
+              Carbon uses verified factor snapshots on billed kWh.
             </div>
           </div>
         </div>
@@ -1921,7 +1980,7 @@ resetIdleTimer();
                 <li><strong>Basic Info</strong> — Section (required), Asset Name (required), Brand/Model, Serial Number, Property No., Condition, Date Acquired, Remarks.</li>
                 <li><strong>Location</strong> — Building, Floor, Room Number, Room Name, Department, Room Type, Specific Location.</li>
                 <li><strong>PMS Schedule</strong> — Maintenance Frequency (Weekly → Annual or Custom). Auto-calculates Next Maintenance Date and shows live PMS Status badge.</li>
-                <li><strong>Energy</strong> — Rated Power (Watts or HP), Operating Hours/Day, Days/Month, Demand Factor. Computes kWh/Month and kg CO₂/Month in real time (0.491 kg/kWh PH grid).</li>
+                <li><strong>Energy</strong> — Rated power, operating hours, days and load factor estimate asset kWh/month. Billed facility carbon uses administrator-verified factor snapshots; estimates are kept separate.</li>
                 <li><strong>Image</strong> — Attach a JPEG or PNG photo of the asset.</li>
               </ol>
               <div style="background:#e8f0fb;border-left:3px solid var(--blue);padding:8px 12px;border-radius:0 4px 4px 0;font-size:12px;">
@@ -2088,7 +2147,7 @@ resetIdleTimer();
               <ul style="padding-left:18px;margin-top:4px;line-height:2.1;">
                 <li><strong>Connected Load (kW)</strong> = Rated Watts ÷ 1,000</li>
                 <li><strong>Monthly kWh</strong> = kW × Operating Hours/Day × Operating Days/Month × Demand Factor</li>
-                <li><strong>CO₂ Estimate</strong> = kWh × <strong>0.491 kg CO₂/kWh</strong> (PH grid, DOE reference — Mindanao grid)</li>
+                <li><strong>Billed CO₂e</strong> = billed kWh × a verified applicable factor (kgCO₂e/kWh). Configure the grid, source and applicability dates in Energy reporting settings.</li>
                 <li>HP only entered: Watts = HP × 746</li>
               </ul>
             </div>
@@ -2113,7 +2172,7 @@ resetIdleTimer();
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Record ID formats</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">WO-0001 · Asset Code: HVAC-R101-0001 · INV-001 · ISS-0001 · WE-0001 · SF-0001 · WL-0001 · TK-0001</td></tr>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Data modules</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Work Orders · Assets · Inventory · Issuance · Waste · Safety Issues · Projects · Water Logs · Water Tank · Effluent · Med. Waste · Wastewater</td></tr>
                 <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">Tank pump constants</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">40 GPM · 22 hrs/day · 160 m pipe · 12 m head · 8% friction → 139.3 LPM effective · 183,876 L/day max</td></tr>
-                <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">CO₂ emission factor</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">0.491 kg CO₂/kWh — Philippine grid average (DOE reference, Mindanao grid).</td></tr>
+                <tr><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;font-weight:600;">CO₂e emission factor</td><td style="padding:9px 12px;border-bottom:1px solid #edf0f5;">Administrator-verified, sourced, period-specific kgCO₂e/kWh. Missing or ambiguous factors produce unavailable carbon results.</td></tr>
                 <tr><td style="padding:9px 12px;font-weight:600;">Developed for</td><td style="padding:9px 12px;">DOPMC General Services Division — Davao Oriental Provincial Medical Center, Philippines. Copyright © 2026.</td></tr>
               </tbody>
             </table>
@@ -2168,11 +2227,11 @@ resetIdleTimer();
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Section *</label>
           <select id="m-wo-section" onchange="fillAssetDrop()"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select></div>
-        <div class="form-group"><label>Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(filter assets by room)</span></label>
+        <div class="form-group"><div style="display:flex;justify-content:space-between;align-items:center;"><label for="m-wo-loc" style="margin-bottom:0;">Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(filter by room)</span></label><button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-wo-loc').value=newLoc.roomName||newLoc.roomNumber||'';fillAssetDrop();})">+ New Room</button></div>
           <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Select section first, then type room…" oninput="clearTimeout(window._fadTimer);window._fadTimer=setTimeout(()=>fillAssetDrop(document.getElementById('m-wo-asset').value),200)" autocomplete="off"></div>
-        <div class="form-group"><label>Asset</label>
+        <div class="form-group"><label>Asset or room/general maintenance *</label>
           <select id="m-wo-asset" onchange="onWOAssetChange()"><option value="">Select section first…</option></select>
-          <div class="form-hint" id="wo-asset-hint" style="margin-top:3px;"></div></div>
+          <div class="form-hint" id="wo-asset-hint" style="margin-top:3px;"></div><div class="form-hint" id="wo-selected-asset"></div></div>
       </div>
       <div class="form-grid fg-2 mb14">
         <div class="form-group"><label>Priority</label>
@@ -2283,9 +2342,10 @@ resetIdleTimer();
           <div class="form-group"><label>Date Acquired <span style="font-weight:400;font-style:italic;">(optional)</span></label><input type="date" id="m-a-acquired"></div>
           <div class="form-group" style="grid-column:1/-1;"><label>Remarks</label><textarea id="m-a-remarks" style="min-height:44px;"></textarea></div>
           <div class="form-group">
-            <label>Location / Room *
-              <span style="font-weight:400;font-size:11px;color:var(--muted);"> — unique room (e.g. Room 101, ICU, OPD-A)</span>
-            </label>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <label for="m-a-loc" style="margin-bottom:0;">Location / Room * <span style="font-weight:400;font-size:11px;color:var(--muted);">(e.g. Room 101, ICU)</span></label>
+              <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-a-loc').value=newLoc.roomName||newLoc.roomNumber||'';if(document.getElementById('m-a-building'))document.getElementById('m-a-building').value=newLoc.building||'';if(document.getElementById('m-a-floor'))document.getElementById('m-a-floor').value=newLoc.floor||'';if(document.getElementById('m-a-roomno'))document.getElementById('m-a-roomno').value=newLoc.roomNumber||'';updateMasterLocationDatalist();})">+ New Room</button>
+            </div>
             <input type="text" id="m-a-loc" list="room-loc-list"
               placeholder="e.g. Room 101, Ward 3, ICU, Toilet CR-2…"
               oninput="updateRoomDatalist()">
@@ -2488,7 +2548,7 @@ resetIdleTimer();
 
 <!-- ══ ROOM VIEW MODAL ══════════════════════════════════════════ -->
 <div class="modal-overlay" id="mo-room-view" role="dialog" aria-modal="true" aria-label="Room View">
-  <div class="modal" style="max-width:800px;width:97vw;">
+  <div class="modal" style="max-width:1100px;width:97vw;">
     <div class="modal-header" style="background:linear-gradient(135deg,#1e3a5f,#0d5fa3);">
       <div>
         <h3 id="room-view-title" style="color:#fff;margin:0;">📍 Room View</h3>
@@ -2512,6 +2572,8 @@ resetIdleTimer();
               <th scope="col" style="padding:7px 10px;font-size:12px;">Qty</th>
               <th scope="col" style="padding:7px 10px;font-size:12px;">Condition</th>
               <th scope="col" style="padding:7px 10px;font-size:12px;">PMS Status</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Repair status</th>
+              <th scope="col" style="padding:7px 10px;font-size:12px;">Actions</th>
               <th scope="col" style="padding:7px 10px;font-size:12px;text-align:left;">Remarks</th>
             </tr></thead>
             <tbody id="room-view-assets"></tbody>
@@ -2542,6 +2604,94 @@ resetIdleTimer();
     </div>
     <div class="modal-footer">
       <button type="button" class="btn btn-ghost" onclick="closeModal('mo-room-view')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Buildings & Rooms Modal -->
+<div class="modal-overlay" id="mo-loc" role="dialog" aria-modal="true" aria-labelledby="mo-loc-title">
+  <div class="modal modal-wide">
+    <div class="modal-header">
+      <h3 id="mo-loc-title">Add Room / Space</h3>
+      <button type="button" class="modal-close" onclick="closeModal('mo-loc')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid fg-2 mb14">
+        <div class="form-group">
+          <label for="m-loc-bld">Building *</label>
+          <input type="text" id="m-loc-bld" list="loc-bld-list" placeholder="e.g. Main Hospital Building">
+          <datalist id="loc-bld-list"></datalist>
+        </div>
+        <div class="form-group">
+          <label for="m-loc-floor">Floor Level *</label>
+          <select id="m-loc-floor">
+            <option value="">Select floor…</option>
+            <option>Ground Floor</option>
+            <option>2nd Floor</option>
+            <option>3rd Floor</option>
+            <option>4th Floor</option>
+            <option>Basement</option>
+            <option>Roof Deck</option>
+            <option>Exterior / Grounds</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid fg-2 mb14">
+        <div class="form-group">
+          <label for="m-loc-roomno">Room / Ward Number</label>
+          <input type="text" id="m-loc-roomno" placeholder="e.g. OR-1, 204, ISO-01, W-1">
+        </div>
+        <div class="form-group">
+          <label for="m-loc-name">Room / Space Name *</label>
+          <input type="text" id="m-loc-name" placeholder="e.g. Operating Room 1 - Major Surgery">
+        </div>
+      </div>
+      <div class="form-grid fg-2 mb14">
+        <div class="form-group">
+          <label for="m-loc-dept">Department / Clinical Unit</label>
+          <input type="text" id="m-loc-dept" list="loc-dept-list" placeholder="e.g. Surgical Services, Nursing, Dietary">
+          <datalist id="loc-dept-list"></datalist>
+        </div>
+        <div class="form-group">
+          <label for="m-loc-type">Space Type</label>
+          <select id="m-loc-type">
+            <option>Operating Suite</option>
+            <option>Patient Ward</option>
+            <option>Intensive Care Unit (ICU)</option>
+            <option>Outpatient Clinic</option>
+            <option>Emergency Room (ER)</option>
+            <option>Laboratory / Diagnostic</option>
+            <option>Pharmacy / Supplies</option>
+            <option>Office / Administrative</option>
+            <option>Plant / Utility / Engineering</option>
+            <option>Storage</option>
+            <option>Circulation / Hallway</option>
+            <option>Dietary / Kitchen</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-grid fg-2 mb14">
+        <div class="form-group">
+          <label for="m-loc-status">Status</label>
+          <select id="m-loc-status">
+            <option>Active</option>
+            <option>Under Renovation</option>
+            <option>Decommissioned</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="m-loc-beds">Bed Capacity <span style="font-weight:400;font-size:11px;color:var(--muted);">(for inpatient wards)</span></label>
+          <input type="number" id="m-loc-beds" min="0" placeholder="e.g. 12">
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="m-loc-remarks">Remarks / Notes</label>
+        <textarea id="m-loc-remarks" rows="2" placeholder="Facility notes, specific equipment restrictions, square meters, etc."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" onclick="closeModal('mo-loc')">Cancel</button>
+      <button type="button" class="btn btn-primary" onclick="saveLocation()">Save Space</button>
     </div>
   </div>
 </div>
@@ -3066,8 +3216,8 @@ function safeSrc(url){
 // ═══════════════════════════════════════════════════════════════
 
 
-const STORES=['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills']; // PATCHED: record-level Firestore collections remain the live operational stores
-let _memDB={wo:[],assets:[],inventory:[],issuance:[],waste:[],safety:[],projects:[],waterLogs:[],waterTank:[],effluent:[],medWasteProd:[],wwProd:[],censusLog:[],waterSettings:[],energyBills:[]}; // PATCHED: in-memory mirror fed from record-level cloud collections
+const STORES=['wo','assets','inventory','issuance','waste','safety','projects','waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills','locations']; // PATCHED: record-level Firestore collections remain the live operational stores
+let _memDB={wo:[],assets:[],inventory:[],issuance:[],waste:[],safety:[],projects:[],waterLogs:[],waterTank:[],effluent:[],medWasteProd:[],wwProd:[],censusLog:[],waterSettings:[],energyBills:[],locations:[]}; // PATCHED: in-memory mirror fed from record-level cloud collections
 let _cleanStoreState=Object.create(null); // PATCHED: pre-mutation snapshot for version stamping — survives in-place mutations by callers
 let _storageMode='firebase-loading'; // PATCHED: Firebase-only status mode
 let _saveTimer=null;
@@ -3087,6 +3237,10 @@ let _fbRecentlyFlushed=Object.create(null); // PATCHED: per-store cooldown times
 let _fbListenersStarted=false; // PATCHED: keep one stable Firestore listener set alive instead of tearing listeners down around every save
 let _fbAllFromCache=false; // PATCHED: true when Firestore listeners report cache-only — navigator.onLine is unreliable on Windows
 let _fbLastServerSnapshot=0; // FIX: timestamp of last non-cached Firestore snapshot — used for real connectivity detection
+const _legacyFallbackStores=new Set();
+function prepareLegacyRows(store,rows){
+  return rows.map(r=>({...r,_docId:r._docId||(store==='waterSettings'?'current':store==='censusLog'?r.date:'legacy_'+store+'_'+r.id)}));
+}
 
 function cloneForFirebase(value){ // PATCHED: snapshot write payloads so later mutations do not rewrite stale references
   return value==null ? value : JSON.parse(JSON.stringify(value));
@@ -3159,7 +3313,7 @@ function normalizeStoreArray(store, arr){ // PATCHED: keep store ordering determ
   });
 }
 function validateNumericFields(value){
-  const fields=new Set(["qty","minLevel","qtyIssued","levelPct","tankLevel","tankVolume","volumeL","pumpDeliveredL","ratedLpm","lossPct","effectiveLpm","spikeRatio","minLevelAlertPct","linkedAssetId","invId","physicalPct","financialPct","refInpatient","refOutpatient","refER","refWatcher","refVisitor","refStaff","faucets","toilets","wwtpReturnFactor","pumpRuntimeHrDay","occupiedBeds","totalStaff","staffPresenceFactor","defInpatients","defOutpatients","defER","defWatchers","defVisitors","lpu","upd","lPerUse","usesPerDay"]);
+  const fields=new Set(["qty","minLevel","qtyIssued","levelPct","tankLevel","tankVolume","volumeL","pumpDeliveredL","ratedLpm","lossPct","effectiveLpm","spikeRatio","minLevelAlertPct","linkedAssetId","invId","physicalPct","financialPct","refInpatient","refOutpatient","refER","refWatcher","refVisitor","refStaff","faucets","toilets","wwtpReturnFactor","pumpRuntimeHrDay","occupiedBeds","totalStaff","staffPresenceFactor","defInpatients","defOutpatients","defER","defWatchers","defVisitors","lpu","upd","lPerUse","usesPerDay","capacityBeds"]);
   function visit(obj){if(!obj||typeof obj!=='object')return;for(const [key,val] of Object.entries(obj)){
     if(['__proto__','prototype','constructor'].includes(key))throw new Error('Unsafe record field.');
     if(fields.has(key)&&val!=null&&val!==''){
@@ -3367,7 +3521,8 @@ async function loadAllFirebaseData(){ // PATCHED: startup now reads store collec
   results.forEach(([store, arr])=>{
     if(arr===null) return; // PATCHED: load failed — keep existing _memDB data
     const useLegacy=!arr.length && !metaData.storeInitialized?.[store] && Array.isArray(legacy?.[store]);
-    applyStoreData(store, useLegacy ? legacy[store] : arr);
+    if(useLegacy)_legacyFallbackStores.add(store);else _legacyFallbackStores.delete(store);
+    applyStoreData(store, useLegacy ? prepareLegacyRows(store,legacy[store]) : arr);
   });
   applyMetaData(metaData);_fbReadError=null;_fbLoadedOnce=true;_fbAllFromCache=!navigator.onLine;
 }
@@ -3505,7 +3660,8 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
         }
         const arr=snap.docs.map(docSnap=>({ ...cloneForFirebase(docSnap.data()), _docId: docSnap.id }));
         const useLegacy=!arr.length && !storeInitialized(store) && Array.isArray(_fbLegacyParsed?.[store]);
-        applyStoreData(store, useLegacy ? cloneForFirebase(_fbLegacyParsed[store]) : arr);
+        if(useLegacy)_legacyFallbackStores.add(store);else _legacyFallbackStores.delete(store);
+        applyStoreData(store, useLegacy ? prepareLegacyRows(store,_fbLegacyParsed[store]) : arr);
         publishLiveUi();
       }, err=>{
         _fbReadError=err;console.warn(`HAMMS live listener failed for ${store}:`, err);
@@ -3522,6 +3678,10 @@ const DB={
   g(k){return _memDB[k]||[];},
   s(k,v){ // PATCHED: persist only explicit user changes for the target store collection
     requireOnlineWrite();
+    if(window._FB?.enabled!==false&&_legacyFallbackStores.has(k)){
+      _memDB[k]=cloneForFirebase(_cleanStoreState[k]||[]);
+      throw new Error('Legacy '+k+' records need administrator migration before editing or deletion. Open Data review to preview the migration.');
+    }
     const prev=Array.isArray(_cleanStoreState[k]) ? _cleanStoreState[k] : (Array.isArray(_memDB[k]) ? cloneForFirebase(_memDB[k]) : []);
     const supplied=Array.isArray(v)?cloneForFirebase(v):[];
     supplied.forEach(rec=>{
@@ -3614,6 +3774,7 @@ function canSave(){
 function requireOnlineWrite(){if(!canSave())throw new Error('An online signed-in session is required to save.');}
 function commitLocalChanges(changes){
   requireOnlineWrite();
+  if(window._FB?.enabled!==false){const legacy=Object.keys(changes).find(store=>_legacyFallbackStores.has(store));if(legacy)throw new Error('Legacy '+legacy+' records require administrator migration before this operation.');}
   const prepared=Object.fromEntries(Object.entries(changes).map(([store,rows])=>[store,prepareStoreArray(store,rows)]));
   const previousGroup=_mutationGroup;
   _mutationGroup='group-'+(++_operationGeneration);
@@ -3693,8 +3854,12 @@ async function syncToFirebase(){
             if(session!==_sessionGeneration||!navigator.onLine)throw new Error('Connection or session changed before saving.');
             const writes=chunk.map((op,i)=>{
               const snap=snapshots[i],remote=snap.exists()?snap.data():null;
+              // Independent deletion is idempotent; related stock transactions remain strict.
+              if(!remote&&!op.data&&!op.groups.length)return null;
               if(!!remote!==!!op.base || (remote&&((remote._v||0)!==(op.base?._v||0)))){
-                const error=new Error('Conflict: '+op.store+' changed on another device. Your form is retained; review the latest record before saving again.');error.code='hamms/conflict';throw error;
+                const reason=!remote?'was removed or has not been migrated':!op.base?'already exists on the server':'changed on another device';
+                const error=new Error('Conflict: '+op.store+' record '+op.key+' '+reason+'. Your form is retained; reload and review the latest record before saving again.');
+                error.code='hamms/conflict';error.record={store:op.store,key:op.key,baseVersion:op.base?._v??null,serverVersion:remote?._v??null,reason};throw error;
               }
               if(!op.data)return null;
               const data=cloneForFirebase(op.data);data._v=remote?._v||0;stampRecord(data);return data;
@@ -3718,7 +3883,7 @@ async function syncToFirebase(){
       _fbSyncError=null;document.getElementById('save-recovery')?.style.setProperty('display','none');setStorageChip('firebase-live');
     }catch(error){
       _fbSyncError=error;
-      const recovery=document.getElementById('save-recovery');if(recovery)recovery.style.display='block';
+      const recovery=document.getElementById('save-recovery');if(recovery){recovery.style.display='block';const detail=document.getElementById('save-recovery-detail');if(detail)detail.textContent=error.code==='hamms/conflict'?'Conflict: reload records, review your retained form, then save again.':error.code==='permission-denied'?'Save denied. Check staff access or administrator privileges.':'Save failed. Reconnect and retry, or reload records.';}
       setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
       throw error;
     }finally{
@@ -3740,6 +3905,7 @@ async function discardPendingChanges(){
 }
 function resetAuthSession(){
   ++_sessionGeneration;clearFirebaseListeners();
+  _legacyFallbackStores.clear();
   clearTimeout(_saveTimer);clearTimeout(_fbSyncTimer);clearTimeout(_renderRefreshTimer);
   _fbPendingStoreOps=Object.create(null);_fbPendingMetaMerge={};_fbLegacyParsed=null;
   _fbMetaState={storeInitialized:{}};_fbLoadedOnce=false;_fbRefreshInProgress=false;_fbAllFromCache=true;_fbLastServerSnapshot=0;
@@ -3749,6 +3915,8 @@ function resetAuthSession(){
   document.querySelectorAll('.modal-overlay.open').forEach(el=>el.classList.remove('open'));
   document.querySelectorAll('.modal-overlay input,.modal-overlay textarea').forEach(el=>{el.value='';});
   _woMaterials=[];document._woReport=null;_assetImageData=null;
+  window._assetRepairPreview=null;
+  for(const id of ['wo-link-review','conflict-comparison','data-review-changes','data-review-links','data-review-ambiguous','energy-factor-registry'])document.getElementById(id)?.replaceChildren();
   document.getElementById('save-recovery')?.style.setProperty('display','none');
 }
 
@@ -3946,7 +4114,7 @@ if(navigator.serviceWorker){
 // ═══════════════════════════════════════
 //  NAVIGATION
 // ═══════════════════════════════════════
-const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment',energy:'Energy Conservation',fuel:'Fuel Management System'}; // PATCH: effluent monitoring + production tabs + energy conservation + fuel monitoring
+const PAGE_TITLES={dashboard:'Dashboard',workorders:'Work Orders',assets:'Asset Registry',locations:'Buildings & Rooms',forecast:'WO Forecast',inventory:'Materials Inventory',issuance:'Issuance Log',waste:'Waste Management',wastefcast:'Waste Forecast',reports:'Reports & Export',instructions:'Instructions & Help',safety:'Safety Management',projects:'Project Monitoring',water:'Water Safety Log',watertank:'Water Supply Monitoring',effluent:'Effluent Monitoring',medwaste:'Med. Waste Treatment',wwprod:'Wastewater Treatment',energy:'Energy Conservation',fuel:'Fuel Management System'}; // PATCH: effluent monitoring + production tabs + energy conservation + fuel monitoring
 let _editWO=null,_editAsset=null,_editInv=null,_woMaterials=[],_editIssuance=null,_editEnergyBill=null; // PATCH: issuance log edit support + energy bill edit support
 const _editSnapshots=new Map(); // Map<store, {store, id, _v}> — optimistic concurrency per store
 function captureEditSnapshot(store,id){
@@ -4009,7 +4177,7 @@ function navigate(p, _noPush){
   const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
-  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetDate})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
+  const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},locations:()=>{populateLocationFilters();renderLocations();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetDate})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
   if(r[p])r[p]();
 }
 window.addEventListener('popstate',e=>{const pg=e.state?.page||new URLSearchParams(location.search).get('page')||'dashboard';navigate(pg,true);});
@@ -4262,6 +4430,8 @@ function isSameLocation(loc1, loc2){
     const norm2 = normalizeLocToken(s2);
     if(norm1 && norm2){
       if(norm1 === norm2) return true;
+      // A Dietary subroom must not inherit assets/repairs from the whole department.
+      if(/^dietary(?:\s|$)/.test(norm1)||/^dietary(?:\s|$)/.test(norm2))return false;
       if(isWordSubset(norm1, norm2) || isWordSubset(norm2, norm1)) return true;
     }
     return false;
@@ -4575,6 +4745,8 @@ function toggleDelayOther(){
 }
 // ── WO ────────────────────────────────
 function openWOModal(id=null){
+  clearTimeout(window._fadTimer);
+  document.getElementById('wo-selected-asset').textContent='';
   _editWO=id;_woMaterials=[];captureEditSnapshot('wo',id);
   document._woReport=null;
   document.getElementById('wo-report-preview-wrap').style.display='none';
@@ -4589,12 +4761,17 @@ function openWOModal(id=null){
     document.getElementById('delay-reason-wrap').style.display='none';
     document.getElementById('delay-other-wrap').style.display='none';
     const _woh=document.getElementById('wo-asset-hint');if(_woh)_woh.textContent='';
-    const _wdl=document.getElementById('wo-loc-list');if(_wdl)_wdl.innerHTML='';
+    if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
   }else{
     const w=DB.g('wo').find(x=>x.id===id);if(!w)return;
     document.getElementById('m-wo-section').value=w.section||'';
-    fillAssetDrop(w.asset);
     document.getElementById('m-wo-loc').value=w.location||'';
+    document.getElementById('m-wo-asset').innerHTML='<option value="">Select asset…</option>';
+    fillAssetDrop(w.asset);
+    const assetSelect=document.getElementById('m-wo-asset');
+    if(w.assetDocId){const i=[...assetSelect.options].findIndex(o=>o.dataset.docId===w.assetDocId);if(i>=0)assetSelect.selectedIndex=i;}
+    if(w.workScope==='room'||(!w.asset&&!w.assetDocId)){assetSelect.value='__room_general__';}
+    else if(w.asset&&!assetSelect.value){const o=new Option(w.asset+' (historical — select registered asset)',w.asset);o.dataset.docId=w.assetDocId||'';assetSelect.add(o);o.selected=true;}
     document.getElementById('m-wo-priority').value=w.priority||'High';
     document.getElementById('m-wo-status').value=w.status||'Open';
     document.getElementById('m-wo-dstart').value=w.dateStart||'';
@@ -4611,7 +4788,7 @@ function openWOModal(id=null){
     document.getElementById('delay-other-wrap').style.display=(w.delayReason==='Others')?'block':'none';
     _woMaterials=(w.materials||[]).map(m=>({...m}));
   }
-  renderMaterialRows();openModal('mo-wo');
+  onWOAssetChange();renderMaterialRows();openModal('mo-wo');
   setTimeout(updateWORemarksMeta, 50);
 }
 function fillAssetDrop(sel=''){
@@ -4627,6 +4804,8 @@ function fillAssetDrop(sel=''){
   const locRaw=(document.getElementById('m-wo-loc')?.value||'').trim();
   const loc=locRaw.toLowerCase();
   const el=document.getElementById('m-wo-asset');
+  const selectedDocId=el?.selectedOptions[0]?.dataset.docId||'';
+  const selectedRoom=el?.selectedOptions[0]?.dataset.workScope==='room';
   const hint=document.getElementById('wo-asset-hint');
   const locEl=document.getElementById('m-wo-loc');
   let all=DB.g('assets');
@@ -4698,6 +4877,8 @@ function fillAssetDrop(sel=''){
   el.innerHTML='<option value="">'+
     (assets.length?'Select asset ('+assets.length+' found)…':'— No assets match this location —')+
     '</option>';
+  const roomOption=new Option('Room/general maintenance (no individual asset)','__room_general__');
+  roomOption.dataset.workScope='room';roomOption.selected=selectedRoom;el.add(roomOption);
   assets.forEach(a=>{
     const o=document.createElement('option');
     o.value=a.name;
@@ -4707,10 +4888,11 @@ function fillAssetDrop(sel=''){
     const typLabel=a.assetClass?' ['+a.assetClass+']':'';
     o.textContent=code+' – '+a.name+typLabel+locLabel;
     o.dataset.location=a.location||a.roomName||a.roomNumber||'';
-    if(a.name===sel)o.selected=true;
+    o.dataset.docId=a._docId||'';
+    if(sel&&(selectedDocId?a._docId===selectedDocId:assets.filter(x=>x.name===sel).length===1&&a.name===sel))o.selected=true;
     el.appendChild(o);
   });
-  if(sel)el.value=sel;
+  if(sel&&!el.value&&!selectedDocId&&assets.filter(a=>a.name===sel).length===1)el.value=sel;
 
   // ── Step 5: hint feedback ─────────────────────────────────
   if(hint){
@@ -4727,15 +4909,28 @@ function fillAssetDrop(sel=''){
       hint.textContent='';
     }
   }
+  onWOAssetChange();
 }
 function onWOAssetChange(){
   const el=document.getElementById('m-wo-asset');
   const locEl=document.getElementById('m-wo-loc');
   if(!el||!locEl)return;
   const opt=el.options[el.selectedIndex];
+  document.getElementById('wo-selected-asset').textContent=opt?.dataset.docId?'Selected: '+opt.textContent:opt?.dataset.workScope==='room'?'Room/general maintenance will appear in room history, without assigning it to an individual asset.':'';
   if(opt&&opt.dataset?.location&&!locEl.value.trim()){
     locEl.value=opt.dataset.location;
   }
+}
+function createAssetWorkOrder(id){
+  const asset=DB.g('assets').find(a=>a.id===id);
+  if(!asset?._docId||!asset.section){showToast('Check the registered asset identity and section first.','warning');return;}
+  closeModal('mo-room-view');closeModal('mo-history');
+  openWOModal();document.getElementById('m-wo-section').value=asset.section;
+  document.getElementById('m-wo-loc').value=asset.location||asset.roomName||asset.roomNumber||'';
+  fillAssetDrop();const select=document.getElementById('m-wo-asset');
+  const index=[...select.options].findIndex(o=>o.dataset.docId===asset._docId);
+  if(index<0){showToast('Asset is unavailable in this section/location. Check its registration.','warning');return;}
+  select.selectedIndex=index;onWOAssetChange();
 }
 function addMaterialRow(){
   const inv=DB.g('inventory');
@@ -4766,6 +4961,12 @@ function saveWO(){
   let _hasErr=false;
   if(!sec){showFieldError('m-wo-section','Section is required.');_hasErr=true;}
   if(!desc){showFieldError('m-wo-desc','Description is required.');_hasErr=true;}
+  const assetOption=document.getElementById('m-wo-asset').selectedOptions[0];
+  const roomWork=assetOption?.dataset.workScope==='room';
+  const registeredAsset=DB.g('assets').find(a=>a._docId&&a._docId===assetOption?.dataset.docId);
+  if(!roomWork&&!registeredAsset){showFieldError('m-wo-asset','Select a registered asset, or explicitly choose room/general maintenance.');_hasErr=true;}
+  if(roomWork&&!document.getElementById('m-wo-loc').value.trim()){showFieldError('m-wo-loc','Location is required for room/general maintenance.');_hasErr=true;}
+  if(registeredAsset&&registeredAsset.section&&registeredAsset.section!==sec){showFieldError('m-wo-asset','Selected asset belongs to another section. Select it again.');_hasErr=true;}
   if(_hasErr)return;
   const inv=cloneForFirebase(DB.g('inventory'));
   const wos=cloneForFirebase(DB.g('wo'));
@@ -4799,7 +5000,8 @@ function saveWO(){
   });
 
   let woLoc=(document.getElementById('m-wo-loc').value||'').trim();
-  const woAsset=document.getElementById('m-wo-asset').value;
+  const woAsset=roomWork?'':registeredAsset.name;
+  const selectedAsset=document.getElementById('m-wo-asset').selectedOptions[0];
   if(!woLoc&&woAsset){
     const selAsset=DB.g('assets').find(a=>a.name===woAsset&&(!sec||a.section===sec));
     if(selAsset)woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
@@ -4807,6 +5009,8 @@ function saveWO(){
   const o={
     id:newWoId,_docId:newWoDocId,code:newWoCode,section:sec,
     asset:woAsset,
+    assetDocId:selectedAsset?.dataset.docId||null,
+    workScope:roomWork?'room':'asset',
     location:woLoc,
     priority:document.getElementById('m-wo-priority').value,
     status:document.getElementById('m-wo-status').value,
@@ -4822,7 +5026,7 @@ function saveWO(){
     createdAt:_editWO?wos.find(x=>x.id===_editWO)?.createdAt:today()
   };
   if(_editWO){const idx=wos.findIndex(x=>x.id===_editWO);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-wo');return;}wos[idx]=o;}else wos.push(o);
-  commitLocalChanges({inventory:inv,issuance:issuanceLog,wo:wos});closeModal('mo-wo');renderWO();renderDash();updateInvAlerts();showToast('Work order saved.');
+  commitLocalChanges({inventory:inv,issuance:issuanceLog,wo:wos});closeModal('mo-wo');renderWO();renderAssets();renderDash();updateInvAlerts();showToast('Work order saved.');
 }
 async function delRecord(store,id,label,...renderFns){if(!await confirmDialog('Delete this '+label+'? This action cannot be undone.',{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;DB.s(store,DB.g(store).filter(x=>x.id!==id));await flushAll();renderFns.forEach(fn=>fn?.());showToast(label+' deleted.','info');}
 async function delWO(id){
@@ -4847,12 +5051,55 @@ async function delWO(id){
 
 
 async function delAsset(id){return delRecord('assets',id,'asset',renderAssets);}
+function normalizedAssetName(name){
+  return String(name||'').toLowerCase().replace(/flourescent/g,'fluorescent').replace(/\bwatts?\b/g,'w').replace(/[^a-z0-9]/g,'');
+}
+function lightingClassification(name){
+  const n=String(name||'').toLowerCase().replace(/flourescent/g,'fluorescent');
+  if(/\bfluorescent\b/.test(n))return /\bstarter\b/.test(n)?'Fluorescent Starter':/\btube\b/.test(n)?'Fluorescent Tube':'Fluorescent Lamp';
+  return /\bbulb\b/.test(n)?'Light Bulb':null;
+}
+function validReportDate(value){
+  if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
+  const date=new Date(value+'T12:00:00Z');return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
+}
+function isActiveSafety(s){return !['Resolved','Verified','Closed'].includes(s.status);}
+function legacyAssetCandidates(w){
+  if(!w.asset||w.workScope==='room')return [];
+  const name=normalizedAssetName(w.asset);
+  return DB.g('assets').filter(a=>normalizedAssetName(a.name)===name&&(!w.section||!a.section||w.section===a.section)&&
+    (!w.location||[a.location,a.roomNumber,a.roomName].filter(Boolean).some(loc=>isSameLocation(w.location,loc)||String(loc).trim().toLowerCase()===w.location.trim().toLowerCase())));
+}
+function workOrderMatchesAsset(w,a){
+  if(w.workScope==='room')return false;
+  if(w.assetDocId)return w.assetDocId===a._docId;
+  const candidates=legacyAssetCandidates(w);
+  return candidates.length===1&&candidates[0]._docId===a._docId;
+}
+function assetRepairStatus(asset){
+  const count=DB.g('wo').filter(w=>workOrderMatchesAsset(w,asset)).length;
+  return count?count+' linked work order'+(count===1?'':'s'):'No recorded repairs';
+}
+function workOrderLinkIssues(){
+  return DB.g('wo').filter(w=>w.workScope!=='room').flatMap(w=>{
+    if(w.assetDocId&&DB.g('assets').some(a=>a._docId===w.assetDocId))return [];
+    const candidates=legacyAssetCandidates(w);
+    const reason=w.assetDocId?'Referenced asset is missing':!w.asset?'Choose asset or room/general maintenance':candidates.length===1?'Stable asset link not saved':candidates.length>1?'Multiple matching assets':'No matching registered asset';
+    return [{id:w.id,code:w.code||'WO-'+w.id,asset:w.asset||'—',location:w.location||'—',reason}];
+  });
+}
+function reviewWorkOrderLinks(){
+  const issues=workOrderLinkIssues();
+  document.getElementById('wo-link-review').innerHTML=issues.length?issues.map(w=>`<div class="card"><div class="card-body"><strong>${escapeHTML(w.code)}</strong><p>${escapeHTML(w.asset)} · ${escapeHTML(w.location)}</p><p>${escapeHTML(w.reason)}</p><button class="btn btn-outline" onclick="closeModal('mo-wo-links');openWOModal(${w.id})">Review work order</button></div></div>`).join(''):'<p>No unresolved asset links.</p>';
+  openModal('mo-wo-links');
+}
 function viewHistory(idOrName){
   let name=idOrName;
   let targetAsset=null;
   if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);targetAsset=a;name=a?a.name:'';}
   const assetLocs=targetAsset?[targetAsset.location,targetAsset.roomNumber,targetAsset.roomName,targetAsset.building].filter(Boolean):[];
   const wos=DB.g('wo').filter(w=>{
+    if(targetAsset)return workOrderMatchesAsset(w,targetAsset);
     if(w.asset!==name) return false;
     if(!assetLocs.length) return true;
     const woLoc=(w.location||'').trim();
@@ -4861,7 +5108,7 @@ function viewHistory(idOrName){
   });
   const locSuffix=targetAsset&&(targetAsset.roomNumber||targetAsset.location)?' ('+(targetAsset.roomNumber||targetAsset.location)+')':'';
   document.getElementById('mo-history-title').textContent='Repair History – '+name+locSuffix;
-  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
+  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):`<tr><td colspan="8" class="empty">No recorded repairs for this asset. Registration does not create a repair record.${targetAsset?`<div><button class="btn btn-outline" onclick="createAssetWorkOrder(${targetAsset.id})">Create work order</button></div>`:''}</td></tr>`;
   openModal('mo-history');
 }
 
@@ -5126,9 +5373,15 @@ function importAssetCSV(e){
         'freq':     ['frequencydays','frequency','maintfrequencydays','maintenancefrequencydays','frequencymaintdays'],
         'watts':    ['ratedwatts','watts','ratedpower'],
         'hp':       ['hp','horsepower'],
-        'ophrs':    ['ophoursday','ophours','operatinghoursday','avgusetime'],
+        'ophrs':    ['ophoursday','ophours','operatinghoursday','avgusetime','autohrsday'],
         'opdays':   ['opdaysmonth','opdays','operatingdays'],
         'dutytype': ['dutytype','duty','dutytype'],
+        'docid': ['recorddocid','docid'],
+        'assetcode': ['assetcode','assetid'],
+        'maincategory': ['maincategory'],
+        'assetclass': ['assetclass'],
+        'assettype': ['assettype'],
+        'loadfactor': ['loadfactor','demandfactor'],
         'remarks':  ['remarks','notes']
       };
       return (aliases[n]||[n]).includes(h);
@@ -5140,40 +5393,45 @@ function importAssetCSV(e){
       lastmaint:hf('lastmaint'),freq:hf('freq'),
       watts:hf('watts'),hp:hf('hp'),
       ophrs:hf('ophrs'),opdays:hf('opdays'),
-      dutytype:hf('dutytype'),remarks:hf('remarks')
+      dutytype:hf('dutytype'),remarks:hf('remarks'),docid:hf('docid'),assetcode:hf('assetcode'),maincategory:hf('maincategory'),assetclass:hf('assetclass'),assettype:hf('assettype'),loadfactor:hf('loadfactor')
     };
     if(idx.name<0){showToast('CSV must have an Asset_Name column.','warning');return;}
-    const assets=cloneForFirebase(DB.g('assets'));let added=0;
+    const assets=cloneForFirebase(DB.g('assets'));let added=0,updated=0;
     const _usedIds=new Set(assets.map(x=>String(x.id||'')));
     for(let i=1;i<rawLines.length;i++){
       const row=parseCSVLine(rawLines[i]);
       const gv=j=>j>=0?row[j]||'':'';
-      const gn=j=>j>=0&&row[j]?parseFloat(row[j])||null:null;
+      const gn=j=>j>=0&&row[j]!==''&&row[j]!=null?(Number.isFinite(Number(row[j]))?Number(row[j]):null):null;
       const name=gv(idx.name).trim();if(!name)continue;
+      const docId=gv(idx.docid).trim();if(docId&&!/^[A-Za-z0-9_-]{1,150}$/.test(docId))throw new Error('Invalid asset document reference on row '+(i+1));
+      const existing=docId?assets.find(a=>a._docId===docId):null;
       const sec=gv(idx.section);
       const loc=gv(idx.location);
       const watts=gn(idx.watts);const hp=gn(idx.hp);
       const effectiveWatts=watts||(hp?hp*746:null);
-      const qty=parseInt(gv(idx.qty))||1;
+      const qty=gv(idx.qty)===''?1:Number(gv(idx.qty));if(!Number.isInteger(qty)||qty<0)throw new Error('Invalid asset quantity on row '+(i+1));
       const opDays=gn(idx.opdays);
       // Auto-detect hrs and demand from name
       const opHrs=gn(idx.ophrs)||0;
       const dutyType=gv(idx.dutytype)||'';
-      const df=DUTY_FACTOR[dutyType.toLowerCase().trim()]??0.80;
+      const df=gn(idx.loadfactor)??DUTY_FACTOR[dutyType.toLowerCase().trim()]??0.80;if(df<0||df>1)throw new Error('Load factor must be between 0 and 1.');
       const totalW=(effectiveWatts||0)*qty;
       const kwh=totalW>0&&opHrs>0&&opDays?parseFloat(((totalW/1000)*opHrs*opDays*df).toFixed(2)):null;
       const freqVal=parseInt(gv(idx.freq))||0;
-      const newId=generateUniqueNumericId(_usedIds);
+      const newId=existing?.id??generateUniqueNumericId(_usedIds);
       let roomNo='';
       if(loc){
         const rm=loc.match(/\b(?:room|rm|rm\.)\s*([0-9]+[a-z]?)\b/i);
         if(rm)roomNo=rm[1];
         else if(/^\d+[a-z]?$/i.test(loc.trim()))roomNo=loc.trim();
       }
-      const tempAsset={name,section:sec,mainCategory:'',assetClass:'',assetType:'',building:loc,location:loc,roomNumber:roomNo};
-      const assetCode=generateAssetCodeFull(tempAsset);
-      assets.push({
-        id:newId,name,section:sec,
+      const lighting=lightingClassification(name);
+      const tempAsset={id:newId,name,section:sec,mainCategory:gv(idx.maincategory)||existing?.mainCategory||(lighting?'Electrical':''),assetClass:gv(idx.assetclass)||existing?.assetClass||(lighting?'Lighting':''),assetType:gv(idx.assettype)||existing?.assetType||lighting||'',building:loc,location:loc,roomNumber:roomNo};
+      const assetCode=gv(idx.assetcode)||existing?.assetCode||generateAssetCodeFull(tempAsset,assets);
+      if(assets.some(a=>a.id!==newId&&a.assetCode===assetCode))throw new Error('Duplicate asset code on row '+(i+1));
+      const imported={
+        ...existing,...(docId?{_docId:docId}:{}),
+        id:newId,name,section:sec,mainCategory:tempAsset.mainCategory,assetClass:tempAsset.assetClass,assetType:tempAsset.assetType,
         location:loc,roomNumber:roomNo,roomName:loc,building:'',floor:'',
         brand:gv(idx.brand),serialNumber:gv(idx.serialno),serial:gv(idx.propertyno),
         condition:gv(idx.condition)||'Good',
@@ -5184,11 +5442,17 @@ function importAssetCSV(e){
         ratedWatts:effectiveWatts,hp:hp||null,
         opHoursDay:opHrs,opDaysMonth:opDays,demandFactor:df,dutyType:dutyType,
         estimatedKwhMonth:kwh,carbonEstimate:null
-      });
-      added++;
+      };
+      if(existing){
+        for(const [column,keys] of Object.entries({section:['section'],location:['location','roomNumber','roomName','building'],brand:['brand'],serialno:['serialNumber'],propertyno:['serial'],condition:['condition'],qty:['qty'],acquired:['acquired'],lastmaint:['lastMaint','lastMaintDate'],freq:['maintFrequency'],watts:['ratedWatts'],hp:['hp'],ophrs:['opHoursDay'],opdays:['opDaysMonth'],loadfactor:['demandFactor'],dutytype:['dutyType'],remarks:['remarks']})){
+          if(idx[column]<0)keys.forEach(key=>{if(existing[key]!==undefined)imported[key]=existing[key];});
+        }
+      }
+      imported.estimatedKwhMonth=calcAssetKwh(imported);
+      if(existing){assets[assets.findIndex(a=>a.id===newId)]=imported;updated++;}else{assets.push(imported);added++;}
     }
     DB.s('assets',assets);await flushAll();
-    showToast(added+' asset(s) imported successfully.','success');
+    showToast(added+' asset(s) added, '+updated+' updated successfully.','success');
     renderAssets();renderDash();
     e.target.value='';
     }catch(error){showToast('Import failed: '+error.message,'error',8000);}
@@ -5283,7 +5547,7 @@ function renderForecast(){
   const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping','Biomedical'];
   const SEC_COLORS={CMW:'#e67e22',Electrical:'#1e6fb5',Plumbing:'#1f9452',Mechanical:'#6e3fa3',Housekeeping:'#cc3333',Biomedical:'#1b5e20'};
   const avgBySec={};
-  secs.forEach(s=>{const c=wos.filter(w=>w.section===s&&(w.status==='Closed'||w.status==='Completed')&&w.dateStart&&w.dateEnd);avgBySec[s]=c.length?Math.round(c.reduce((sum,w)=>sum+diffDays(w.dateStart,w.dateEnd),0)/c.length):null;});
+  secs.forEach(s=>{const c=wos.filter(w=>w.section===s&&(w.status==='Closed'||w.status==='Completed')&&validReportDate(w.dateStart)&&validReportDate(w.dateEnd)&&diffDays(w.dateStart,w.dateEnd)>=0);avgBySec[s]=c.length?Math.round(c.reduce((sum,w)=>sum+diffDays(w.dateStart,w.dateEnd),0)/c.length):null;});
   const maxAvg=Math.max(...Object.values(avgBySec).filter(v=>v!==null),1);
   document.getElementById('fc-section-bars').innerHTML=secs.map(s=>{const v=avgBySec[s];const pct=v?Math.round((v/maxAvg)*100):0;return`<div class="fbar"><span class="fbar-label">${s}</span><div class="fbar-track"><div class="fbar-fill" style="width:${pct}%;background:${SEC_COLORS[s]};"></div></div><span class="fbar-val">${v!==null?v+'d':'N/A'}</span></div>`;}).join('');
   // Delay reason summary — group overdue WOs by delay reason
@@ -5304,12 +5568,12 @@ function renderForecast(){
   }
   const open=wos.filter(w=>w.status==='Open'||w.status==='In Progress');
   document.getElementById('fc-tbody').innerHTML=open.length?open.map(w=>{
-    const avg=avgBySec[w.section];
-    const proj=w.dateStart&&avg?addDays(w.dateStart,avg):null;
+    const avg=avgBySec[w.section]??null;
+    const proj=validReportDate(w.dateStart)&&avg!==null?addDays(w.dateStart,avg):null;
     const isOvr=overdue(w);
     const late=isOvr||(proj&&proj<today());
-    const forecastFlag=isOvr?'<span class="bs bs-overdue">Overdue</span>':(late?'<span class="bs bs-overdue">Past Due</span>':'<span class="bs bs-inprog">On Track</span>');
-    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
+    const forecastFlag=isOvr?'<span class="bs bs-overdue">Overdue</span>':(late?'<span class="bs bs-overdue">Past forecast date</span>':!proj?'<span class="bs">Insufficient data</span>':'<span class="bs bs-inprog">Within forecast</span>');
+    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||escapeHTML(w.description)||'Location work'}<div class="report-note">${escapeHTML(w.location||'')}</div></td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No open work orders to forecast.</td></tr>';
 }
 
@@ -5433,15 +5697,15 @@ function renderWasteFcast(){
 function dl(blob,name){const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);} // M-7 FIX: revoke blob URL to prevent memory leak
 function csvRow(r){return r.map(c=>{const v=(c===0||c===false)?c:(Number.isNaN(c)||c==null?'':c);return '"'+String(v).replace(/"/g,'""')+'"';}).join(',');}
 function exportCSV(type){
-  if(type==='wo'){const h=['WO#','Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Duration (days)','Assigned','Materials Used','Delay Reason','Delay Reason Other','Remarks'];const rows=DB.g('wo').map(w=>[w.code||('WO-'+String(w.id).padStart(4,'0')),w.section,w.asset,w.location,w.description,w.priority,(overdue(w)?'Overdue':w.status),w.dateStart,w.targetCompletionDate||'',w.dateEnd,(w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd):''),w.assigned,(w.materials||[]).map(m=>m.name+'×'+m.qty).join('; '),w.delayReason||'',w.delayReasonOther||'',w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WorkOrders_'+today()+'.csv');}
+  if(type==='wo'){const h=['WO#','Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Duration (days)','Assigned','Materials Used','Delay Reason','Delay Reason Other','Remarks','Asset Doc ID','Work Scope'];const rows=DB.g('wo').map(w=>[w.code||('WO-'+String(w.id).padStart(4,'0')),w.section,w.asset,w.location,w.description,w.priority,(overdue(w)?'Overdue':w.status),w.dateStart,w.targetCompletionDate||'',w.dateEnd,(w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd):''),w.assigned,(w.materials||[]).map(m=>m.name+'×'+m.qty).join('; '),w.delayReason||'',w.delayReasonOther||'',w.remarks,w.assetDocId||'',w.workScope||'']);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WorkOrders_'+today()+'.csv');}
   else if(type==='assets'){
-    const h=['Asset ID','Asset Name','Section','Location / Room','Quantity','Brand / Model','Serial No.','Property No.','Condition','Date Acquired','Maintenance Frequency (days)','Last Maintenance','Next Maintenance','PMS Status','Est. kWh/Month','Rated Watts','Auto Hrs/Day','Op Days/Month','Remarks'];
+    const h=['Asset ID','Asset Name','Section','Location / Room','Quantity','Brand / Model','Serial No.','Property No.','Condition','Date Acquired','Maintenance Frequency (days)','Last Maintenance','Next Maintenance','PMS Status','Est. kWh/Month','Rated Watts','Auto Hrs/Day','Op Days/Month','Remarks','Record Doc ID','Main Category','Asset Class','Asset Type','Load Factor','Legacy Codes'];
     const rows=DB.g('assets').map(a=>{
       const freqDays=a.maintFrequency?a.maintFrequency:'No Schedule';
       const pms=getPMSStatus(a);
       const loc=a.location||a.roomNumber||a.roomName||'';
       const kwh=a.estimatedKwhMonth!=null?a.estimatedKwhMonth.toFixed(2):'';
-      return[a.assetCode||('ASS-'+String(a.id).padStart(3,'0')),a.name,a.section,loc,a.qty||1,a.brand||'',a.serialNumber||'',a.serial||'',a.condition||'',a.acquired||'',freqDays,a.lastMaintDate||a.lastMaint||'',a.nextMaintDate||'',pms,kwh,a.ratedWatts||'',a.opHoursDay||'',a.opDaysMonth||'',a.remarks||''];
+      return[a.assetCode||('ASS-'+String(a.id).padStart(3,'0')),a.name,a.section,loc,a.qty??1,a.brand||'',a.serialNumber||'',a.serial||'',a.condition||'',a.acquired||'',freqDays,a.lastMaintDate||a.lastMaint||'',a.nextMaintDate||'',pms,kwh,a.ratedWatts??'',a.opHoursDay??'',a.opDaysMonth??'',a.remarks||'',a._docId||'',a.mainCategory||'',a.assetClass||'',a.assetType||'',a.demandFactor??'',(a.legacyCodes||[]).join('; ')];
     });
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Assets_'+today()+'.csv');
   }
@@ -5456,9 +5720,25 @@ function exportCSV(type){
   }
   else if(type==='issuance'){const h=['Log #','Date','Item','Category','Unit','Qty Issued','Issued To','WO Reference','Section','Remarks'];const rows=DB.g('issuance').filter(l=>l.qtyIssued>0).map(l=>[l.code||('ISS-'+String(l.id).padStart(4,'0')),l.date,l.description,l.category,l.unit,l.qtyIssued,l.issuedTo,l.woRef,l.section,l.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Issuance_'+today()+'.csv');}
   else if(type==='waste'){const h=['Entry#','Date','Waste Type','Volume (kg)','Contractor/Hauler','EMB Status','Remarks'];const rows=DB.g('waste').map(w=>[w.code||('WE-'+String(w.id).padStart(4,'0')),w.date,w.type,w.volume,w.contractor,w.emb,w.remarks]);dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_WasteLog_'+today()+'.csv');}
+  else if(type==='locations'){
+    const h=['Location Code','Building','Floor','Room #','Room Name / Space','Department','Space Type','Status','Bed Capacity','Remarks'];
+    const rows=DB.g('locations').map(l=>[
+      l.code||('LOC-'+String(l.id).padStart(3,'0')),
+      l.building||'',
+      l.floor||'',
+      l.roomNumber||'',
+      l.roomName||'',
+      l.department||'',
+      l.type||'',
+      l.status||'',
+      l.capacityBeds??'',
+      l.remarks||''
+    ]);
+    dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Locations_'+today()+'.csv');
+  }
 }
 function exportJSON(){
-  const d={..._memDB,inpatientToday:_memDB.inpatientToday||0,exportedAt:new Date().toISOString(),system:'HAMMS v1.5 DOPMC GSD'};
+  const d={..._memDB,energySettings:getEnergySettings(),inpatientToday:_memDB.inpatientToday||0,exportedAt:new Date().toISOString(),system:'HAMMS v2.11 DOPMC GSD'};
   dl(new Blob([JSON.stringify(d,null,2)],{type:'application/json'}),'HAMMS_Backup_'+today()+'.json');
   if(window._FB?.enabled===false||(window._FB?.auth?.currentUser&&_fbLoadedOnce&&!_fbReadError&&navigator.onLine&&!_fbAllFromCache)){
     _fbMetaState.lastExportDate=new Date().toISOString();queueScalarSync('lastExportDate',_fbMetaState.lastExportDate);
@@ -5470,6 +5750,7 @@ function requireAdministrator(){
 }
 function validateBackup(d){
   if(!d||Array.isArray(d)||typeof d!=='object'||!String(d.system||'').startsWith('HAMMS'))throw new Error('Invalid HAMMS backup.');
+  d.locations = Array.isArray(d.locations) ? d.locations : [];
   for(const store of STORES){
     if(!Array.isArray(d[store]))throw new Error('Backup is missing store: '+store);
     const ids=new Set(),keys=new Set();
@@ -5487,6 +5768,8 @@ function validateBackup(d){
   STORES.forEach(store=>prepareStoreArray(store,d[store]));
   JSON.stringify(d,(key,value)=>{if(['__proto__','constructor','prototype'].includes(key))throw new Error('Unsafe backup field.');return value;});
   if(d.inpatientToday!=null&&(!Number.isInteger(d.inpatientToday)||d.inpatientToday<0))throw new Error('Invalid census count.');
+  if(d.energySettings)validateEnergySettings(d.energySettings);
+  return d;
 }
 function applyParsed(d){
   validateBackup(d);requireAdministrator();
@@ -5498,6 +5781,7 @@ function applyParsed(d){
   if(d.inpatientToday!=null){_memDB.inpatientToday=d.inpatientToday;queueScalarSync('inpatientToday',d.inpatientToday);}
   if(d.personnel){_memDB.personnel=cloneForFirebase(d.personnel);queueScalarSync('personnel',d.personnel);}
   queueScalarSync('restoreAt',new Date().toISOString());
+  if(d.energySettings)queueScalarSync('energySettings',cloneForFirebase(d.energySettings));
   _replacementMeta=cloneForFirebase(_fbPendingMetaMerge);
 }
 function importJSON(e){
@@ -5617,7 +5901,7 @@ function generateAssetCode(mainCategory,building,floor,roomNo,overrideId){
   return generateAssetCodeFull({mainCategory,building,floor,roomNumber:roomNo,section:'',assetClass:'',assetType:''});
 }
 
-function generateAssetCodeFull(a){
+function generateAssetCodeFull(a,stagedAssets=DB.g('assets')){
   // Format: [AssetClass]-[Section]-[Location]-[No.]
   // Example: LB-ELEC-RM119CR-01
   let assetAbv = CLASS_ABV[a.assetType] || CLASS_ABV[a.assetClass];
@@ -5647,10 +5931,11 @@ function generateAssetCodeFull(a){
   const secAbv=SEC_ABV[a.section]||'GEN';
   const locAbv=buildLocAbv(a.building||a.location||a.roomName,a.floor,a.roomNumber||a.roomNo);
   const prefix=assetAbv+'-'+secAbv+'-'+locAbv;
-  // Sequential number: count existing assets with same prefix + 1
-  const existing=DB.g('assets').filter(x=>x.id!==a.id&&(x.assetCode||'').startsWith(prefix));
-  const seq=String(existing.length+1).padStart(2,'0');
-  return prefix+'-'+seq;
+  // PATCHED: staged imports and gaps cannot reuse codes; suffix avoids device collisions.
+  const existing=stagedAssets.filter(x=>x.id!==a.id&&(x.assetCode||'').startsWith(prefix+'-'));
+  const max=existing.reduce((n,x)=>Math.max(n,parseInt(x.assetCode.slice(prefix.length+1),10)||0),0);
+  const seq=String(max+1).padStart(2,'0');
+  return prefix+'-'+seq+'-'+crypto.randomUUID().slice(0,8).toUpperCase();
 }
 
 function getTypeAbv(mainCategory){
@@ -5843,7 +6128,6 @@ document.addEventListener('change',e=>{
 // ═══════════════════════════════════════
 // NEW: ENERGY COMPUTATION
 // ═══════════════════════════════════════
-const CO2_FACTOR=0.491; // kg CO2 per kWh — Philippine grid average
 
 // ── Auto-detect asset type from name ─────────────────────────────
 function detectAssetType(name){
@@ -5892,13 +6176,14 @@ const DUTY_FACTOR = {
 function computeEnergy(){
   const name  = document.getElementById('m-a-name')?.value||'';
   const detected = detectAssetType(name);
-  const qty   = parseInt(document.getElementById('m-a-qty')?.value)||1;
+  const qtyRaw=document.getElementById('m-a-qty')?.value;
+  const qty=qtyRaw==null||qtyRaw===''?1:Number(qtyRaw);
   let watts   = parseFloat(document.getElementById('m-a-watts')?.value||0);
   const hp    = parseFloat(document.getElementById('m-a-hp')?.value||0);
   if(!watts&&hp) watts=hp*746;
   const hrsEl = document.getElementById('m-a-ophrs');
   let hrs     = parseFloat(hrsEl?.value||0);
-  if(!hrs && detected && detected.hrs){
+  if((hrsEl?.value==null||hrsEl.value==='') && detected && detected.hrs){
     hrs = detected.hrs;
     if(hrsEl && !hrsEl.value){
       hrsEl.placeholder = detected.hrs;
@@ -5935,20 +6220,12 @@ function computeEnergy(){
 }
 
 function calcAssetKwh(a){
-  const qty=parseInt(a.qty||1,10)||1;
-  let w=parseFloat(a.ratedWatts||0);
-  if(!w&&a.hp)w=parseFloat(a.hp)*746;
-  let hrs=parseFloat(a.opHoursDay||0);
-  if(!hrs && a.name){
-    hrs=detectAssetType(a.name)?.hrs||0;
-  }
-  const days=parseFloat(a.opDaysMonth||0);
-  let df=(a.demandFactor!=null&&a.demandFactor!==''&&parseFloat(a.demandFactor)>0)?parseFloat(a.demandFactor):null;
-  if(df==null && a.name){
-    df=detectAssetType(a.name)?.df??0.80;
-  } else if(df==null){
-    df=0.80;
-  }
+  const number=(v,fallback)=>v==null||v===''?fallback:(Number.isFinite(Number(v))&&Number(v)>=0?Number(v):0);
+  const qty=number(a.qty,1);
+  const w=number(a.ratedWatts,number(a.hp,0)*746);
+  const hrs=number(a.opHoursDay,detectAssetType(a.name||'')?.hrs||0);
+  const days=number(a.opDaysMonth,0);
+  const df=Math.min(1,number(a.demandFactor,detectAssetType(a.name||'')?.df??0.80));
   return(w/1000)*hrs*days*df*qty;
 }
 
@@ -6021,11 +6298,12 @@ function openAssetModal(id=null){
   // PATCHED: reset frequency custom wrapper and linked pump options on new entries
   document.getElementById('freq-custom-wrap').style.display='none';
   setTimeout(()=>{ if(typeof populateLinkedPumpDropdown==='function') populateLinkedPumpDropdown(); },0);
+  if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
   computeEnergy();
 
   if(id){
     const a=DB.g('assets').find(x=>x.id===id);if(!a)return;
-    const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v||'';};
+    const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v??'';};
     sv('m-a-name',a.name);sv('m-a-loc',a.location);sv('m-a-brand',a.brand);
     sv('m-a-serial',a.serial);sv('m-a-serialno',a.serialNumber);
     sv('m-a-acquired',a.acquired);sv('m-a-lastmaint',a.lastMaintDate||a.lastMaint);
@@ -6034,7 +6312,7 @@ function openAssetModal(id=null){
     sv('m-a-building',a.building);sv('m-a-floor',a.floor);
     sv('m-a-roomno',a.roomNumber);sv('m-a-roomname',a.roomName);
     sv('m-a-dept',a.department);
-    sv('m-a-qty',a.qty||1);
+    sv('m-a-qty',a.qty??1);
     sv('m-a-loc',a.location||a.roomNumber||a.roomName||'');
     sv('m-a-watts',a.ratedWatts);sv('m-a-hp',a.hp);
     sv('m-a-ophrs',a.opHoursDay);sv('m-a-opdays',a.opDaysMonth);
@@ -6121,9 +6399,11 @@ function saveAsset(){
   let watts=gn('m-a-watts');
   const hp=gn('m-a-hp');
   if(!watts&&hp)watts=hp*746;
-  const qty2=parseInt(document.getElementById('m-a-qty')?.value)||1;
+  const qtyRaw=document.getElementById('m-a-qty')?.value;
+  const qty2=qtyRaw==null||qtyRaw===''?1:Number(qtyRaw);
+  if(!Number.isInteger(qty2)||qty2<0){showFieldError('m-a-qty','Quantity must be a nonnegative integer.');return;}
   const detected=detectAssetType(name);
-  const opHrs=gn('m-a-ophrs')||(detected?detected.hrs:0);
+  const opHrs=gv('m-a-ophrs')===''?(detected?detected.hrs:0):Number(gv('m-a-ophrs'));
   const opDays=gn('m-a-opdays');
   const dutyType=gv('m-a-duty-type');
   const demand=(dutyType&&DUTY_FACTOR[dutyType]!==undefined)?DUTY_FACTOR[dutyType]:(detected?detected.df:0.80);
@@ -6143,12 +6423,13 @@ function saveAsset(){
   const lastMaint=gv('m-a-lastmaint');
 
   const a={
+    ...existing,
     id:_editAsset||DB.nid('assets'),
     // Basic
     name,section:sec,location:locRaw,brand:gv('m-a-brand'),
     serial:gv('m-a-serial'),serialNumber:gv('m-a-serialno'),condition:gv('m-a-condition'),
     acquired:gv('m-a-acquired'),remarks:gv('m-a-remarks'),
-    qty:parseInt(document.getElementById('m-a-qty')?.value)||1,
+    qty:qty2,
     assetCode,
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
@@ -6162,7 +6443,7 @@ function saveAsset(){
     ratedWatts:watts,hp:hp,opHoursDay:opHrs,opDaysMonth:opDays,
     demandFactor:demand,dutyType:dutyType,
     tempSetting:gn('m-a-tempset'),opMode:gv('m-a-opmode'),
-    estimatedKwhMonth:kwh?parseFloat(kwh.toFixed(2)):null,
+    estimatedKwhMonth:parseFloat(kwh.toFixed(2)),
     carbonEstimate:null,
     // Image
     imageData:_assetImageData||existing?.imageData||null,
@@ -6228,34 +6509,15 @@ function renderAssets(){
   }
   assets.sort((a,b)=>b.id-a.id);
   const wos=DB.g('wo');
-  // FIX: pre-build WO count map to avoid O(n²) scan
+  // PATCHED: counts and history resolve the same stable asset relationship.
   const woCntMap=Object.create(null);
   wos.forEach(w=>{
-    if(!w.asset)return;
-    woCntMap[w.asset]=(woCntMap[w.asset]||0)+1;
-    const loc=(w.location||'').trim().toLowerCase();
-    if(loc){
-      const k=w.asset+':::'+loc;
-      woCntMap[k]=(woCntMap[k]||0)+1;
-    }
+    if(w.workScope==='room')return;
+    const candidates=w.assetDocId?DB.g('assets').filter(a=>a._docId===w.assetDocId):legacyAssetCandidates(w);
+    if(candidates.length===1){const key=candidates[0]._docId;woCntMap[key]=(woCntMap[key]||0)+1;}
   });
   document.getElementById('asset-tbody').innerHTML=assets.length?assets.map(a=>{
-    const aLocs=[a.location,a.roomNumber,a.roomName].filter(Boolean);
-    let cnt=0;
-    if(aLocs.length){
-      const matchedKeys=new Set();
-      Object.keys(woCntMap).forEach(k=>{
-        if(!k.startsWith(a.name+':::'))return;
-        const kLoc=k.slice((a.name+':::').length);
-        if(!matchedKeys.has(k)&&aLocs.some(al=>al.toLowerCase().trim()===kLoc||isSameLocation(kLoc,al))){
-          cnt+=woCntMap[k];
-          matchedKeys.add(k);
-        }
-      });
-      if(woCntMap[a.name+':::']) cnt+=woCntMap[a.name+':::'];
-    }else{
-      cnt=woCntMap[a.name]||0;
-    }
+    const cnt=woCntMap[a._docId]||0;
     const pms=getPMSStatus(a);
     const loc=[a.roomName,a.roomNumber,a.building].filter(Boolean).join(' · ')||a.location||'—';
     const catDisplay=[a.mainCategory,a.assetClass].filter(Boolean).join(' / ')||a.section||'—';
@@ -6269,7 +6531,7 @@ function renderAssets(){
       <td style="font-weight:600;">${escapeHTML(a.name)}${imgBtn?'&nbsp;'+imgBtn:''}</td>
       <td style="font-size:12px;">${escapeHTML(catDisplay)}</td>
       <td>${locCell}</td>
-      <td style="text-align:center;font-weight:600;">${a.qty||1}</td>
+      <td style="text-align:center;font-weight:600;">${a.qty??1}</td>
       <td>${escapeHTML(a.brand)||'—'}</td>
       <td>${condBadge(a.condition)}</td>
       <td>${pmsBadge(pms)}</td>
@@ -6279,11 +6541,466 @@ function renderAssets(){
       <td style="font-size:12px;max-width:140px;white-space:normal;color:var(--muted);">${escapeHTML(a.remarks)||'—'}</td>
       <td style="white-space:nowrap;">
         <button type="button" class="btn btn-sm btn-outline" onclick="viewHistory(${a.id})">History</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="createAssetWorkOrder(${a.id})">Create work order</button>${!cnt?'<div class="form-hint">No recorded repairs</div>':''}
         <button type="button" class="btn btn-sm btn-ghost" onclick="openAssetModal(${a.id})">Edit</button>
         <button type="button" class="btn btn-sm btn-danger" onclick="delAsset(${a.id})">Del</button>
       </td>
     </tr>`;
   }).join(''):'<tr><td colspan="13" class="empty">No assets found. Click <strong>+ Register Asset</strong> or import a CSV to get started.</td></tr>';
+}
+
+// ═══════════════════════════════════════
+// BUILDINGS & ROOMS (LOCATIONS) MODULE
+// ═══════════════════════════════════════
+let _editLocation = null;
+let _locSelectCallback = null;
+
+function openLocationModal(id = null, callback = null){
+  _editLocation = id;
+  _locSelectCallback = typeof callback === 'function' ? callback : null;
+  captureEditSnapshot('locations', id);
+
+  document.querySelectorAll('#mo-loc .field-error').forEach(el => el.remove());
+  document.querySelectorAll('#mo-loc .input-error').forEach(el => el.classList.remove('input-error'));
+
+  const titleEl = document.getElementById('mo-loc-title');
+  if(titleEl) titleEl.textContent = id ? 'Edit Room / Space' : 'Add Room / Space';
+
+  const bldInput = document.getElementById('m-loc-bld');
+  const floorInput = document.getElementById('m-loc-floor');
+  const roomnoInput = document.getElementById('m-loc-roomno');
+  const nameInput = document.getElementById('m-loc-name');
+  const deptInput = document.getElementById('m-loc-dept');
+  const typeInput = document.getElementById('m-loc-type');
+  const statusInput = document.getElementById('m-loc-status');
+  const bedsInput = document.getElementById('m-loc-beds');
+  const remarksInput = document.getElementById('m-loc-remarks');
+
+  if(id){
+    const loc = DB.g('locations').find(x => x.id === id);
+    if(!loc){
+      showToast('Record not found — it may have been deleted.', 'error');
+      return;
+    }
+    if(bldInput) bldInput.value = loc.building || '';
+    if(floorInput) floorInput.value = loc.floor || '';
+    if(roomnoInput) roomnoInput.value = loc.roomNumber || '';
+    if(nameInput) nameInput.value = loc.roomName || '';
+    if(deptInput) deptInput.value = loc.department || '';
+    if(typeInput) typeInput.value = loc.type || 'Patient Ward';
+    if(statusInput) statusInput.value = loc.status || 'Active';
+    if(bedsInput) bedsInput.value = loc.capacityBeds != null ? loc.capacityBeds : '';
+    if(remarksInput) remarksInput.value = loc.remarks || '';
+  } else {
+    if(bldInput) bldInput.value = 'Main Hospital Building';
+    if(floorInput) floorInput.value = 'Ground Floor';
+    if(roomnoInput) roomnoInput.value = '';
+    if(nameInput) nameInput.value = '';
+    if(deptInput) deptInput.value = '';
+    if(typeInput) typeInput.value = 'Patient Ward';
+    if(statusInput) statusInput.value = 'Active';
+    if(bedsInput) bedsInput.value = '';
+    if(remarksInput) remarksInput.value = '';
+  }
+
+  updateMasterLocationDatalist();
+  openModal('mo-loc');
+}
+
+function saveLocation(){
+  if(!canSave()) return;
+
+  const gv = fid => (document.getElementById(fid)?.value || '');
+  const gn = fid => { const v = parseFloat(document.getElementById(fid)?.value); return isNaN(v) ? null : v; };
+
+  document.querySelectorAll('#mo-loc .field-error').forEach(el => el.remove());
+  document.querySelectorAll('#mo-loc .input-error').forEach(el => el.classList.remove('input-error'));
+
+  const building = (gv('m-loc-bld') || '').trim();
+  const floor = (gv('m-loc-floor') || '').trim();
+  const roomNumber = (gv('m-loc-roomno') || '').trim();
+  const roomName = (gv('m-loc-name') || '').trim();
+  const department = (gv('m-loc-dept') || '').trim();
+  const type = (gv('m-loc-type') || '').trim() || 'Patient Ward';
+  const status = (gv('m-loc-status') || '').trim() || 'Active';
+  const bedsVal = gn('m-loc-beds');
+  const remarks = (gv('m-loc-remarks') || '').trim();
+
+  let hasErr = false;
+  if(!building){
+    showFieldError('m-loc-bld', 'Building name is required.');
+    hasErr = true;
+  }
+  if(!roomName){
+    showFieldError('m-loc-name', 'Room or space name is required.');
+    hasErr = true;
+  }
+  if(hasErr) return;
+
+  const locs = DB.g('locations').map(x => ({...x}));
+  const existing = _editLocation ? locs.find(x => x.id === _editLocation) : null;
+  if(_editLocation && !existing){
+    showToast('Record not found — it may have been deleted.', 'error');
+    closeModal('mo-loc');
+    return;
+  }
+
+  const id = _editLocation || DB.nid('locations');
+  let code = existing?.code || '';
+  if(!code){
+    const bldAbv = abvName(building) || 'BLD';
+    const rmAbv = (roomNumber ? roomNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : abvName(roomName)) || 'RM';
+    code = `LOC-${bldAbv}-${rmAbv}-${String(id).padStart(3, '0')}`;
+  }
+
+  const rec = {
+    ...existing,
+    id,
+    code,
+    building,
+    floor,
+    roomNumber,
+    roomName,
+    department,
+    type,
+    status,
+    capacityBeds: bedsVal != null && !isNaN(bedsVal) ? Number(bedsVal) : null,
+    remarks
+  };
+
+  if(_editLocation){
+    const idx = locs.findIndex(x => x.id === _editLocation);
+    if(idx >= 0) locs[idx] = rec;
+  } else {
+    locs.push(rec);
+  }
+
+  DB.s('locations', locs);
+  closeModal('mo-loc');
+  populateLocationFilters();
+  renderLocations();
+  updateMasterLocationDatalist();
+
+  if(_locSelectCallback){
+    const cb = _locSelectCallback;
+    _locSelectCallback = null;
+    try { cb(rec); } catch(e) { console.error('Location callback error:', e); }
+  }
+
+  showToast(_editLocation ? 'Room / space updated.' : 'Room / space added.', 'success');
+}
+
+async function delLocation(id){
+  return delRecord('locations', id, 'room space', renderLocations, populateLocationFilters, updateMasterLocationDatalist);
+}
+
+function populateLocationFilters(){
+  const locs = DB.g('locations');
+  const bldSelect = document.getElementById('locf-bld');
+  const floorSelect = document.getElementById('locf-floor');
+  const typeSelect = document.getElementById('locf-type');
+
+  if(bldSelect){
+    const cur = bldSelect.value;
+    const blds = [...new Set(locs.map(l => l.building).filter(Boolean))].sort();
+    bldSelect.innerHTML = '<option value="">All Buildings</option>' + blds.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b)}</option>`).join('');
+    if(blds.includes(cur)) bldSelect.value = cur;
+  }
+
+  if(floorSelect){
+    const cur = floorSelect.value;
+    const floors = [...new Set(locs.map(l => l.floor).filter(Boolean))].sort();
+    floorSelect.innerHTML = '<option value="">All Floors</option>' + floors.map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+    if(floors.includes(cur)) floorSelect.value = cur;
+  }
+
+  if(typeSelect){
+    const cur = typeSelect.value;
+    const types = [...new Set(locs.map(l => l.type).filter(Boolean))].sort();
+    typeSelect.innerHTML = '<option value="">All Types</option>' + types.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join('');
+    if(types.includes(cur)) typeSelect.value = cur;
+  }
+}
+
+function renderLocations(){
+  const locs = DB.g('locations');
+  const allAssets = DB.g('assets');
+  const allWos = DB.g('wo');
+
+  const fbld = (document.getElementById('locf-bld')?.value || '').trim();
+  const ffloor = (document.getElementById('locf-floor')?.value || '').trim();
+  const ftype = (document.getElementById('locf-type')?.value || '').trim();
+  const fstatus = (document.getElementById('locf-status')?.value || '').trim();
+  const q = (document.getElementById('locf-search')?.value || '').toLowerCase().trim();
+
+  // Stat counters
+  const elTotal = document.getElementById('loc-stat-total');
+  const elBld = document.getElementById('loc-stat-bld');
+  const elWards = document.getElementById('loc-stat-wards');
+  const elRenov = document.getElementById('loc-stat-renov');
+  if(elTotal) elTotal.textContent = locs.length;
+  if(elBld) elBld.textContent = new Set(locs.map(l => l.building).filter(Boolean)).size;
+  if(elWards) elWards.textContent = locs.filter(l => l.type === 'Patient Ward' || (l.type && l.type.toLowerCase().includes('ward'))).length;
+  if(elRenov) elRenov.textContent = locs.filter(l => l.status === 'Under Renovation').length;
+
+  let filtered = locs.slice();
+  if(fbld) filtered = filtered.filter(l => l.building === fbld);
+  if(ffloor) filtered = filtered.filter(l => l.floor === ffloor);
+  if(ftype) filtered = filtered.filter(l => l.type === ftype);
+  if(fstatus) filtered = filtered.filter(l => l.status === fstatus);
+
+  if(q){
+    filtered = filtered.filter(l => {
+      const matchText = [l.code, l.building, l.floor, l.roomNumber, l.roomName, l.department, l.type, l.remarks].filter(Boolean).join(' ').toLowerCase();
+      return matchText.includes(q);
+    });
+  }
+
+  // Pre-calculate asset and WO counts for fast rendering
+  const assetCountMap = Object.create(null);
+  allAssets.forEach(a => {
+    const aLoc = (a.location || a.roomName || a.roomNumber || '').toLowerCase().trim();
+    if(!aLoc) return;
+    locs.forEach(l => {
+      const rName = (l.roomName || '').toLowerCase().trim();
+      const rNo = (l.roomNumber || '').toLowerCase().trim();
+      if((rName && (aLoc === rName || isSameLocation(aLoc, rName))) ||
+         (rNo && (aLoc === rNo || isSameLocation(aLoc, rNo)))){
+        assetCountMap[l.id] = (assetCountMap[l.id] || 0) + (a.qty ?? 1);
+      }
+    });
+  });
+
+  const woCountMap = Object.create(null);
+  allWos.forEach(w => {
+    const wLoc = (w.location || '').toLowerCase().trim();
+    if(!wLoc) return;
+    locs.forEach(l => {
+      const rName = (l.roomName || '').toLowerCase().trim();
+      const rNo = (l.roomNumber || '').toLowerCase().trim();
+      if((rName && (wLoc === rName || isSameLocation(wLoc, rName))) ||
+         (rNo && (wLoc === rNo || isSameLocation(wLoc, rNo)))){
+        woCountMap[l.id] = (woCountMap[l.id] || 0) + 1;
+      }
+    });
+  });
+
+  filtered.sort((a, b) => {
+    const bldDiff = (a.building || '').localeCompare(b.building || '');
+    if(bldDiff !== 0) return bldDiff;
+    const floorDiff = (a.floor || '').localeCompare(b.floor || '');
+    if(floorDiff !== 0) return floorDiff;
+    return (a.roomNumber || a.roomName || '').localeCompare(b.roomNumber || b.roomName || '', undefined, {numeric: true});
+  });
+
+  const tbody = document.getElementById('loc-tbody');
+  if(!tbody) return;
+
+  if(!filtered.length){
+    tbody.innerHTML = '<tr><td colspan="11" class="empty">No rooms or spaces found. Click <strong>+ Add Room / Space</strong> or <strong>⚡ Seed from Assets</strong> to populate.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(l => {
+    const assetCount = assetCountMap[l.id] || 0;
+    const woCount = woCountMap[l.id] || 0;
+    const statusBadge = l.status === 'Active'
+      ? `<span class="badge badge-success">${escapeHTML(l.status)}</span>`
+      : l.status === 'Under Renovation'
+      ? `<span class="badge badge-warning">${escapeHTML(l.status)}</span>`
+      : `<span class="badge badge-muted">${escapeHTML(l.status || 'Active')}</span>`;
+    
+    const clickLoc = escapeHTML(l.roomName || l.roomNumber || '');
+
+    return `<tr>
+      <td><span class="mono" style="font-weight:600;font-size:12px;">${escapeHTML(l.code || ('LOC-' + String(l.id).padStart(3, '0')))}</span></td>
+      <td style="font-weight:500;">${escapeHTML(l.building || '—')}</td>
+      <td><span class="badge badge-info" style="font-size:11px;">${escapeHTML(l.floor || '—')}</span></td>
+      <td class="mono">${escapeHTML(l.roomNumber || '—')}</td>
+      <td style="font-weight:600;">
+        <span class="room-tag" style="cursor:pointer;" onclick="openRoomView('${clickLoc}')" title="Click to open Room View and see all equipment and repairs">${escapeHTML(l.roomName || '—')} ↗</span>
+      </td>
+      <td style="font-size:12px;">${escapeHTML(l.department || '—')}</td>
+      <td><span class="badge badge-subtle" style="font-size:11px;">${escapeHTML(l.type || '—')}</span></td>
+      <td>${statusBadge}</td>
+      <td style="text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace;">${assetCount}</td>
+      <td style="text-align:center;font-weight:600;font-family:'IBM Plex Mono',monospace;">${woCount}</td>
+      <td style="white-space:nowrap;">
+        <button type="button" class="btn btn-sm btn-outline" onclick="openRoomView('${clickLoc}')">View</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="openLocationModal(${l.id})">Edit</button>
+        <button type="button" class="btn btn-sm btn-danger" onclick="delLocation(${l.id})">Del</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function seedLocationsFromAssets(){
+  const assets = DB.g('assets');
+  if(!assets.length){
+    showToast('No assets found to extract locations from.', 'info');
+    return;
+  }
+  const existingLocs = DB.g('locations').map(x => ({...x}));
+  const existingNames = new Set(existingLocs.map(l => (l.roomName || '').toLowerCase().trim()));
+  const existingNumbers = new Set(existingLocs.map(l => (l.roomNumber || '').toLowerCase().trim()).filter(Boolean));
+  
+  const extracted = new Map();
+  assets.forEach(a => {
+    const rawLoc = (a.location || a.roomName || a.roomNumber || '').trim();
+    if(!rawLoc || rawLoc === '—') return;
+    const key = rawLoc.toLowerCase();
+    if(existingNames.has(key) || existingNumbers.has(key)) return;
+    if(!extracted.has(key)){
+      extracted.set(key, {
+        building: a.building || 'Main Hospital Building',
+        floor: a.floor || 'Ground Floor',
+        roomNumber: a.roomNumber || (/^\d+[A-Za-z]?$/.test(rawLoc) ? rawLoc : ''),
+        roomName: a.roomName || rawLoc,
+        department: a.department || '',
+      });
+    }
+  });
+
+  if(extracted.size === 0){
+    showToast('All asset locations are already registered in Buildings & Rooms.', 'info');
+    return;
+  }
+
+  const _usedIds = new Set(existingLocs.map(x => String(x.id || '')));
+  let count = 0;
+  for(const [key, item] of extracted.entries()){
+    const id = generateUniqueNumericId(_usedIds);
+    _usedIds.add(String(id));
+    const rn = item.roomName;
+    let type = 'Patient Ward';
+    const rnl = rn.toLowerCase();
+    if(rnl.includes('operating') || rnl.includes(' or ') || rnl.startsWith('or-') || rnl.startsWith('or ')) type = 'Operating Suite';
+    else if(rnl.includes('icu') || rnl.includes('intensive')) type = 'Intensive Care Unit (ICU)';
+    else if(rnl.includes('er') || rnl.includes('emergency') || rnl.includes('triage')) type = 'Emergency Room (ER)';
+    else if(rnl.includes('lab') || rnl.includes('diagnostic')) type = 'Laboratory / Diagnostic';
+    else if(rnl.includes('pharm') || rnl.includes('supply')) type = 'Pharmacy / Supplies';
+    else if(rnl.includes('office') || rnl.includes('admin') || rnl.includes('record')) type = 'Office / Administrative';
+    else if(rnl.includes('pump') || rnl.includes('power') || rnl.includes('engine') || rnl.includes('boiler') || rnl.includes('generator')) type = 'Plant / Utility / Engineering';
+    else if(rnl.includes('dietary') || rnl.includes('kitchen')) type = 'Dietary / Kitchen';
+    else if(rnl.includes('hallway') || rnl.includes('corridor')) type = 'Circulation / Hallway';
+    else if(rnl.includes('storage') || rnl.includes('bodega')) type = 'Storage';
+    else if(rnl.includes('ward') || rnl.includes('room') || rnl.includes('rm')) type = 'Patient Ward';
+
+    const bldAbv = abvName(item.building) || 'BLD';
+    const rmAbv = (item.roomNumber ? item.roomNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : abvName(item.roomName)) || 'RM';
+    const code = `LOC-${bldAbv}-${rmAbv}-${String(id).padStart(3, '0')}`;
+
+    existingLocs.push({
+      id,
+      code,
+      building: item.building,
+      floor: item.floor,
+      roomNumber: item.roomNumber,
+      roomName: item.roomName,
+      department: item.department,
+      type,
+      status: 'Active',
+      capacityBeds: type === 'Patient Ward' ? 10 : null,
+      remarks: 'Extracted automatically from Asset Registry.'
+    });
+    count++;
+  }
+
+  DB.s('locations', existingLocs);
+  populateLocationFilters();
+  renderLocations();
+  updateMasterLocationDatalist();
+  showToast(`Successfully seeded ${count} room(s) from Asset Registry.`, 'success');
+}
+
+function downloadLocationTemplate(){
+  const rows = [
+    ['Building', 'Floor', 'Room Number', 'Room Name', 'Department', 'Space Type', 'Status', 'Bed Capacity', 'Remarks'],
+    ['Main Hospital Building', 'Ground Floor', 'ER-101', 'Emergency Room Triage', 'Emergency Services', 'Emergency Room (ER)', 'Active', '', 'Main ER entry and triage desk'],
+    ['Main Hospital Building', '2nd Floor', 'OR-1', 'Operating Room 1 - Major Surgery', 'Surgical Services', 'Operating Suite', 'Active', '', 'Equipped for major surgeries'],
+    ['Main Hospital Building', '3rd Floor', 'W3-301', 'Ward 3 - Internal Medicine', 'Nursing', 'Patient Ward', 'Active', '12', '12-bed inpatient general ward'],
+    ['Main Hospital Building', '2nd Floor', 'ICU-A', 'Intensive Care Unit Pod A', 'Critical Care', 'Intensive Care Unit (ICU)', 'Active', '6', 'Equipped with centralized telemetry'],
+    ['Ancillary Building', 'Ground Floor', 'ENG-01', 'Engineering Workshop & GSD Office', 'General Services', 'Plant / Utility / Engineering', 'Active', '', 'Maintenance central office']
+  ];
+  dl(new Blob([[rows[0], ...rows.slice(1)].map(csvRow).join('\n')], {type:'text/csv'}), 'HAMMS_Buildings_Rooms_Template.csv');
+}
+
+function importLocationCSV(e){
+  genericCSVImport(e, 'locations', [
+    {key:'name', match:['roomname','space','name','room/space'], label:'Room / Space Name', required:true},
+    {key:'bld', match:['building','bld'], label:'Building'},
+    {key:'floor', match:['floor','level'], label:'Floor Level'},
+    {key:'roomno', match:['roomno','room#','number'], label:'Room Number'},
+    {key:'dept', match:['dept','department','unit'], label:'Department'},
+    {key:'type', match:['type','spacetype'], label:'Space Type'},
+    {key:'status', match:['status'], label:'Status'},
+    {key:'beds', match:['bed','beds','capacity'], label:'Bed Capacity'},
+    {key:'remarks', match:['remark','note','notes'], label:'Remarks'}
+  ], (gv, id) => {
+    const roomName = gv('name');
+    if(!roomName) return null;
+    const building = gv('bld') || 'Main Hospital Building';
+    const floor = gv('floor') || 'Ground Floor';
+    const roomNumber = gv('roomno') || '';
+    const department = gv('dept') || '';
+    const type = gv('type') || 'Patient Ward';
+    const status = gv('status') || 'Active';
+    const bedsRaw = gv('beds');
+    const capacityBeds = bedsRaw && !isNaN(Number(bedsRaw)) ? Number(bedsRaw) : null;
+    const remarks = gv('remarks') || '';
+    const bldAbv = abvName(building) || 'BLD';
+    const rmAbv = (roomNumber ? roomNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() : abvName(roomName)) || 'RM';
+    const code = `LOC-${bldAbv}-${rmAbv}-${String(id).padStart(3, '0')}`;
+    return {
+      id,
+      code,
+      building,
+      floor,
+      roomNumber,
+      roomName,
+      department,
+      type,
+      status,
+      capacityBeds,
+      remarks
+    };
+  }, [renderLocations, populateLocationFilters, updateMasterLocationDatalist], 'room / space');
+}
+
+function updateMasterLocationDatalist(){
+  const locs = DB.g('locations');
+  const blds = new Set();
+  const depts = new Set();
+  const rooms = new Set();
+
+  locs.forEach(l => {
+    if(l.building) blds.add(l.building);
+    if(l.department) depts.add(l.department);
+    if(l.roomName) rooms.add(l.roomName);
+    if(l.roomNumber) rooms.add(l.roomNumber);
+    if(l.building && l.roomName) rooms.add(`${l.building} - ${l.roomName}`);
+  });
+
+  // Also include rooms from assets for backward compatibility
+  DB.g('assets').forEach(a => {
+    if(a.building) blds.add(a.building);
+    if(a.department) depts.add(a.department);
+    if(a.roomName) rooms.add(a.roomName);
+    if(a.roomNumber) rooms.add(a.roomNumber);
+    if(a.location && a.location !== '—') rooms.add(a.location);
+  });
+
+  const bldDl = document.getElementById('loc-bld-list');
+  if(bldDl) bldDl.innerHTML = [...blds].sort().map(b => `<option value="${escapeHTML(b)}">`).join('');
+
+  const deptDl = document.getElementById('loc-dept-list');
+  if(deptDl) deptDl.innerHTML = [...depts].sort().map(d => `<option value="${escapeHTML(d)}">`).join('');
+
+  const woDl = document.getElementById('wo-loc-list');
+  if(woDl) woDl.innerHTML = [...rooms].sort().map(r => `<option value="${escapeHTML(r)}">`).join('');
+
+  const roomDl = document.getElementById('room-loc-list');
+  if(roomDl) roomDl.innerHTML = [...rooms].sort().map(r => `<option value="${escapeHTML(r)}">`).join('');
 }
 
 // ═══════════════════════════════════════
@@ -6329,8 +7046,8 @@ function renderDash(){
   // Row 2 — PMS, Energy, Safety, Projects (uses memoized _dashCache)
   const {pmsMap,totalKwh}=_dashCache;
   const pmsDue=pmsMap.due,pmsOver=pmsMap.overdue,pmsNone=pmsMap.noSched,pmsUpcoming=pmsMap.upcoming;
-  const openSafety=safety.filter(s=>s.status==='Open').length;
-  const critSafety=safety.filter(s=>s.severity==='Critical'&&s.status!=='Closed').length;
+  const openSafety=safety.filter(isActiveSafety).length;
+  const critSafety=safety.filter(s=>s.severity==='Critical'&&isActiveSafety(s)).length;
   const ongoingProj=projects.filter(p=>p.status==='Ongoing').length;
   const delayedProj=projects.filter(p=>p.status==='Delayed').length;
   const row2=document.getElementById('dash-stats-row2');
@@ -6380,7 +7097,7 @@ function renderDash(){
   loadPersonnel(); // PATCH: dashboard box for active personnel per shift
   // Safety nav badge
   const nb=document.getElementById('nb-safety');
-  const openSafetyTotal=DB.g('safety').filter(s=>s.status==='Open').length;
+  const openSafetyTotal=DB.g('safety').filter(isActiveSafety).length;
   if(nb){if(openSafetyTotal>0){nb.textContent=openSafetyTotal;nb.style.display='';}else nb.style.display='none';}
 }
 
@@ -6394,7 +7111,7 @@ function openSafetyModal(id=null){
   _editSafety=id;captureEditSnapshot('safety',id);
   document.getElementById('mo-safety-title').textContent=id?'Edit Safety Issue':'Log Safety Issue';
   if(!id){
-    ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks'].forEach(x=>document.getElementById(x).value='');
+    ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks','m-sf-target','m-sf-responsible','m-sf-resolved','m-sf-closed'].forEach(x=>document.getElementById(x).value='');
     document.getElementById('m-sf-sev').selectedIndex=0;
     document.getElementById('m-sf-status').selectedIndex=0;
     document.getElementById('m-sf-date').value=today();
@@ -6408,6 +7125,7 @@ function openSafetyModal(id=null){
     document.getElementById('m-sf-date').value=s.date||today();
     document.getElementById('m-sf-by').value=s.loggedBy||'';
     document.getElementById('m-sf-remarks').value=s.remarks||'';
+    for(const [id,key] of [['m-sf-target','targetDate'],['m-sf-responsible','responsible'],['m-sf-resolved','resolvedAt'],['m-sf-closed','closedAt']])document.getElementById(id).value=s[key]||'';
   }
   openModal('mo-safety');
 }
@@ -6418,10 +7136,26 @@ function saveSafety(){
   const sev=document.getElementById('m-sf-sev').value;
   clearAllFieldErrors('mo-safety');{let _e=false;if(!desc){showFieldError('m-sf-desc','Required.');_e=true;}if(!sev){showFieldError('m-sf-sev','Required.');_e=true;}if(_e)return;}
   const list=DB.g('safety');
+  const old=list.find(x=>x.id===_editSafety);
+  const status=document.getElementById('m-sf-status').value,date=document.getElementById('m-sf-date').value;
+  const targetDate=document.getElementById('m-sf-target').value||null;
+  let resolvedAt=document.getElementById('m-sf-resolved').value||null,closedAt=document.getElementById('m-sf-closed').value||null;
+  if(!validReportDate(date)){showFieldError('m-sf-date','A valid logged date is required.');return;}
+  for(const [id,value] of [['m-sf-target',targetDate],['m-sf-resolved',resolvedAt],['m-sf-closed',closedAt]]){
+    if(value&&(!validReportDate(value)||value<date||(id!=='m-sf-target'&&value>today()))){showFieldError(id,'Use a valid date on or after logging; resolution/closure cannot be in the future.');return;}
+  }
+  const active=isActiveSafety({status});
+  if(active){resolvedAt=null;closedAt=null;}
+  else if(!old||isActiveSafety(old)){resolvedAt=resolvedAt||today();if(status==='Closed')closedAt=closedAt||today();}
+  else if(status==='Closed'&&old.status!=='Closed')closedAt=closedAt||today();
+  if(closedAt&&resolvedAt&&closedAt<resolvedAt){showFieldError('m-sf-closed','Closure cannot precede resolution.');return;}
+  const statusHistory=cloneForFirebase(old?.statusHistory||[]);
+  if(!old||old.status!==status)statusHistory.push({from:old?.status||null,to:status,date:today(),at:Date.now(),by:window._FB?.email||''});
   const s={
+    ...old,
     id:_editSafety||DB.nid('safety'),code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(document.getElementById('m-sf-loc').value)],3),
     description:desc,severity:sev,
-    status:document.getElementById('m-sf-status').value,
+    status,targetDate,responsible:document.getElementById('m-sf-responsible').value.trim(),resolvedAt,closedAt,statusHistory,
     location:document.getElementById('m-sf-loc').value,
     asset:document.getElementById('m-sf-asset').value,
     date:document.getElementById('m-sf-date').value,
@@ -6434,7 +7168,7 @@ function saveSafety(){
 
 async function delSafety(id){return delRecord('safety',id,'safety issue',renderSafety,renderDash);}
 
-function renderSafety(){
+function getFilteredSafety(){
   let list=DB.g('safety');
   const sev=(document.getElementById('sf-sev')||{}).value||'';
   const st=(document.getElementById('sf-status')||{}).value||'';
@@ -6472,16 +7206,20 @@ function renderSafety(){
       return false;
     });
   }
-  list.sort((a,b)=>{const so={Critical:0,High:1,Moderate:2,Low:3};return(so[a.severity]||3)-(so[b.severity]||3);});
+  list.sort((a,b)=>{const so={Critical:0,High:1,Moderate:2,Low:3};return(so[a.severity]??3)-(so[b.severity]??3);});
+  return list;
+}
+function renderSafety(){
+  const list=getFilteredSafety();
   populateDateFilters('sf',DB.g('safety'),'date');
 
   // Summary bars
   const sevOrder=['Critical','High','Moderate','Low'];
-  const openList=DB.g('safety').filter(s=>s.status!=='Closed'&&s.status!=='Resolved');
+  const openList=list.filter(isActiveSafety);
   const sb=document.getElementById('safety-summary-bars');
   if(sb){sb.innerHTML=sevOrder.map(sv=>{const cnt=openList.filter(s=>s.severity===sv).length;const max=Math.max(...sevOrder.map(x=>openList.filter(s=>s.severity===x).length),1);const pct=Math.round(cnt/max*100);const col={Critical:'#cc3333',High:'#e07030',Moderate:'#d4aa00',Low:'#1f9452'};return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:70px;font-size:12px;font-weight:700;color:${col[sv]||'#666'};">${sv}</div><div style="flex:1;background:#e8edf2;border-radius:4px;height:18px;overflow:hidden;"><div style="width:${pct}%;background:${col[sv]||'#888'};height:100%;border-radius:4px;"></div></div><div style="font-size:13px;font-weight:700;min-width:24px;">${cnt}</div></div>`;}).join('');}
 
-  const cd=buildMonthlyData(DB.g('safety'),'date','count',6);
+  const cd=buildMonthlyData(list,'date','count',6);
   drawBarLineChart('safety-chart',cd.labels,cd.barData,cd.lineData,'#e07030','#cc3333','Issues');
 
   document.getElementById('safety-tbody').innerHTML=list.length?list.map(s=>`<tr>
@@ -6519,6 +7257,9 @@ function openProjectModal(id=null){
     const setS=(fid,v)=>{const el=document.getElementById(fid);if(el&&v)el.value=v;};
     setS('m-pj-cat',p.category);setS('m-pj-status',p.status);
   }
+  document.getElementById('m-pj-asof').value=today();
+  document.getElementById('m-pj-planned').value='';
+  document.getElementById('m-pj-spend').value=id?(DB.g('projects').find(x=>x.id===id)?.actualSpend??''):'';
   openModal('mo-project');
 }
 
@@ -6528,7 +7269,18 @@ function saveProject(){
   const title=(document.getElementById('m-pj-title').value||'').trim();
   clearAllFieldErrors('mo-project');{let _e=false;if(!code){showFieldError('m-pj-code','Required.');_e=true;}if(!title){showFieldError('m-pj-title','Required.');_e=true;}if(_e)return;}
   const list=DB.g('projects');
+  const old=list.find(x=>x.id===_editProject);
+  const asOf=document.getElementById('m-pj-asof').value;
+  const plannedRaw=document.getElementById('m-pj-planned').value,spendRaw=document.getElementById('m-pj-spend').value;
+  for(const [id,max] of [['m-pj-physical',100],['m-pj-financial',100],['m-pj-planned',100],['m-pj-budget',Infinity],['m-pj-spend',Infinity]]){
+    const raw=document.getElementById(id).value;if(raw!==''&&(!Number.isFinite(Number(raw))||Number(raw)<0||Number(raw)>max)){showFieldError(id,'Enter a finite nonnegative value'+(max===100?' up to 100%.':'.'));return;}
+  }
+  if(!validReportDate(asOf)||asOf>today()){showFieldError('m-pj-asof','Use a valid observation date up to today.');return;}
+  const startDate=document.getElementById('m-pj-start').value,targetDate=document.getElementById('m-pj-target').value,actualDate=document.getElementById('m-pj-actual').value;
+  for(const [id,date] of [['m-pj-start',startDate],['m-pj-target',targetDate],['m-pj-actual',actualDate]])if(date&&!validReportDate(date)){showFieldError(id,'Invalid date.');return;}
+  if(startDate&&((targetDate&&targetDate<startDate)||(actualDate&&actualDate<startDate))){showFieldError('m-pj-target','Completion dates cannot precede the start date.');return;}
   const p={
+    ...old,
     id:_editProject||DB.nid('projects'),code,title,
     category:document.getElementById('m-pj-cat').value,
     location:document.getElementById('m-pj-loc').value,
@@ -6541,21 +7293,32 @@ function saveProject(){
     actualDate:document.getElementById('m-pj-actual').value,
     physicalPct:parseFloat(document.getElementById('m-pj-physical').value)||0,
     financialPct:parseFloat(document.getElementById('m-pj-financial').value)||0,
+    actualSpend:spendRaw===''?null:Number(spendRaw),
     remarks:document.getElementById('m-pj-remarks').value,
   };
+  p.progressHistory=cloneForFirebase(old?.progressHistory||[]);
+  const observation={date:asOf,physicalPct:p.physicalPct,financialPct:p.financialPct,plannedPct:plannedRaw===''?null:Number(plannedRaw),actualSpend:p.actualSpend,recordedAt:Date.now(),recordedBy:window._FB?.email||''};
+  const last=p.progressHistory.at(-1);
+  if(!last||['date','physicalPct','financialPct','plannedPct','actualSpend'].some(k=>last[k]!==observation[k]))p.progressHistory.push(observation);
+  p.baselineHistory=cloneForFirebase(old?.baselineHistory||[]);
+  if(!old||['startDate','targetDate','budget'].some(k=>old[k]!==p[k]))p.baselineHistory.push({date:today(),startDate:p.startDate,targetDate:p.targetDate,budget:p.budget,by:window._FB?.email||'',at:Date.now()});
   if(_editProject){const i=list.findIndex(x=>x.id===_editProject);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-project');return;}list[i]=p;}else list.push(p);
   DB.s('projects',list);closeModal('mo-project');renderProjects();renderProjStats();renderDash();showToast('Project saved.');
 }
 
 async function delProject(id){return delRecord('projects',id,'project',renderProjects,renderProjStats,renderDash);}
 
-function renderProjects(){
+function getFilteredProjects(){
   let list=DB.g('projects');
   const st=(document.getElementById('pj-status')||{}).value||'';
   const q=(document.getElementById('pj-search')||{}).value?.toLowerCase()||'';
   if(st)list=list.filter(p=>p.status===st);
   list=list.filter(p=>matchMonthYear(p.startDate||p.targetDate,'pj')); // month/year filter
   if(q)list=list.filter(p=>(p.title||'').toLowerCase().includes(q)||(p.code||'').toLowerCase().includes(q)||(p.location||'').toLowerCase().includes(q));
+  return list;
+}
+function renderProjects(){
+  const list=getFilteredProjects();
   populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetDate})),'_d');
   list.sort((a,b)=>b.id-a.id);
   document.getElementById('projects-tbody').innerHTML=list.length?list.map(p=>{
@@ -6576,10 +7339,11 @@ function renderProjects(){
       <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openProjectModal(${p.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delProject(${p.id})">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="12" class="empty">No projects found.</td></tr>';
+  renderProjStats();
 }
 
 function renderProjStats(){
-  const list=DB.g('projects');
+  const list=getFilteredProjects();
   const el=document.getElementById('proj-stat-row');if(!el)return;
   const counts={total:list.length,ongoing:list.filter(p=>p.status==='Ongoing').length,delayed:list.filter(p=>p.status==='Delayed').length,completed:list.filter(p=>p.status==='Completed').length,proposed:list.filter(p=>p.status==='Proposed'||p.status==='For Approval').length};
   el.innerHTML=`
@@ -6863,13 +7627,17 @@ function importSafetyCSV(e){
     {key:'asset',match:['asset'],label:'Asset'},
     {key:'date',match:['date','datelogged'],label:'Date'},
     {key:'by',match:['by','logged'],label:'Logged By'},
+    {key:'target',match:['target'],label:'Target Date'},
+    {key:'responsible',match:['responsible','assigned'],label:'Responsible'},
+    {key:'resolved',match:['resolved'],label:'Resolution Date'},
+    {key:'closed',match:['closure','closeddate'],label:'Closure Date'},
     {key:'remarks',match:['remark'],label:'Remarks'}
   ],(gv,id)=>{
     const desc=gv('desc');if(!desc)return null;
     const sev=gv('sev')||'Low';
     const loc=gv('loc');
     const asset=gv('asset');
-    return{id,code:generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(loc)],3),description:desc,severity:sev,status:gv('status')||'Open',location:loc,asset,linkedAsset:asset,date:normYMD(gv('date'))||today(),loggedBy:gv('by'),remarks:gv('remarks')};
+    return{id,code:generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(loc)],3),description:desc,severity:sev,status:gv('status')||'Open',location:loc,asset,linkedAsset:asset,date:normYMD(gv('date'))||today(),loggedBy:gv('by'),remarks:gv('remarks'),targetDate:normYMD(gv('target'))||null,responsible:gv('responsible'),resolvedAt:normYMD(gv('resolved'))||null,closedAt:normYMD(gv('closed'))||null,statusHistory:[]};
   },[renderSafety,renderDash],'safety issue');
 }
 function downloadSafetyTemplate(){
@@ -7859,6 +8627,8 @@ function saveEnergy(){
     period,
     periodLabel:periodLabel(period),
     actualKwh:Math.round(actual*100)/100,
+    carbonFactor:existing?.period===period&&existing?.carbonFactor?cloneForFirebase(existing.carbonFactor):factorForPeriod(period),
+    estimationBasis:existing?.estimationBasis||{capturedAt:Date.now(),assetCount:DB.g('assets').length,formula:'W / 1000 × hours/day × days/month × load factor × quantity'},
     billAmount:Math.round(amount*100)/100,
     demandKw,
     accountNo,
@@ -7949,7 +8719,7 @@ function renderEnergyBillChart(){
   if(!container)return;
   const all=DB.g('energyBills')||[];
   const year=(document.getElementById('en-year')?.value)||'';
-  const list=all.slice();
+  let list=all.slice();
   if(year)list=list.filter(b=>b.period&&b.period.substring(0,4)===year);
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const labels=months.slice(0,12);
@@ -8066,7 +8836,7 @@ function renderEnergy(){
 
   // Annual summary
   const annualMap=new Map();
-  all.forEach(b=>{
+  list.forEach(b=>{
     if(!b.period||b.period.length<4)return;
     const y=b.period.substring(0,4);
     if(year&&y!==year)return;
@@ -8104,8 +8874,8 @@ function renderEnergy(){
 }
 
 function exportEnergyCSV(){
-  const list=DB.g('energyBills')||[];
-  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','Bill_PHP','Account_No','Meter_No','Remarks']];
+  const list=getFilteredEnergyBills();
+  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','Bill_PHP','Account_No','Meter_No','Remarks','Factor_kgCO2e_per_kWh','Factor_Grid','Factor_Source','Billed_kgCO2e']];
   list.slice().sort((a,b)=>(b.period||'').localeCompare(a.period||'')).forEach(b=>{
     const theo=b.theoreticalKwh||0;
     const act=b.actualKwh||0;
@@ -8118,12 +8888,12 @@ function exportEnergyCSV(){
       (b.billAmount||0).toFixed(2),
       b.accountNo||'',
       b.meterNo||'',
-      (b.remarks||'').replace(/[\r\n]+/g,' ').replace(/"/g,'""')
+      (b.remarks||'').replace(/[\r\n]+/g,' '),b.carbonFactor?.value??'',b.carbonFactor?.grid||'',b.carbonFactor?.source||'',getBillCarbon(b)??''
     ]);
   });
   const csv=rows.map(r=>r.map(c=>{
     const s=String(c??'');
-    return /[",\n]/.test(s)?'"'+s+'"':s;
+    return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
   }).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');
@@ -8216,6 +8986,7 @@ function importEnergyCSV(e){
       const rmks=idx.remarks>=0?remarks:(existing?existing.remarks:'');
       if(existing){
         existing.actualKwh=Math.round(actual*100)/100;
+        existing.carbonFactor=existing.carbonFactor||factorForPeriod(period);
         existing.billAmount=Math.round(amount*100)/100;
         if(idx.demand>=0)existing.demandKw=demandKw;
         if(idx.accountNo>=0)existing.accountNo=acct;
@@ -8230,6 +9001,7 @@ function importEnergyCSV(e){
           period,
           periodLabel:periodLabel(period),
           actualKwh:Math.round(actual*100)/100,
+          carbonFactor:factorForPeriod(period),
           billAmount:Math.round(amount*100)/100,
           demandKw,
           accountNo:acct,
@@ -8326,7 +9098,7 @@ const _origRenderSafety=renderSafety;
 const _patchedRenderSafety=function(){
   _origRenderSafety();
   // PATCH: CSV import enhancement — category trend for safety
-  const all=DB.g('safety');
+  const all=getFilteredSafety();
   // Category bars
   const cats={};all.forEach(s=>{const loc=s.location||'Unknown';cats[loc]=(cats[loc]||0)+1;});
   const catEl=document.getElementById('safety-cat-bars');
@@ -8348,12 +9120,12 @@ renderSafety=_patchedRenderSafety;
 const _origExportCSV=exportCSV;
 exportCSV=function(type){
   if(type==='safety'){
-    const h=['Issue #','Severity','Description','Location','Linked Asset','Status','Date Logged','Logged By','Remarks'];
-    const rows=DB.g('safety').map(s=>[s.code||('SF-'+String(s.id).padStart(4,'0')),s.severity,s.description,s.location,s.asset||s.linkedAsset||'',s.status,s.date,s.loggedBy,s.remarks]);
+    const h=['Issue #','Severity','Description','Location','Linked Asset','Status','Date Logged','Logged By','Remarks','Target Date','Responsible','Resolution Date','Closure Date'];
+    const rows=getFilteredSafety().map(s=>[s.code||('SF-'+String(s.id).padStart(4,'0')),s.severity,s.description,s.location,s.asset||s.linkedAsset||'',s.status,s.date,s.loggedBy,s.remarks,s.targetDate||'',s.responsible||'',s.resolvedAt||'',s.closedAt||'']);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Safety_'+today()+'.csv');
   }else if(type==='projects'){
-    const h=['Code','Title','Category','Location','Budget (PHP)','Funding','Responsible','Start','Target','Actual','Physical %','Financial %','Status','Issues'];
-    const rows=DB.g('projects').map(p=>[p.code,p.title,p.category,p.location,p.budget,p.fundingSource,p.responsible,p.startDate,p.targetDate,p.actualDate,p.physicalPct,p.financialPct,p.status,p.remarks]);
+    const h=['Code','Title','Category','Location','Budget (PHP)','Funding','Responsible','Start','Target','Actual','Physical %','Financial %','Status','Issues','Actual Expenditure'];
+    const rows=getFilteredProjects().map(p=>[p.code,p.title,p.category,p.location,p.budget,p.fundingSource,p.responsible,p.startDate,p.targetDate,p.actualDate,p.physicalPct,p.financialPct,p.status,p.remarks,p.actualSpend??'']);
     dl(new Blob([[h,...rows].map(csvRow).join('\n')],{type:'text/csv'}),'HAMMS_Projects_'+today()+'.csv');
   }else if(type==='water'){
     const h=['Log #','Date','Ward/Location','Test Type','Result','Bacteria Count (CFU)','Residual Chlorine (mg/L)','Mitigation','Remarks'];
@@ -8606,10 +9378,12 @@ function importWOCSV(e){
     const fi=k=>header.findIndex(h=>h.includes(k));
     const idx={
       section:fi('section'), asset:fi('asset'), location:fi('loc'),
-      desc:   header.findIndex(h=>h.includes('desc')||h==='description'||h.includes('work')||h.includes('defect')),
+      assetDocId:header.findIndex(h=>h==='assetdocid'||h==='assetdocumentreference'),
+      workScope:header.indexOf('workscope'),
+      desc:   header.findIndex(h=>h!=='workscope'&&(h.includes('desc')||h==='description'||h.includes('work')||h.includes('defect'))),
       priority:fi('priority'), status:fi('status'),
       dateStart:header.findIndex(h=>h.includes('start')||h.includes('begin')),
-      dateEnd:  header.findIndex(h=>h.includes('end')||h.includes('complet')||h.includes('close')),
+      dateEnd:  header.findIndex(h=>!h.includes('target')&&(h.includes('end')||h.includes('complet')||h.includes('close'))),
       targetCompletion: header.findIndex(h=>h.includes('target')),
       assigned: fi('assign'), remarks: fi('remark'),
       delayReason: fi('delay'),
@@ -8625,17 +9399,26 @@ function importWOCSV(e){
       const raw=gv(idx.status); const st=['Open','In Progress','Closed','Completed'].includes(raw)?raw:'Open';
       const sec=gv(idx.section)||'CMW';
       const pri=gv(idx.priority)||'Medium';
+      const scope=gv(idx.workScope).trim().toLowerCase();
+      if(scope&&!['room','asset'].includes(scope))throw new Error('Work Scope must be room or asset on row '+(i+1));
       let loc=gv(idx.location);
       if(!loc && asset){
-        const matched=DB.g('assets').find(a=>(a.name||'').toLowerCase()===asset.toLowerCase()||(a.assetCode||'').toLowerCase()===asset.toLowerCase());
+        const possible=DB.g('assets').filter(a=>(!a.section||a.section===sec)&&(normalizedAssetName(a.name)===normalizedAssetName(asset)||(a.assetCode||'').toLowerCase()===asset.toLowerCase()));
+        const matched=possible.length===1?possible[0]:null;
         if(matched) loc=matched.location||(matched.building?[matched.building,matched.floor,matched.roomNumber].filter(Boolean).join(' - '):'');
       }
       const woCode=generateModuleCode('wo',[SEC_ABV[sec]||'GEN',PRI_ABV[pri]||'MD']);
+      const referenced=gv(idx.assetDocId),candidates=legacyAssetCandidates({asset,location:loc,section:sec});
+      if(referenced&&!DB.g('assets').some(a=>a._docId===referenced))throw new Error('Unknown asset document reference on row '+(i+1));
+      if(scope==='room'&&(!loc||referenced))throw new Error('Room work needs a location and no asset reference on row '+(i+1));
+      if(scope==='asset'&&!referenced&&candidates.length!==1)throw new Error('Select a unique registered asset on row '+(i+1));
       items.push({
         id: generateUniqueNumericId(_usedIds),
         code: woCode,
         section:  sec,
-        asset:    asset||'—',
+        asset:    scope==='room'?'':asset||'—',
+        assetDocId:scope==='room'?null:referenced||(candidates.length===1?candidates[0]._docId:null),
+        ...(scope?{workScope:scope}:{}),
         location: loc||'',
         description: desc||'Imported work order',
         priority: pri,
@@ -8722,6 +9505,7 @@ function downloadWOTemplate(){
 }
 
 function renderWO(){
+  const linkButton=document.getElementById('wo-link-review-button');if(linkButton)linkButton.textContent='Review asset links ('+workOrderLinkIssues().length+')';
   // PATCH START: Work Orders KPI computation
   (()=>{
     const allWOs = DB.g('wo');
@@ -11749,7 +12533,6 @@ function openRoomView(room){
   });
 
   // Match WOs by location FIRST to prevent cross-room data leaks (e.g. RM 317 repair leaking into RM 316/306)
-  const assetNames = new Set(assets.map(a => a.name));
   const wos = allWOs.filter(w => {
     const woLoc = (w.location || '').trim();
     if(woLoc){
@@ -11761,18 +12544,25 @@ function openRoomView(room){
       });
     }
     // Fallback: only if WO has no location at all, check if asset exists in this room
-    return assetNames.has(w.asset);
+    return assets.some(a=>workOrderMatchesAsset(w,a));
   }).sort((a,b) => b.id - a.id);
 
   // ── Summary bar ──────────────────────────────────────
-  const totalQty   = assets.reduce((s, a) => s + (a.qty||1), 0);
+  const totalQty   = assets.reduce((s, a) => s + (a.qty??1), 0);
   const openWOs    = wos.filter(w => w.status==='Open'||w.status==='In Progress').length;
   const overdueWOs = wos.filter(w => overdue(w)).length;
   const poor       = assets.filter(a => a.condition==='Poor'||a.condition==='For Replacement').length;
 
-  document.getElementById('room-view-title').textContent = '📍 ' + room;
+  const matchedLoc = DB.g('locations').find(l => {
+    const rn = (l.roomName || '').toLowerCase().trim();
+    const rno = (l.roomNumber || '').toLowerCase().trim();
+    return rn === roomLower || rn === roomClean || (rno && (rno === roomLower || rno === roomClean));
+  });
+  const locDetail = matchedLoc ? [matchedLoc.building, matchedLoc.floor, matchedLoc.department, matchedLoc.type].filter(Boolean).join(' · ') : '';
+
+  document.getElementById('room-view-title').textContent = '📍 ' + (matchedLoc?.roomName || room);
   document.getElementById('room-view-subtitle').textContent =
-    assets.length + ' asset type(s) · ' + totalQty + ' total units';
+    (locDetail ? locDetail + ' · ' : '') + assets.length + ' asset type(s) · ' + totalQty + ' total units';
 
   document.getElementById('room-view-summary').innerHTML = `
     <div style="text-align:center;min-width:70px;">
@@ -11805,12 +12595,14 @@ function openRoomView(room){
     ? assets.map(a => `<tr style="border-bottom:1px solid #edf0f5;">
         <td style="padding:7px 10px;"><span class="asset-code">${escapeHTML(a.assetCode||assNum(a.id))}</span></td>
         <td style="padding:7px 10px;font-weight:600;">${escapeHTML(a.name)}</td>
-        <td style="padding:7px 10px;text-align:center;font-weight:700;">${a.qty||1}</td>
+        <td style="padding:7px 10px;text-align:center;font-weight:700;">${a.qty??1}</td>
         <td style="padding:7px 10px;">${condBadge(a.condition)}</td>
         <td style="padding:7px 10px;">${pmsBadge(getPMSStatus(a))}</td>
+        <td style="padding:7px 10px;">${assetRepairStatus(a)}</td>
+        <td style="padding:7px 10px;white-space:nowrap;"><button class="btn btn-sm btn-outline" onclick="viewHistory(${a.id});closeModal('mo-room-view')">History</button> <button class="btn btn-sm btn-outline" onclick="createAssetWorkOrder(${a.id})">Create work order</button></td>
         <td style="padding:7px 10px;font-size:12px;color:var(--muted);">${escapeHTML(a.remarks)||'—'}</td>
       </tr>`).join('')
-    : '<tr><td colspan="6" class="empty">No assets registered for this room.</td></tr>';
+    : '<tr><td colspan="8" class="empty">No assets registered for this room.</td></tr>';
 
   // ── WOs table ─────────────────────────────────────────
   document.getElementById('room-view-wos').innerHTML = wos.length
@@ -11832,13 +12624,17 @@ function openRoomView(room){
           <td style="padding:7px 10px;font-size:12px;max-width:160px;white-space:normal;">${w.remarks ? remarkLabel + escapeHTML(w.remarks) : '<span style="color:var(--muted);">—</span>'}</td>
         </tr>`;
       }).join('')
-    : '<tr><td colspan="8" class="empty">No work orders for this room.</td></tr>';
+    : '<tr><td colspan="8" class="empty">No recorded repairs for this room. Registered assets are listed above; use Create work order when maintenance is needed.</td></tr>';
 
   openModal('mo-room-view');
 }
 
 // ── Room datalist autocomplete ────────────────────────
 function updateRoomDatalist(){
+  if(typeof updateMasterLocationDatalist === 'function'){
+    updateMasterLocationDatalist();
+    return;
+  }
   const dl = document.getElementById('room-loc-list');
   if(!dl) return;
   const rooms = new Set();
@@ -12631,8 +13427,8 @@ function wsetUpdateFixtureHints(){
   };
   window.downloadWOTemplate = function(){
     const rows=[
-      ['Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Assigned To','Delay Reason','Delay Reason Other','Remarks'],
-      ['Electrical','Split-Type Aircon 1HP — Ward 2','Ward 2','Aircon not cooling — inspect unit','High','Open','2026-03-15','2026-03-16','','Sample Tech','','','Sample entry only']
+      ['Section','Asset','Location','Description','Priority','Status','Date Started','Target Completion Date','Date Completed','Assigned To','Delay Reason','Delay Reason Other','Remarks','Asset Doc ID','Work Scope'],
+      ['Electrical','','Ward 2','Inspect room lighting','High','Open','2026-03-15','2026-03-16','','Sample Tech','','','Sample entry only','','room']
     ];
     dl(csvBlob(rows),'HAMMS_WO_Template_'+today()+'.csv');
   };
@@ -12646,6 +13442,355 @@ function wsetUpdateFixtureHints(){
 })();
 </script>
 
+
+<script>
+// Reporting and record-repair tools. Calculations share the same filtered population as tables.
+function reportNumber(value,digits=1){return value==null||!Number.isFinite(Number(value))?'Unavailable':Number(value).toLocaleString('en-PH',{maximumFractionDigits:digits});}
+function reportCard(label,value,note,color='s-energy'){
+  return `<div class="stat-card ${color}"><div class="stat-label">${escapeHTML(label)}</div><div class="stat-val" style="font-size:22px">${escapeHTML(value)}</div><div class="stat-sub">${escapeHTML(note)}</div></div>`;
+}
+function reportPanel(id,title,note=''){
+  return `<div class="card"><div class="card-header"><h3>${escapeHTML(title)}</h3></div><div class="card-body"><p class="report-note">${escapeHTML(note)}</p><div id="${id}"></div></div></div>`;
+}
+function reportBars(id,entries,unit='',onSelect=null){
+  const el=document.getElementById(id);if(!el)return;
+  const max=Math.max(1,...entries.map(e=>Number(e[1])||0));
+  el.innerHTML=entries.length?entries.map(([label,value],i)=>`<${onSelect?'button type="button"':'div'} class="report-bar" data-index="${i}"><span>${escapeHTML(label)}</span><span class="report-track"><span style="width:${Math.max(0,Number(value)||0)/max*100}%"></span></span><strong>${escapeHTML(reportNumber(value))}${escapeHTML(unit)}</strong></${onSelect?'button':'div'}>`).join(''):'<div class="empty">No matching records.</div>';
+  if(onSelect)el.querySelectorAll('button').forEach(button=>button.addEventListener('click',()=>onSelect(entries[Number(button.dataset.index)][0])));
+}
+function countEntries(rows,key){const map=new Map();rows.forEach(r=>{const k=r[key]||'Unknown';map.set(k,(map.get(k)||0)+1);});return [...map].sort((a,b)=>b[1]-a[1]);}
+function renderComparisonChart(id,labels,series,unit='',kind='line'){
+  const el=document.getElementById(id);if(!el)return;
+  if(!labels.length){el.innerHTML='<div class="empty">No matching observations.</div>';return;}
+  const width=640,height=230,left=60,top=25,plotW=550,plotH=155;
+  const maximum=Math.max(1,...series.flatMap(s=>s.values).filter(v=>v!=null&&Number.isFinite(Number(v))).map(Number))*1.1;
+  const x=i=>left+(i+.5)*plotW/labels.length,y=v=>top+plotH-Number(v)/maximum*plotH;
+  let marks='',ticks='';
+  for(let i=0;i<=4;i++){const value=maximum*i/4,pos=y(value);ticks+=`<line x1="${left}" y1="${pos}" x2="610" y2="${pos}" stroke="#e5ebf1"/><text x="54" y="${pos+4}" text-anchor="end" fill="#5a6e84" font-size="10">${escapeHTML(reportNumber(value,0))}</text>`;}
+  series.forEach((s,index)=>{let prior=null;s.values.forEach((v,i)=>{
+    if(v==null||!Number.isFinite(Number(v))){prior=null;return;}
+    const px=x(i),py=y(v),title=escapeHTML(labels[i]+' · '+s.name+': '+reportNumber(v)+' '+unit);
+    if(kind==='bar'){const w=plotW/labels.length*.65/series.length;marks+=`<rect x="${px-plotW/labels.length*.325+index*w}" y="${py}" width="${w}" height="${top+plotH-py}" fill="${s.color}" rx="2"><title>${title}</title></rect>`;}
+    else{if(prior)marks+=`<line x1="${prior[0]}" y1="${prior[1]}" x2="${px}" y2="${py}" stroke="${s.color}" stroke-width="2"/>`;marks+=`<circle cx="${px}" cy="${py}" r="4" fill="${s.color}"><title>${title}</title></circle>`;prior=[px,py];}
+  });});
+  const step=Math.max(1,Math.ceil(labels.length/8));
+  const axis=labels.map((label,i)=>i%step===0||i===labels.length-1?`<text x="${x(i)}" y="203" text-anchor="middle" fill="#5a6e84" font-size="10">${escapeHTML(label)}</text>`:'').join('');
+  el.innerHTML=`<svg role="img" aria-label="${escapeHTML(series.map(s=>s.name).join(' and ')+' in '+unit+'; missing observations are gaps')}" viewBox="0 0 ${width} ${height}" width="100%" style="display:block">${ticks}${marks}${axis}</svg><p class="report-note">${series.map(s=>`<span style="color:${s.color}">● ${escapeHTML(s.name)}</span>`).join(' · ')} · ${escapeHTML(unit)}. Gaps mean unavailable observations.</p>`;
+}
+function reportDistribution(id,entries,onSelect){
+  reportBars(id,entries,'',onSelect);const el=document.getElementById(id),total=entries.reduce((s,e)=>s+e[1],0);if(!total)return;
+  const colors=['#1e6fb5','#cc3333','#e07030','#1f9452','#8a6000','#6e3fa3'];let offset=0;
+  const segments=entries.map(([label,value],i)=>{const fraction=value/total*100,mark=`<circle cx="60" cy="60" r="44" fill="none" stroke="${colors[i%colors.length]}" stroke-width="15" pathLength="100" stroke-dasharray="${fraction} ${100-fraction}" stroke-dashoffset="${-offset}" transform="rotate(-90 60 60)"><title>${escapeHTML(label+': '+value)}</title></circle>`;offset+=fraction;return mark;}).join('');
+  el.insertAdjacentHTML('afterbegin',`<svg role="img" aria-label="${escapeHTML(entries.map(e=>e.join(': ')).join(', '))}" viewBox="0 0 120 120" width="140" height="140" style="display:block;margin:0 auto 10px">${segments}<text x="60" y="65" text-anchor="middle" font-size="20" fill="#18334f">${total}</text></svg>`);
+}
+function getSafetyMetrics(rows,asOf=today()){
+  const active=rows.filter(isActiveSafety),inactive=rows.filter(s=>!isActiveSafety(s));
+  const durations=inactive.filter(s=>validReportDate(s.date)&&validReportDate(s.resolvedAt||s.closedAt)&&(s.resolvedAt||s.closedAt)>=s.date).map(s=>diffDays(s.date,s.resolvedAt||s.closedAt));
+  const risks=new Map();active.forEach(s=>{const loc=s.location||'Unknown';risks.set(loc,(risks.get(loc)||0)+({Critical:4,High:3,Moderate:2,Low:1}[s.severity]||1));});
+  const ranked=[...risks].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
+  const aging=[['0–7 days',0],['8–14 days',0],['15–30 days',0],['Over 30 days',0],['Unknown date',0]];
+  active.forEach(s=>{const age=validReportDate(s.date)&&s.date<=asOf?diffDays(s.date,asOf):null;aging[age==null?4:age<=7?0:age<=14?1:age<=30?2:3][1]++;});
+  return {total:rows.length,active:active.length,highCritical:active.filter(s=>['Critical','High'].includes(s.severity)).length,overdue:active.filter(s=>validReportDate(s.targetDate)&&s.targetDate<asOf).length,closureRate:rows.length?inactive.length/rows.length*100:null,averageResolution:durations.length?durations.reduce((a,b)=>a+b,0)/durations.length:null,resolutionSamples:durations.length,unknownResolution:inactive.length-durations.length,highestRisk:ranked[0]?.[0]||'None',aging,missingTargets:active.filter(s=>!validReportDate(s.targetDate)).length};
+}
+function safetyOutstandingAsOf(rows,date){
+  if(date>today())return null;
+  const eligible=rows.filter(r=>validReportDate(r.date)&&r.date<=date);
+  if(date===today())return eligible.filter(isActiveSafety).length;
+  if(eligible.some(r=>!r.statusHistory?.some(e=>e.from===null)))return null;
+  return eligible.filter(r=>{const last=r.statusHistory.filter(e=>e.date<=date).sort((a,b)=>a.date.localeCompare(b.date)||a.at-b.at).at(-1);return last&&isActiveSafety({status:last.to});}).length;
+}
+function renderSafetyAnalytics(){
+  const rows=getFilteredSafety(),m=getSafetyMetrics(rows),el=document.getElementById('safety-kpis');if(!el)return;
+  el.innerHTML=reportCard('Total issues',m.total,'Current filters')+reportCard('Active high / critical',m.highCritical,'Open and Under Action','s-overdue')+reportCard('Overdue issues',m.overdue,`${m.missingTargets} active issues lack a target`,'s-overdue')+reportCard('Resolution / closure rate',m.closureRate==null?'Unavailable':reportNumber(m.closureRate)+'%','Resolved, Verified or Closed','s-closed')+reportCard('Average resolution',m.averageResolution==null?'Unavailable':reportNumber(m.averageResolution)+' days',`${m.resolutionSamples} dated records; ${m.unknownResolution} unknown`)+reportCard('Highest risk location',m.highestRisk,'Active severity score: 4 / 3 / 2 / 1','s-safety');
+  document.getElementById('safety-scope').textContent='All views use current filters and logged dates. Historical outstanding counts require recorded status transitions; legacy missing dates remain unknown.';
+  reportBars('safety-aging',m.aging);
+  reportDistribution('safety-status',countEntries(rows,'status'),status=>{document.getElementById('sf-status').value=status;renderSafety();});
+  reportBars('safety-assets',countEntries(rows.filter(s=>s.asset),'asset'));
+  const year=document.getElementById('sf-year').value,month=document.getElementById('sf-month').value;
+  const observed=rows.filter(r=>validReportDate(r.date)).map(r=>({period:r.date.slice(0,7)}));
+  const periods=year&&month?[year+'-'+String(month).padStart(2,'0')]:month?[...new Set(observed.map(r=>r.period))].sort():reportPeriods(observed,year,year?12:6);
+  renderComparisonChart('safety-chart',periods,[{name:'Logged issues',color:'#e07030',values:periods.map(period=>rows.filter(r=>(r.date||'').startsWith(period)).length)}],'issues');
+  const transitions=rows.flatMap(r=>{
+    const history=r.statusHistory||[];
+    if(history.length)return history.map(e=>({...e,record:r}));
+    return !isActiveSafety(r)&&validReportDate(r.resolvedAt||r.closedAt)?[{from:'Open',to:r.status,date:r.resolvedAt||r.closedAt,record:r}]:[];
+  });
+  const trend=periods.map(period=>[period,rows.filter(r=>(r.date||'').startsWith(period)).length,transitions.filter(e=>(e.date||'').startsWith(period)&&e.from&&isActiveSafety({status:e.from})&&!isActiveSafety({status:e.to})).length]);
+  const outstanding=periods.map(period=>{const last=new Date(Date.UTC(Number(period.slice(0,4)),Number(period.slice(5,7)),0)).toISOString().slice(0,10);return safetyOutstandingAsOf(rows,last);});
+  renderComparisonChart('safety-month-chart',periods,[{name:'Opened',color:'#1e6fb5',values:trend.map(r=>r[1])},{name:'Became inactive (known dates)',color:'#1f9452',values:trend.map(r=>r[2])},{name:'Outstanding (complete history)',color:'#cc3333',values:outstanding}],'issues');
+  const tbody=document.getElementById('safety-tbody');
+  [...tbody.rows].forEach((tr,i)=>{const r=rows[i];if(!r)return;const cell=tr.insertCell(tr.cells.length-1);cell.textContent=r.targetDate?fmt(r.targetDate):'No target';const responsible=tr.insertCell(tr.cells.length-1);responsible.textContent=r.responsible||'Unassigned';});
+}
+function isFinishedProject(p){return ['Completed','Closed'].includes(p.status);}
+function getProjectMetrics(rows,asOf=today()){
+  const budgets=rows.filter(p=>Number(p.budget)>0),weights=budgets.length?budgets:rows,totalWeight=weights.reduce((s,p)=>s+(budgets.length?Number(p.budget):1),0);
+  const progress=key=>totalWeight?weights.reduce((s,p)=>s+(Number(p[key])||0)*(budgets.length?Number(p.budget):1),0)/totalWeight:null;
+  const finished=rows.filter(p=>isFinishedProject(p)&&validReportDate(p.targetDate)&&validReportDate(p.actualDate));
+  const overdue=rows.filter(p=>!isFinishedProject(p)&&validReportDate(p.targetDate)&&p.targetDate<asOf);
+  const atRisk=rows.filter(p=>!isFinishedProject(p)&&(p.status==='Delayed'||(validReportDate(p.targetDate)&&p.targetDate<asOf)));
+  return {physical:progress('physicalPct'),financial:progress('financialPct'),weighted:budgets.length>0,missingBudget:rows.length-budgets.length,onTime:finished.length?finished.filter(p=>p.actualDate<=p.targetDate).length/finished.length*100:null,onTimeSamples:finished.length,overdue:overdue.length,dueSoon:rows.filter(p=>!isFinishedProject(p)&&validReportDate(p.targetDate)&&p.targetDate>=asOf&&p.targetDate<=addDays(asOf,30)).length,budgetAtRisk:atRisk.reduce((s,p)=>s+(Number(p.budget)||0),0),riskUnknownBudgets:atRisk.filter(p=>p.budget==null).length};
+}
+function forecastProject(p){
+  if(isFinishedProject(p))return {date:p.actualDate||null,basis:'Completed; actual date'};
+  const observations=(p.progressHistory||[]).filter(o=>validReportDate(o.date)&&Number.isFinite(Number(o.physicalPct))).sort((a,b)=>a.date.localeCompare(b.date)||a.recordedAt-b.recordedAt);
+  const last=observations.at(-1),first=last?observations.find(o=>o.date<last.date&&Number(o.physicalPct)<Number(last.physicalPct)):null;
+  if(!first||!last||last.physicalPct>=100)return {date:null,basis:'Insufficient dated progress'};
+  const days=diffDays(first.date,last.date),rate=(last.physicalPct-first.physicalPct)/days;
+  return {date:addDays(last.date,Math.ceil((100-last.physicalPct)/rate)),basis:`Estimate: ${reportNumber(rate,2)} percentage points/day; ${first.date}–${last.date}`};
+}
+function projectMonthlyObservations(rows){
+  const months=[...new Set(rows.flatMap(p=>(p.progressHistory||[]).filter(o=>validReportDate(o.date)).map(o=>o.date.slice(0,7))))].sort();
+  return months.map(month=>{
+    const observed=rows.flatMap(p=>{const last=(p.progressHistory||[]).filter(o=>(o.date||'').startsWith(month)).sort((a,b)=>a.date.localeCompare(b.date)||a.recordedAt-b.recordedAt).at(-1);return last?[{...last,budget:p.budget}]:[];});
+    const mean=key=>{const valid=observed.filter(o=>o[key]!=null&&Number.isFinite(Number(o[key]))),weighted=valid.filter(o=>Number(o.budget)>0),used=weighted.length?weighted:valid;const total=used.reduce((s,o)=>s+(weighted.length?Number(o.budget):1),0);return total?used.reduce((s,o)=>s+Number(o[key])*(weighted.length?Number(o.budget):1),0)/total:null;};
+    return [month,mean('plannedPct'),mean('physicalPct'),observed.length];
+  });
+}
+function renderProjectAnalytics(){
+  const rows=getFilteredProjects(),m=getProjectMetrics(rows),el=document.getElementById('project-kpis');if(!el)return;
+  const basis=m.weighted?`Budget weighted; ${m.missingBudget} unbudgeted excluded`:'Simple mean; no positive budgets';
+  el.innerHTML=reportCard('Physical progress',m.physical==null?'Unavailable':reportNumber(m.physical)+'%',basis)+reportCard('Financial progress',m.financial==null?'Unavailable':reportNumber(m.financial)+'%','Progress measure; expenditure recorded separately')+reportCard('On-time completion',m.onTime==null?'Unavailable':reportNumber(m.onTime)+'%',`${m.onTimeSamples} completed projects with both dates`,'s-closed')+reportCard('Budget at risk','₱'+reportNumber(m.budgetAtRisk,0),`Delayed or overdue unfinished; ${m.riskUnknownBudgets} budgets unknown`,'s-overdue')+reportCard('Overdue projects',m.overdue,'Unfinished; past target date','s-overdue')+reportCard('Due in 30 days',m.dueSoon,'Today through next 30 calendar days');
+  reportDistribution('project-status',countEntries(rows,'status'),status=>{document.getElementById('pj-status').value=status;renderProjects();});
+  renderSeriesTable('project-progress',['Month','Planned %','Physical %','Observed projects'],projectMonthlyObservations(rows));
+  const monthly=projectMonthlyObservations(rows);renderComparisonChart('project-progress-chart',monthly.map(r=>r[0]),[{name:'Planned',color:'#e07030',values:monthly.map(r=>r[1])},{name:'Physical',color:'#1e6fb5',values:monthly.map(r=>r[2])}],'%');
+  renderSeriesTable('project-budget',['Project','Budget (₱)','Recorded expenditure (₱)'],rows.map(p=>[p.title,Number.isFinite(Number(p.budget))&&p.budget!=null?Number(p.budget):null,p.actualSpend??null]));
+  renderComparisonChart('project-budget-chart',rows.map(p=>p.code||p.title),[{name:'Budget',color:'#1e6fb5',values:rows.map(p=>p.budget??null)},{name:'Expenditure',color:'#e07030',values:rows.map(p=>p.actualSpend??null)}],'₱','bar');
+  renderSeriesTable('project-forecast',['Project','Target','Forecast / actual','Basis'],rows.map(p=>{const f=forecastProject(p);return [p.title,p.targetDate||null,f.date,f.basis];}));
+}
+function renderSeriesTable(id,headers,rows){
+  const el=document.getElementById(id);if(!el)return;
+  el.innerHTML=rows.length?`<div class="tbl-wrap"><table><caption class="sr-only">${escapeHTML(headers.join(', '))}</caption><thead><tr>${headers.map(h=>`<th scope="col">${escapeHTML(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td>${escapeHTML(typeof v==='number'?reportNumber(v):v??'Unavailable')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`:'<div class="empty">No dated observations available.</div>';
+}
+function reportPeriods(rows,year='',limit=12){
+  const valid=rows.map(r=>r.period).filter(p=>/^\d{4}-(0[1-9]|1[0-2])$/.test(p||''));
+  const latest=valid.sort().at(-1)||today().slice(0,7);
+  const end=year?year+'-12':latest,periods=[];
+  const date=new Date(end+'-01T12:00:00Z');
+  for(let i=0;i<limit;i++){periods.unshift(date.toISOString().slice(0,7));date.setUTCMonth(date.getUTCMonth()-1);}
+  return periods;
+}
+function getEnergySettings(){return cloneForFirebase(_fbMetaState.energySettings||{revision:0,factors:[],baselineMethod:'year',baselineYear:'',targetPct:10,audit:[]});}
+function validateEnergySettings(settings){
+  if(!['year','previous','manual'].includes(settings.baselineMethod))throw new Error('Invalid baseline method.');
+  if(!Number.isFinite(Number(settings.targetPct))||settings.targetPct<0||settings.targetPct>100)throw new Error('Target must be between 0 and 100%.');
+  if(settings.baselineMethod==='year'&&settings.baselineYear&&!/^\d{4}$/.test(settings.baselineYear))throw new Error('Choose a valid baseline year.');
+  if(settings.baselineMethod==='manual'&&(!Number.isFinite(Number(settings.manualAnnualKwh))||Number(settings.manualAnnualKwh)<=0))throw new Error('Manual baseline must be a positive full-year kWh value.');
+  if(!Array.isArray(settings.factors)||settings.factors.length>100)throw new Error('Factor registry limit is 100 entries.');
+  const ids=new Set();
+  settings.factors.forEach(f=>{
+    if(!f.id||ids.has(f.id))throw new Error('Factor IDs must be unique.');ids.add(f.id);
+    if(!Number.isFinite(Number(f.value))||Number(f.value)<0||f.unit!=='kgCO2e/kWh'||!f.grid?.trim()||!f.source?.trim()||!validReportDate(f.effectiveFrom)||!validReportDate(f.effectiveTo)||f.effectiveTo<f.effectiveFrom||!['verified','provisional','retired'].includes(f.status))throw new Error('Each factor needs a value, grid, source, valid applicability dates and verification status.');
+  });settings.factorById=Object.fromEntries(settings.factors.map(f=>[f.id,cloneForFirebase(f)]));return settings;
+}
+function factorForPeriod(period,settings=getEnergySettings()){
+  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(period||''))return null;
+  const first=period+'-01',end=new Date(Date.UTC(Number(period.slice(0,4)),Number(period.slice(5,7)),0)).toISOString().slice(0,10);
+  const eligible=settings.factors.filter(f=>f.status==='verified'&&f.effectiveFrom<=first&&f.effectiveTo>=end);
+  // Overlapping applicable factors are ambiguous; no automatic factor selection.
+  return eligible.length===1?cloneForFirebase(eligible[0]):null;
+}
+function getBillCarbon(b){
+  const f=b.carbonFactor;
+  if(!f||f.status!=='verified'||f.unit!=='kgCO2e/kWh'||!Number.isFinite(Number(f.value))||Number(f.value)<0)return null;
+  return Number(b.actualKwh)*Number(f.value);
+}
+function getFilteredEnergyBills(){
+  const year=document.getElementById('en-year')?.value||'',q=(document.getElementById('en-search')?.value||'').trim().toLowerCase();
+  return DB.g('energyBills').filter(b=>(!year||(b.period||'').startsWith(year+'-'))&&(!q||[b.periodLabel,b.period,b.remarks].some(v=>String(v||'').toLowerCase().includes(q))));
+}
+function energyBaseline(rows,all,settings=getEnergySettings()){
+  const years=new Set(rows.map(b=>(b.period||'').slice(0,4))),months=rows.map(b=>(b.period||'').slice(5,7));
+  if(years.size!==1||new Set(months).size!==rows.length||!rows.length)return {value:null,reason:'Select one reporting year with unique billing months.'};
+  const currentYear=[...years][0];
+  if(settings.baselineMethod==='manual')return rows.length===12&&Number(settings.manualAnnualKwh)>0?{value:Number(settings.manualAnnualKwh),reason:'Manual full-year baseline'}:{value:null,reason:'Manual full-year baseline requires all 12 reporting months.'};
+  const year=settings.baselineMethod==='previous'?String(Number(currentYear)-1):settings.baselineYear;
+  if(!year||year===currentYear)return {value:null,reason:'Choose a different baseline year.'};
+  const matched=months.map(month=>all.filter(b=>b.period===year+'-'+month));
+  if(matched.some(list=>list.length!==1))return {value:null,reason:'Baseline lacks matching months or contains duplicate months.'};
+  return {value:matched.reduce((s,list)=>s+Number(list[0].actualKwh),0),bills:matched.map(list=>list[0]),reason:`${year}; same ${rows.length} billing months`};
+}
+function getEnergyMetrics(rows,all=DB.g('energyBills'),settings=getEnergySettings()){
+  const actual=rows.reduce((s,b)=>s+Number(b.actualKwh||0),0),baseline=energyBaseline(rows,all,settings);
+  const coverage=rows.filter(b=>getBillCarbon(b)!=null),complete=rows.length>0&&coverage.length===rows.length;
+  const kg=complete?coverage.reduce((s,b)=>s+getBillCarbon(b),0):null;
+  const reduction=baseline.value>0?(baseline.value-actual)/baseline.value*100:null;
+  const common=complete&&new Set(rows.map(b=>JSON.stringify([b.carbonFactor.value,b.carbonFactor.grid,b.carbonFactor.unit]))).size===1?Number(rows[0].carbonFactor.value):null;
+  const baselineKg=baseline.bills?.every(b=>getBillCarbon(b)!=null)?baseline.bills.reduce((s,b)=>s+getBillCarbon(b),0):null;
+  return {actual,kg,tonnes:kg==null?null:kg/1000,intensity:kg!=null&&actual>0?kg/actual:null,carbonMissing:rows.length-coverage.length,baseline:baseline.value,baselineKg,carbonReduction:baselineKg>0&&kg!=null?(baselineKg-kg)/baselineKg*100:null,baselineReason:baseline.reason,reduction,target:baseline.value>0?baseline.value*(1-settings.targetPct/100):null,targetMet:reduction==null?null:reduction>=settings.targetPct,avoidedTonnes:baseline.value!=null&&common!=null?(baseline.value-actual)*common/1000:null,commonFactor:common};
+}
+function renderFilteredEnergyCharts(rows){
+  const year=document.getElementById('en-year').value;
+  const periods=year?reportPeriods(rows,year):[...new Set(rows.map(b=>b.period))].sort();
+  const labels=periods.map(period=>periodLabel(period));
+  const value=field=>periods.map(period=>{const matching=rows.filter(b=>b.period===period);return matching.length?matching.reduce((s,b)=>s+Number(b[field]||0),0):null;});
+  renderComparisonChart('en-trend-chart',labels,[{name:'Estimated snapshot',color:'#1e6fb5',values:value('theoreticalKwh')}],'kWh');
+  renderComparisonChart('en-actual-chart',labels,[{name:'Billed consumption',color:'#cc3333',values:value('actualKwh')}],'kWh');
+  renderComparisonChart('en-bill-chart',labels,[{name:'Billed cost',color:'#1e6fb5',values:value('billAmount')}],'₱');
+}
+function renderEnergyAnalytics(){
+  const rows=getFilteredEnergyBills(),m=getEnergyMetrics(rows),el=document.getElementById('energy-carbon-kpis');if(!el)return;
+  renderFilteredEnergyCharts(rows);
+  const periods=rows.map(b=>b.period).sort(),years=new Set(periods.map(p=>p?.slice(0,4))),monthCount=new Set(periods).size;
+  document.getElementById('energy-scope').textContent=`Billed consumption: ${monthCount} recorded months (${periods[0]||'none'}–${periods.at(-1)||'none'}). ${years.size===1&&monthCount===12?'Full year.':'Partial / selected coverage; missing months are unknown.'} ${m.baselineReason}`;
+  const powered=DB.g('assets').filter(a=>Number(a.ratedWatts)>0||Number(a.hp)>0).length;
+  el.innerHTML=reportCard('Powered assets',powered,'Current registry; estimates below')+reportCard('Billed carbon',m.tonnes==null?'Unavailable':reportNumber(m.tonnes,3)+' tCO₂e',`${m.carbonMissing} bills lack a verified factor snapshot`,'s-carbon')+reportCard('Carbon intensity',m.intensity==null?'Unavailable':reportNumber(m.intensity,4),'kgCO₂e/kWh; reflects emission factors','s-carbon')+reportCard('Consumption reduction',m.reduction==null?'Unavailable':reportNumber(m.reduction)+'%',m.baselineReason,'s-closed')+reportCard('Target consumption',m.target==null?'Unavailable':reportNumber(m.target)+' kWh',m.targetMet==null?'Comparable baseline required':m.targetMet?'Target met':'Target not met')+reportCard('Avoided emissions',m.avoidedTonnes==null?'Unavailable':reportNumber(m.avoidedTonnes,3)+' tCO₂e','Consumption effect using one common factor','s-carbon');
+  el.insertAdjacentHTML('beforeend',reportCard('Carbon reduction',m.carbonReduction==null?'Unavailable':reportNumber(m.carbonReduction)+'%','Comparable months; saved factors for both years','s-carbon'));
+  const annual=new Map();rows.forEach(b=>{const year=b.period.slice(0,4),r=annual.get(year)||[year,0,0,0];r[1]+=Number(b.actualKwh)||0;r[2]+=Number(b.billAmount)||0;r[3]++;annual.set(year,r);});
+  renderSeriesTable('energy-yearly',['Year','Billed kWh','Cost (₱)','Recorded months'],[...annual.values()].sort((a,b)=>a[0].localeCompare(b[0])));
+  const annualRows=[...annual.values()].sort((a,b)=>a[0].localeCompare(b[0]));renderComparisonChart('energy-yearly-chart',annualRows.map(r=>r[0]),[{name:'Billed consumption (recorded months)',color:'#1e6fb5',values:annualRows.map(r=>r[1])}],'kWh','bar');
+  const top=DB.g('assets').map(a=>[a.name+' · '+(a.location||a.roomNumber||'Unknown'),calcAssetKwh(a)]).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,5);reportBars('energy-top-assets',top,' kWh/mo');
+  renderSeriesTable('energy-factor-coverage',['Period','Factor kgCO₂e/kWh','Grid','Source','Billed kgCO₂e'],rows.slice().sort((a,b)=>a.period.localeCompare(b.period)).map(b=>[b.period,b.carbonFactor?.value??null,b.carbonFactor?.grid||null,b.carbonFactor?.source||null,getBillCarbon(b)]));
+  const settingsButton=document.getElementById('energy-settings-open');if(settingsButton){settingsButton.disabled=!window._FB?.isAdmin;settingsButton.title=window._FB?.isAdmin?'Manage verified factors and baseline':'Administrator role required';}
+  const anomaly=rows.filter(b=>Number(b.actualKwh)>0&&Number(b.billAmount)/Number(b.actualKwh)>100);
+  document.getElementById('energy-quality').textContent=anomaly.length?`${anomaly.length} bill(s) exceed ₱100/kWh including charges. Review original bills and meter multipliers; values have not been changed.`:'Bill values are preserved. Validate consumption, meter multipliers and charges against original bills.';
+}
+async function saveEnergySettings(){
+  const button=document.getElementById('energy-settings-save');
+  try{
+    if(!window._FB?.isAdmin)throw new Error('Only administrators may manage energy settings.');requireOnlineWrite();if(pendingWrites()||_fbWriteInProgress)throw new Error('Finish pending saves first.');
+    const previous=getEnergySettings(),next=cloneForFirebase(previous);
+    next.baselineMethod=document.getElementById('es-method').value;next.baselineYear=document.getElementById('es-year').value.trim();next.targetPct=Number(document.getElementById('es-target').value);next.manualAnnualKwh=document.getElementById('es-manual').value===''?null:Number(document.getElementById('es-manual').value);
+    const raw=document.getElementById('es-factor').value;
+    if(raw!=='')next.factors.push({id:crypto.randomUUID(),value:Number(raw),unit:'kgCO2e/kWh',grid:document.getElementById('es-grid').value.trim(),source:document.getElementById('es-source').value.trim(),effectiveFrom:document.getElementById('es-from').value,effectiveTo:document.getElementById('es-to').value,status:document.getElementById('es-status').value,recordedBy:window._FB.email||'',recordedAt:Date.now()});
+    validateEnergySettings(next);next.revision=(previous.revision||0)+1;
+    next.audit=[...(previous.audit||[]),{revision:next.revision,date:today(),by:window._FB.email||'',at:Date.now(),baselineMethod:next.baselineMethod,baselineYear:next.baselineYear,targetPct:next.targetPct,manualAnnualKwh:next.manualAnnualKwh,factorIds:next.factors.map(f=>f.id)}];
+    button.disabled=true;const session=_sessionGeneration;
+    if(window._FB.enabled!==false)await window._FB.runTransaction(window._FB.db,async tx=>{const snap=await tx.get(getMetaDocRef());if(session!==_sessionGeneration||!navigator.onLine)throw new Error('Session or connection changed.');const remote=snap.exists()?snap.data():{};if((remote.energySettings?.revision||0)!==(previous.revision||0))throw new Error('Energy settings changed on another device. Reopen settings to review.');tx.set(getMetaDocRef(),{energySettings:next,updatedAt:window._FB.serverTimestamp(),updatedBy:window._FB.email},{merge:true});});
+    if(session!==_sessionGeneration)throw new Error('Session changed.');_fbMetaState.energySettings=next;closeModal('mo-energy-settings');renderEnergy();showToast('Energy settings saved. Existing bill snapshots are preserved.');
+  }catch(error){showToast(error.message,'error',10000);}finally{button.disabled=false;}
+}
+function openEnergySettings(){
+  if(!window._FB?.isAdmin){showToast('Administrator role required.','warning');return;}
+  const s=getEnergySettings();for(const [id,value] of [['es-method',s.baselineMethod],['es-year',s.baselineYear],['es-target',s.targetPct],['es-manual',s.manualAnnualKwh]])document.getElementById(id).value=value??'';
+  for(const id of ['es-factor','es-grid','es-source','es-from','es-to'])document.getElementById(id).value='';
+  renderSeriesTable('energy-factor-registry',['Value','Grid','Applicable from','Through','Status','Source'],s.factors.map(f=>[f.value,f.grid,f.effectiveFrom,f.effectiveTo,f.status,f.source]));openModal('mo-energy-settings');
+  const registry=document.getElementById('energy-factor-registry');
+  s.factors.forEach(f=>{if(f.status==='retired')return;const button=document.createElement('button');button.type='button';button.className='btn btn-sm btn-outline';button.textContent='Retire '+f.grid+' factor '+f.value;button.addEventListener('click',()=>retireEnergyFactor(f.id));registry.appendChild(button);});
+  const eligible=DB.g('energyBills').filter(b=>!b.carbonFactor&&factorForPeriod(b.period,s));
+  const note=document.createElement('p');note.className='report-note';note.textContent=eligible.length+' bills have no snapshot and exactly one verified applicable factor.';registry.appendChild(note);
+  const backfill=document.createElement('button');backfill.type='button';backfill.className='btn btn-outline';backfill.textContent='Review missing factor snapshots';backfill.addEventListener('click',applyMissingBillFactors);registry.appendChild(backfill);
+}
+async function retireEnergyFactor(id){
+  try{
+    if(!window._FB?.isAdmin)throw new Error('Administrator role required.');requireOnlineWrite();if(pendingWrites()||_fbWriteInProgress)throw new Error('Finish pending saves first.');
+    const previous=getEnergySettings(),next=cloneForFirebase(previous),factor=next.factors.find(f=>f.id===id);if(!factor)throw new Error('Factor no longer exists.');
+    if(!await confirmDialog('Retire this factor for future snapshots? Existing bill snapshots stay unchanged.'))return;
+    factor.status='retired';validateEnergySettings(next);next.revision=(previous.revision||0)+1;next.audit=[...(next.audit||[]),{revision:next.revision,action:'retire factor',factorId:id,by:window._FB.email||'',at:Date.now()}];
+    const session=_sessionGeneration;
+    if(window._FB.enabled!==false)await window._FB.runTransaction(window._FB.db,async tx=>{const snap=await tx.get(getMetaDocRef()),remote=snap.exists()?snap.data():{};if(session!==_sessionGeneration||!navigator.onLine||(remote.energySettings?.revision||0)!==(previous.revision||0))throw new Error('Session, connection or settings changed. Reopen settings.');tx.set(getMetaDocRef(),{energySettings:next,updatedAt:window._FB.serverTimestamp(),updatedBy:window._FB.email},{merge:true});});
+    if(session!==_sessionGeneration)throw new Error('Session changed.');_fbMetaState.energySettings=next;openEnergySettings();renderEnergy();showToast('Factor retired; existing bill calculations are preserved.');
+  }catch(error){showToast(error.message,'error');}
+}
+async function applyMissingBillFactors(){
+  try{
+    if(!window._FB?.isAdmin)throw new Error('Administrator role required.');requireOnlineWrite();if(pendingWrites()||_fbWriteInProgress)throw new Error('Finish pending saves first.');
+    const rows=cloneForFirebase(DB.g('energyBills')),eligible=rows.filter(b=>!b.carbonFactor&&factorForPeriod(b.period));
+    if(!eligible.length)throw new Error('No bills have one unambiguous verified factor available.');if(eligible.length>450)throw new Error('More than 450 bills; use a reviewed administrator migration.');
+    const details=eligible.map(b=>b.period+' → '+factorForPeriod(b.period).value+' kgCO₂e/kWh').join('\n');
+    if(!await confirmDialog('Assign these verified factors to bills without snapshots? Export a backup first.\n'+details))return;
+    eligible.forEach(b=>{b.carbonFactor=factorForPeriod(b.period);});commitLocalChanges({energyBills:rows});await flushAll();openEnergySettings();renderEnergy();showToast('Reviewed bill factor snapshots saved.');
+  }catch(error){showToast(error.message,'error',10000);}
+}
+function exportTroubleshootingEvidence(){
+  const report={generatedAt:new Date().toISOString(),system:'HAMMS',version:'2.11.0',...Object.fromEntries(STORES.map(s=>[s,cloneForFirebase(DB.g(s))])),energySettings:getEnergySettings(),meta:cloneForFirebase(_fbMetaState),legacyFallbackStores:[..._legacyFallbackStores],syncError:_fbSyncError?.record||_fbSyncError?.message||null};
+  dl(new Blob([JSON.stringify(report,null,2)],{type:'application/json'}),'HAMMS_evidence_'+today()+'.json');
+}
+async function reviewPendingConflict(){
+  try{
+    if(_fbWriteInProgress)throw new Error('Wait for the active save.');
+    if(!await confirmDialog('Reload cloud records for comparison? Pending operations will be cleared; your form inputs stay available.'))return;
+    const bases=snapshotPendingOperations().map(op=>({store:op.store,key:op.key,base:op.base}));
+    _fbPendingStoreOps=Object.create(null);_fbPendingMetaMerge={};_fbSyncError=null;_replacementMeta=null;_pendingSaveUi=null;
+    await reloadFromFirebase();if(_fbReadError)throw _fbReadError;
+    document.getElementById('conflict-comparison').innerHTML=bases.map(op=>{const current=DB.g(op.store).find(r=>r._docId===op.key);return `<h4>${escapeHTML(op.store+' / '+op.key)}</h4><p>Previous version ${escapeHTML(op.base?._v??'absent')} → server version ${escapeHTML(current?._v??'absent')}</p><pre class="report-json">${escapeHTML(JSON.stringify(current||{state:'Record removed'},null,2))}</pre>`;}).join('')||'<p>Review the latest records before reapplying your form.</p>';
+    openModal('mo-conflict-review');
+  }catch(error){showToast(error.message,'error');}
+}
+function acceptReviewedSaveBase(){
+  _editSnapshots.forEach((snap,store)=>captureEditSnapshot(store,snap.id));closeModal('mo-conflict-review');showToast('Latest versions reviewed. Check your retained form against the server record, then save.','info',8000);
+}
+function assetRepairPlan(){
+  const assets=cloneForFirebase(DB.g('assets')),changes=[];
+  assets.forEach(a=>{const type=lightingClassification(a.name);if(!type||a.section!=='Electrical')return;
+    const oldCode=a.assetCode||'',prefix=type.startsWith('Fluorescent')?'FL-':'LB-';
+    if(a.assetType!==type||a.mainCategory!=='Electrical'||!oldCode.startsWith(prefix)){
+      a.assetClass='Lighting';a.assetType=type;a.mainCategory='Electrical';
+      if(!oldCode.startsWith(prefix)){a.assetCode=generateAssetCodeFull(a,assets);a.legacyCodes=[...new Set([...(a.legacyCodes||[]),oldCode].filter(Boolean))];}
+      changes.push({id:a.id,name:a.name,oldCode,newCode:a.assetCode,type});
+    }
+  });
+  const workOrders=cloneForFirebase(DB.g('wo')),links=[],ambiguous=[];
+  workOrders.filter(w=>w.workScope!=='room'&&w.asset&&!w.assetDocId).forEach(w=>{const candidates=legacyAssetCandidates(w);if(candidates.length===1){w.assetDocId=candidates[0]._docId;links.push({id:w.id,asset:w.asset,assetDocId:w.assetDocId});}else ambiguous.push({id:w.id,asset:w.asset,candidateCount:candidates.length});});
+  return {assets,workOrders,changes,links,ambiguous};
+}
+function openDataReview(){
+  const plan=assetRepairPlan();
+  renderSeriesTable('data-review-changes',['Asset','Old code','New code','Type'],plan.changes.map(c=>[c.name,c.oldCode,c.newCode,c.type]));
+  renderSeriesTable('data-review-links',['WO ID','Asset name','Proposed stable reference'],plan.links.map(c=>[c.id,c.asset,c.assetDocId]));
+  renderSeriesTable('data-review-ambiguous',['WO ID','Asset name','Candidate assets'],plan.ambiguous.map(c=>[c.id,c.asset,c.candidateCount]));
+  const select=document.getElementById('legacy-store');select.replaceChildren(new Option('Choose legacy store',''));[..._legacyFallbackStores].forEach(s=>select.add(new Option(s+' ('+DB.g(s).length+' records)',s)));
+  document.getElementById('data-repair-apply').disabled=!window._FB?.isAdmin;
+  document.getElementById('legacy-migrate').disabled=!window._FB?.isAdmin;
+  window._assetRepairPreview=plan;openModal('mo-data-review');
+}
+async function applyAssetRepairPlan(){
+  try{
+    if(!window._FB?.isAdmin)throw new Error('Administrator role required for batch repair.');requireOnlineWrite();if(pendingWrites())throw new Error('Finish pending saves first.');
+    const plan=window._assetRepairPreview;if(!plan)throw new Error('Open a fresh repair preview.');
+    const check=assetRepairPlan();
+    if(JSON.stringify(plan.assets.map(a=>[a._docId,a._v]))!==JSON.stringify(check.assets.map(a=>[a._docId,a._v]))||JSON.stringify(plan.workOrders.map(w=>[w._docId,w._v]))!==JSON.stringify(check.workOrders.map(w=>[w._docId,w._v])))throw new Error('Records changed. Reopen Data review.');
+    if(plan.changes.length+plan.links.length>450)throw new Error('Batch exceeds 450 changed records; an administrator migration is required.');
+    if(!await confirmDialog('Apply the displayed classification/code changes and unambiguous links? Ambiguous work orders stay unchanged. Export evidence first.'))return;
+    const button=document.getElementById('data-repair-apply');button.disabled=true;
+    commitLocalChanges({assets:plan.assets,wo:plan.workOrders});await flushAll();window._assetRepairPreview=null;closeModal('mo-data-review');renderAssets();renderWO();showToast('Reviewed asset repair applied.');
+  }catch(error){showToast(error.message,'error',10000);}finally{document.getElementById('data-repair-apply').disabled=!window._FB?.isAdmin;}
+}
+async function migrateLegacyStore(){
+  const button=document.getElementById('legacy-migrate');
+  try{
+    if(!window._FB?.isAdmin)throw new Error('Administrator role required.');requireOnlineWrite();if(pendingWrites()||_fbWriteInProgress)throw new Error('Finish pending saves first.');
+    const store=document.getElementById('legacy-store').value;if(!STORES.includes(store)||!_legacyFallbackStores.has(store))throw new Error('Choose a legacy fallback store.');
+    const session=_sessionGeneration,legacySnap=await safeGetDocFresh(getLegacyMainDocRef()),metaSnap=await safeGetDocFresh(getMetaDocRef()),collection=await safeGetDocsFresh(getStoreCollectionRef(store));
+    const legacy=legacySnap.exists()?parseFirebaseMainData(legacySnap.data()):{},meta=metaSnap.exists()?metaSnap.data():{};
+    if(meta.storeInitialized?.[store])throw new Error('Store is already initialized. Reload records.');
+    if(collection.docs.length)throw new Error('Store already has server documents. A reviewed merge is required.');
+    const rows=prepareStoreArray(store,prepareLegacyRows(store,legacy[store]||[]));if(!rows.length||rows.length>449)throw new Error('Migration supports 1–449 records per store. Larger stores need a reviewed migration.');
+    if(!await confirmDialog(`Migrate ${rows.length} ${store} records with their existing IDs? This creates per-record documents and disables legacy fallback for this store. Export evidence first.`))return;
+    button.disabled=true;
+    await window._FB.runTransaction(window._FB.db,async tx=>{
+      const [freshLegacy,freshMeta,...targets]=await Promise.all([tx.get(getLegacyMainDocRef()),tx.get(getMetaDocRef()),...rows.map(r=>tx.get(getStoreDocRef(store,r._docId)))]);
+      if(session!==_sessionGeneration||!navigator.onLine)throw new Error('Session or connection changed.');
+      if(!freshLegacy.exists()||JSON.stringify(parseFirebaseMainData(freshLegacy.data())[store])!==JSON.stringify(legacy[store])||(freshMeta.exists()&&freshMeta.data().storeInitialized?.[store])||targets.some(s=>s.exists()))throw new Error('Migration source or target changed. Reload and review.');
+      rows.forEach(r=>{delete r._v;stampRecord(r);tx.set(getStoreDocRef(store,r._docId),r);});
+      tx.set(getMetaDocRef(),{storeInitialized:{[store]:true},legacyMigrations:{[store]:{at:Date.now(),by:window._FB.email,count:rows.length}},updatedAt:window._FB.serverTimestamp(),updatedBy:window._FB.email},{merge:true});
+    });
+    if(session!==_sessionGeneration)throw new Error('Session changed.');_legacyFallbackStores.delete(store);applyStoreData(store,rows);_fbMetaState.storeInitialized[store]=true;closeModal('mo-data-review');scheduleUiRefresh();showToast('Legacy '+store+' migration completed.');
+  }catch(error){showToast(error.message,'error',10000);}finally{button.disabled=!window._FB?.isAdmin;}
+}
+// Install fixed markup once; all user strings rendered above are escaped or use textContent.
+(function installReportingUI(){
+  const style=document.createElement('style');style.textContent='.report-note{font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 12px}.report-bar{display:grid;grid-template-columns:minmax(90px,1fr) 2fr minmax(55px,auto);align-items:center;gap:12px;width:100%;padding:8px 0;border:0;background:transparent;text-align:left;font:inherit;font-size:12px;color:var(--navy)}button.report-bar{cursor:pointer}button.report-bar:hover{background:#edf4fa}.report-track{height:12px;background:#e7edf3;border-radius:3px;overflow:hidden}.report-track>span{display:block;height:100%;background:var(--blue)}.report-json{white-space:pre-wrap;overflow-wrap:anywhere;max-height:260px;overflow:auto;font-size:11px;background:#f3f6f9;padding:10px}.report-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:14px}.report-grid>.card{min-width:0}.report-settings{max-width:760px;width:95vw}@media(max-width:700px){.report-grid{grid-template-columns:1fr}.report-bar{grid-template-columns:1fr 1fr auto;gap:6px}}';document.head.appendChild(style);
+  document.querySelector('#mo-safety .form-grid').insertAdjacentHTML('beforeend','<div class="form-group"><label for="m-sf-target">Target date</label><input type="date" id="m-sf-target"></div><div class="form-group"><label for="m-sf-responsible">Responsible person</label><input id="m-sf-responsible" type="text"></div><div class="form-group"><label for="m-sf-resolved">Resolution date</label><input type="date" id="m-sf-resolved"></div><div class="form-group"><label for="m-sf-closed">Closure date</label><input type="date" id="m-sf-closed"></div><p class="report-note" style="grid-column:1/-1">New status transitions use today when no resolution date is entered. Unknown legacy dates stay blank. Reopening clears current resolution dates and keeps status history.</p>');
+  document.querySelector('#mo-project .form-grid').insertAdjacentHTML('beforeend','<div class="form-group"><label for="m-pj-asof">Progress observation date</label><input type="date" id="m-pj-asof"></div><div class="form-group"><label for="m-pj-planned">Planned physical progress % (optional)</label><input type="number" min="0" max="100" id="m-pj-planned"></div><div class="form-group"><label for="m-pj-spend">Actual expenditure to date (₱, optional)</label><input type="number" min="0" step="0.01" id="m-pj-spend"></div><p class="report-note" style="grid-column:1/-1">Each changed progress observation is retained. Financial progress is separate from recorded expenditure. Historical values are not reconstructed.</p>');
+  document.querySelector('#page-safety .two-col').insertAdjacentHTML('beforebegin','<p id="safety-scope" class="report-note"></p><div id="safety-kpis" class="stat-grid mb14"></div>');
+  document.getElementById('safety-tbody').closest('.card').insertAdjacentHTML('beforebegin','<div class="report-grid">'+reportPanel('safety-aging','Active issue aging')+reportPanel('safety-status','Status distribution','Select a status to filter the table.')+reportPanel('safety-assets','Issues by asset','Current filters; asset names are historical labels.')+'</div>');
+  const safetyHeaders=document.querySelector('#safety-tbody').closest('table').querySelector('thead tr');safetyHeaders.lastElementChild.insertAdjacentHTML('beforebegin','<th scope="col">Target</th><th scope="col">Responsible</th>');
+  document.querySelector('#safety-month-chart').closest('.card').querySelector('h3').textContent='Opened and resolved / closed';
+  document.querySelector('#safety-chart').closest('.card').querySelector('h3').textContent='Logged issue trend';
+  document.getElementById('proj-stat-row').insertAdjacentHTML('afterend','<div id="project-kpis" class="stat-grid mb14"></div><div class="report-grid">'+reportPanel('project-status','Project status','Select a status to filter.')+reportPanel('project-progress','Planned and actual progress','Monthly dated observations; missing observations are unavailable. Budget weighted where available.')+reportPanel('project-budget','Budget and expenditure','Expenditure is recorded separately; financial % is not converted into spending.')+reportPanel('project-forecast','Completion forecast','Estimates require at least two dated observations with increasing progress.')+'</div>');
+  document.getElementById('en-stat-row').insertAdjacentHTML('afterend','<p id="energy-scope" class="report-note"></p><div id="energy-carbon-kpis" class="stat-grid mb14"></div><p id="energy-quality" class="report-note"></p><button type="button" id="energy-settings-open" class="btn btn-outline mb14" onclick="openEnergySettings()">Carbon factors and baseline</button><div class="report-grid">'+reportPanel('energy-yearly','Consumption by year','Totals cover recorded months under the current filters.')+reportPanel('energy-top-assets','Top estimated consumers','Current asset registry, kWh/month estimates. Not added to billed consumption.')+reportPanel('energy-factor-coverage','Carbon calculation basis','Saved factor snapshots keep previous reports stable.')+'</div>');
+  document.querySelector('#en-category-chart').closest('.card').querySelector('h3').textContent='Current estimated load by category';
+  document.body.insertAdjacentHTML('beforeend',`<div class="modal-overlay" id="mo-energy-settings" role="dialog" aria-modal="true" aria-labelledby="es-title"><div class="modal report-settings"><div class="modal-header"><h3 id="es-title">Energy reporting settings</h3><button class="modal-close" onclick="closeModal('mo-energy-settings')">×</button></div><div class="modal-body"><p class="report-note">Administrator settings. Add sourced factors with their applicable dates. Provisional or overlapping factors are not used for billed carbon. Saved bill snapshots remain unchanged.</p><div class="form-grid fg-2"><div class="form-group"><label for="es-method">Baseline method</label><select id="es-method"><option value="year">Selected baseline year</option><option value="previous">Previous year</option><option value="manual">Manual full-year kWh</option></select></div><div class="form-group"><label for="es-year">Baseline year</label><input id="es-year" type="number" min="2000" max="2100"></div><div class="form-group"><label for="es-target">Reduction target %</label><input id="es-target" type="number" min="0" max="100"></div><div class="form-group"><label for="es-manual">Manual annual baseline kWh</label><input id="es-manual" type="number" min="0"></div><div class="form-group"><label for="es-factor">New factor kgCO₂e/kWh (optional)</label><input id="es-factor" type="number" min="0" step="0.000001"></div><div class="form-group"><label for="es-grid">Grid</label><input id="es-grid" placeholder="e.g. Mindanao"></div><div class="form-group"><label for="es-from">Applicable from</label><input id="es-from" type="date"></div><div class="form-group"><label for="es-to">Applicable through</label><input id="es-to" type="date"></div><div class="form-group"><label for="es-status">Source verification</label><select id="es-status"><option value="provisional">Provisional — excluded</option><option value="verified">Verified applicable source</option></select></div><div class="form-group"><label for="es-source">Source document / URL and method</label><input id="es-source" placeholder="Source, reporting period and method"></div></div><p class="report-note"><a href="https://doe.gov.ph/national-grid-emission-factor" target="_blank" rel="noopener noreferrer">DOE emission-factor publications</a>. Verify the factor's grid, units, method and reporting period before marking it verified.</p><div id="energy-factor-registry"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-energy-settings')">Cancel</button><button id="energy-settings-save" class="btn btn-primary" onclick="saveEnergySettings()">Save settings</button></div></div></div>
+  <div class="modal-overlay" id="mo-conflict-review" role="dialog" aria-modal="true" aria-labelledby="cr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="cr-title">Review latest server records</h3><button class="modal-close" onclick="closeModal('mo-conflict-review')">×</button></div><div class="modal-body"><p class="report-note">Compare these records with your retained form. Using this version as the save base does not save the form. Removed records cannot be edited.</p><div id="conflict-comparison"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-conflict-review')">Close</button><button class="btn btn-primary" onclick="acceptReviewedSaveBase()">Use reviewed version as save base</button></div></div></div>
+  <div class="modal-overlay" id="mo-wo-links" role="dialog" aria-modal="true" aria-labelledby="wl-title"><div class="modal report-settings"><div class="modal-header"><h3 id="wl-title">Review asset links</h3><button class="modal-close" onclick="closeModal('mo-wo-links')">×</button></div><div class="modal-body"><p class="report-note">Review existing repairs individually. Select the confirmed registered asset, or room/general maintenance. No repairs or ownership are inferred.</p><div id="wo-link-review"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-wo-links')">Close</button></div></div></div>
+  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
+  for(const page of ['assets','reports']){const button=document.createElement('button');button.type='button';button.className='btn btn-outline mb14';button.textContent='Data review';button.addEventListener('click',openDataReview);document.getElementById('page-'+page).prepend(button);}
+  for(const [parent,id] of [['project-progress','project-progress-chart'],['project-budget','project-budget-chart'],['energy-yearly','energy-yearly-chart']]){const chart=document.createElement('div');chart.id=id;document.getElementById(parent).before(chart);}
+  const safety=renderSafety;renderSafety=function(){safety();renderSafetyAnalytics();};
+  const projects=renderProjStats;renderProjStats=function(){projects();renderProjectAnalytics();};
+  const energy=renderEnergy;renderEnergy=function(){energy();renderEnergyAnalytics();};
+})();
+</script>
 
 <script>
 // Preserve the form until Firebase acknowledges the save. Local test mode stays synchronous.

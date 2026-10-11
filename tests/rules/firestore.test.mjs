@@ -41,3 +41,22 @@ test('restore and reset markers require an administrator',async()=>{
  await assertSucceeds(setDoc(doc(staff(),meta),{updatedBy:'staff@example.com',inpatientToday:12},{merge:true}));
  await assertFails(deleteDoc(doc(staff(),meta)));
 });
+test('carbon settings and legacy migration markers are administrator-only',async()=>{
+ const meta=doc(staff(),'hammsMeta/state');
+ await assertFails(setDoc(meta,{updatedBy:'staff@example.com',energySettings:{revision:1}}));
+ await assertFails(setDoc(meta,{updatedBy:'staff@example.com',legacyMigrations:{waste:{count:1}}}));
+ await assertSucceeds(setDoc(doc(admin(),'hammsMeta/state'),{updatedBy:'admin@example.com',energySettings:{revision:1},legacyMigrations:{waste:{count:1}}}));
+ await assertFails(setDoc(meta,{updatedBy:'staff@example.com',energySettings:{revision:2}},{merge:true}));
+ await assertFails(setDoc(meta,{updatedBy:'staff@example.com',legacyMigrations:{}},{merge:true}));
+ await assertSucceeds(setDoc(meta,{updatedBy:'staff@example.com',inpatientToday:10},{merge:true}));
+});
+test('staff bill snapshots must use registered factors or preserve the existing snapshot',async()=>{
+ const factor={id:'verified',value:.5,unit:'kgCO2e/kWh',status:'verified',grid:'Synthetic grid',source:'Synthetic fixture'};
+ await setDoc(doc(admin(),'hammsMeta/state'),{updatedBy:'admin@example.com',energySettings:{factorById:{verified:factor}}});
+ const billPath='hammsStores/energyBills/records/bill',bill={...row(),_docId:'bill',period:'2026-01',actualKwh:100,carbonFactor:factor};
+ await assertSucceeds(setDoc(doc(staff(),billPath),bill));
+ await assertFails(setDoc(doc(staff(),billPath),{...bill,_v:2,carbonFactor:{...factor,value:.9}}));
+ await setDoc(doc(admin(),'hammsMeta/state'),{updatedBy:'admin@example.com',energySettings:{factorById:{}}});
+ await assertSucceeds(setDoc(doc(staff(),billPath),{...bill,_v:2,actualKwh:120}));
+ await assertFails(setDoc(doc(staff(),'hammsStores/energyBills/records/other'),{...bill,_docId:'other'}));
+});

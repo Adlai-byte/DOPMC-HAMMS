@@ -7,7 +7,7 @@ Single-file vanilla-JS PWA for Davao Oriental Provincial Medical Center. No buil
 - **App entry:** `public/index.html` (all HTML, CSS, JS in one file)
 - **Service worker:** `public/sw.js` — caches app shell + dynamic GETs (skips Firebase API calls)
 - **PWA manifest + icons:** `public/manifest.json`, `public/icon-192.png`, `public/icon-512.png`
-- **Data:** in-memory `_memDB` (15 stores) → Firestore per-record docs under `/hammsStores/{store}/records/{docId}`. Scalar state under `/hammsMeta/state`. Access via `DB.g(key)`, `DB.s(key, val)`, `DB.nid(key)`.
+- **Data:** in-memory `_memDB` (16 stores) → Firestore per-record docs under `/hammsStores/{store}/records/{docId}`. Scalar state under `/hammsMeta/state`. Access via `DB.g(key)`, `DB.s(key, val)`, `DB.nid(key)`.
 - **Auth:** Firebase Auth email/password; requires non-null email per `firestore.rules`.
 - **No `scripts` in `package.json`** — invoke tools via `npx`.
 
@@ -36,8 +36,8 @@ Playwright config: `testDir: ./tests`, `baseURL: http://localhost:3000`, `timeou
 
 ## Repo-specific gotchas (things an agent will get wrong without this)
 
-- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-10-20`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
-- **Firestore rules enforce exact store names.** Writes are rejected unless the store segment is one of the 15 names (`wo`, `assets`, `inventory`, `issuance`, `waste`, `waterLogs`, `waterTank`, `effluent`, `medWasteProd`, `wwProd`, `censusLog`, `waterSettings`, `energyBills`, `safety`, `projects`). See `firestore.rules:21-24`. `_updatedBy` on every record must equal the writer's auth email (`isWriter()`).
+- **Service worker cache name must be bumped on every deploy.** Bump `CACHE_NAME` in `public/sw.js:4` (currently `hamms-v2-11-2`) so returning users pick up the new `index.html`. Old caches are auto-pruned on activate.
+- **Firestore rules enforce exact store names.** Writes are rejected unless the store segment is one of the 16 names (`wo`, `assets`, `inventory`, `issuance`, `waste`, `waterLogs`, `waterTank`, `effluent`, `medWasteProd`, `wwProd`, `censusLog`, `waterSettings`, `energyBills`, `safety`, `projects`, `locations`). See `firestore.rules:21-24`. `_updatedBy` on every record must equal the writer's auth email (`isWriter()`).
 - **`FIREBASE_ENABLED = false` for test mode.** Tests stub `window._FB.enabled = false` to prevent actual Firestore writes. The app also runs fully offline when set at line 56.
 - **Records are versioned.** Every record gets `_docId` (Firestore key), numeric `id` (collision-safe across devices), `_v` (int, monotonic), `_updatedAt` (epoch ms), `_updatedBy` (email). Use `stampRecord()` or `stampChangedRecords()` — never set these fields by hand. Helpers: `generateRecordDocId()`, `generateUniqueNumericId()` at `public/index.html:2978-2991`.
 - **Layout is viewport-locked.** `body { overflow:hidden; }` prevents whole-page scrolling; `#main` and `#content` use `min-height:0` so the content area scrolls independently and the footer stays fixed at the bottom. The desktop sidebar is `position:fixed` with `#main { margin-left:var(--sb-w); }`.

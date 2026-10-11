@@ -64,7 +64,7 @@ Scalar/meta state lives in `_fbMetaState` (personnel roster, inpatient count, la
 ### Firestore Document Structure
 
 ```
-/hammsStores/{storeName}/records/{docId}   — per-record documents (14 store collections)
+/hammsStores/{storeName}/records/{docId}   — per-record documents (16 store collections)
 /hammsMeta/state                           — scalar metadata (personnel, inpatient, flags)
 /hamms/mainData                            — legacy single-doc (read-only fallback)
 ```
@@ -81,11 +81,11 @@ Each record gets a `_docId` (UUID-based via `generateRecordDocId()`), a numeric 
 
 ### Firestore Security Rules
 
-Rules require `request.auth != null` for all operations. Store writes are restricted to the 14 known collection names. Records must have `< 100` keys, and `_v` (int) and `_updatedAt` (int) are type-checked when present. Everything else is denied by default.
+Rules require `request.auth != null` for all operations. Store writes are restricted to the 16 known collection names (`wo`, `assets`, `inventory`, `issuance`, `waste`, `waterLogs`, `waterTank`, `effluent`, `medWasteProd`, `wwProd`, `censusLog`, `waterSettings`, `energyBills`, `safety`, `projects`, `locations`). Records must have `< 100` keys, and `_v` (int) and `_updatedAt` (int) are type-checked when present. Everything else is denied by default.
 
 ### Navigation / Routing
 
-Client-side tab navigation via `navigate(pageName)`. Each page is a `<div class="page" id="page-{name}">` toggled with `.active` class. 19 pages: `dashboard`, `workorders`, `assets`, `forecast`, `inventory`, `issuance`, `waste`, `wastefcast`, `safety`, `projects`, `water`, `watertank`, `effluent`, `medwaste`, `wwprod`, `energy`, `fuel`, `reports`, `instructions`.
+Client-side tab navigation via `navigate(pageName)`. Each page is a `<div class="page" id="page-{name}">` toggled with `.active` class. 20 pages: `dashboard`, `workorders`, `assets`, `locations`, `forecast`, `inventory`, `issuance`, `waste`, `wastefcast`, `safety`, `projects`, `water`, `watertank`, `effluent`, `medwaste`, `wwprod`, `energy`, `fuel`, `reports`, `instructions`.
 
 ### Sync Architecture
 
@@ -155,7 +155,27 @@ When deploying changes, bump the `CACHE_NAME` constant in `public/sw.js` (e.g., 
 - Backup replacement validates every store before changing memory and uses one transaction, including its protected metadata marker. The conservative preflight limit is **449 combined existing and imported records**. Larger replacements require a reviewed administrator migration; the app rejects them without changing records.
 - `tests/helpers/bootstrap.mjs` isolates Firebase before navigation. Run `npx playwright test` for local checks and `firebase emulators:exec --only firestore --project demo-hamms-tests "node --test tests/rules/firestore.test.mjs"` for rules checks (Java 21). Live-site tests require explicit `--config=playwright.live.config.mjs`.
 - Both hosting workflows require the reusable test workflow. Main deployment publishes matching Firestore rules/indexes before hosting. Ensure the deployment service account can deploy Firestore rules. Provision administrator claims through a trusted Admin SDK environment before enabling restore/reset for those accounts; users must refresh their ID token/sign in again.
-- Old open browser tabs must refresh for the stricter record metadata/version rules. The service worker cache is `hamms-v2-10-22`. Do not use an older client with the new rules.
+- Old open browser tabs must refresh for the stricter record metadata/version rules. The live service worker cache is `hamms-v2-11-2`. Do not use an older client with the new rules.
 - Existing duplicate numeric IDs are rejected for administrator repair rather than silently renumbered and breaking references. New numeric IDs include randomness; document IDs remain authoritative, with document references on newly saved material/issuance links.
 
 - Connectivity listeners opt into includeMetadataChanges. Initial cached snapshots do not invalidate successful server-first reads; subsequent confirmed listener transitions are tracked across metadata and stores. A browser that has internet but is waiting for Firebase displays Connecting, rather than claiming the internet is offline.
+
+### Troubleshooting reporting changes (2026-10-11)
+
+- Work orders save `assetDocId`. History uses stable identity; legacy name/section/location matching is accepted only for a unique candidate. Asset CSV updates can retain document identity. New asset codes use the maximum existing suffix and randomness, including staged imports.
+- Safety records retain target/responsible/resolution/closure fields and `statusHistory`. Projects retain dated `progressHistory`, `baselineHistory` and optional actual expenditure. Incomplete historic evidence is unavailable; edits do not manufacture past observations.
+- Safety/project/energy reports share their active filters. Project progress is budget-weighted when positive budgets exist. Energy remains one facility-wide bill per month.
+- Carbon settings live in protected metadata `energySettings`, including the factor registry, `factorById`, baseline configuration, revision and audit. Bill factor snapshots are preserved. Rules validate new snapshots against the registered factor; only administrators manage settings and legacy migration markers.
+- Administrator Data review provides evidence export, atomic legacy-store migration and reviewed asset repairs. Legacy fallback writes are blocked until migration; partial migrations and oversized batches require separate review.
+- See `docs/troubleshooting-implementation-verification.md` for phase outcomes, test results, migration limits and unresolved production-source questions. Release preparation does not imply deployment.
+
+### Asset repair workflow (v2.11.2)
+
+- Room view lists every registered asset with its linked-work-order count or `No recorded repairs`, plus History and Create work order actions. Registration alone does not create repair entries.
+- `createAssetWorkOrder(id)` preselects the immutable asset document reference, section and location. The full selected identity remains readable on mobile.
+- Saving requires a registered asset or explicit Room/general maintenance selection, stored as `workScope: 'asset' | 'room'`. Room work requires a location and is excluded from individual asset histories. Legacy edits with unresolved equipment links must select a valid asset before saving.
+- Work Orders > Review asset links lists missing, ambiguous, unlinked and dangling historical references for individual review. Existing data is not assigned speculatively.
+- CSV supports Work Scope and Asset Doc ID. Older ambiguous imports remain flagged; location is inferred only from a unique asset. Room history without a saved location uses stable or unique asset matching rather than a shared name.
+- `tests/asset-history-workflow.spec.mjs` covers room status, correct preselection, validation before stock mutation, reviews, cross-room isolation, CSV scope and mobile usability.
+
+- Dietary department aliases remain equivalent, but qualified subrooms such as RSA do not match the department or other subrooms through substring matching.

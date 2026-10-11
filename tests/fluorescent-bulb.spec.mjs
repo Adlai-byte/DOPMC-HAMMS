@@ -77,13 +77,13 @@ test.describe('Fluorescent and Bulb Verification Suite', () => {
       };
     });
 
-    expect(codes.fluoroLamp).toMatch(/^FL-ELEC-RM101-\d{2}$/);
-    expect(codes.flouroTube).toMatch(/^FL-ELEC-RM102-\d{2}$/);
-    expect(codes.flouroStarter).toMatch(/^FL-ELEC-(?:CORRIDOR|CORRB)-\d{2}$/);
-    expect(codes.ledBulb).toMatch(/^LB-ELEC-RM201-\d{2}$/);
-    expect(codes.bulbPlain).toMatch(/^LB-ELEC-RM202-\d{2}$/);
-    expect(codes.templateFluoro).toMatch(/^FL-ELEC-(?:CORRIDOR|CORRA)-\d{2}$/);
-    expect(codes.templateBulb).toMatch(/^LB-ELEC-WRD1-\d{2}$/);
+    expect(codes.fluoroLamp).toMatch(/^FL-ELEC-RM101-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.flouroTube).toMatch(/^FL-ELEC-RM102-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.flouroStarter).toMatch(/^FL-ELEC-(?:CORRIDOR|CORRB)-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.ledBulb).toMatch(/^LB-ELEC-RM201-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.bulbPlain).toMatch(/^LB-ELEC-RM202-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.templateFluoro).toMatch(/^FL-ELEC-(?:CORRIDOR|CORRA)-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.templateBulb).toMatch(/^LB-ELEC-WRD1-\d{2}-[A-F0-9]{8}$/);
   });
 
   test('Check 3: Energy computation in Asset Modal auto-detects hours and demand factor from asset name', async ({ page }) => {
@@ -150,7 +150,7 @@ test.describe('Fluorescent and Bulb Verification Suite', () => {
     });
 
     expect(savedAsset).toBeDefined();
-    expect(savedAsset.assetCode).toMatch(/^FL-ELEC-RM101-\d{2}$/);
+    expect(savedAsset.assetCode).toMatch(/^FL-ELEC-RM101-\d{2}-[A-F0-9]{8}$/);
     expect(savedAsset.opHoursDay).toBe(12);
     expect(savedAsset.demandFactor).toBe(1.0);
     expect(savedAsset.estimatedKwhMonth).toBe(12.96);

@@ -18,7 +18,7 @@ async function bootstrapLiveApp(page) {
 
 test.describe('Live Deployed Site Verification', () => {
 
-  test('Live Check 1: Deployed site loads with correct Service Worker v2.10.22 and zero console errors', async ({ page }) => {
+  test('Live Check 1: Deployed site loads with correct Service Worker v2.11.2 and zero console errors', async ({ page }) => {
     const consoleErrors = [];
     page.on('console', msg => {
       if (msg.type() === 'error') consoleErrors.push(msg.text());
@@ -37,7 +37,7 @@ test.describe('Live Deployed Site Verification', () => {
       const m = txt.match(/CACHE_NAME\s*=\s*['"]([^'"]+)['"]/);
       return m ? m[1] : null;
     });
-    expect(swVersion).toBe('hamms-v2-10-22');
+    expect(swVersion).toBe('hamms-v2-11-2');
     console.log('Live Verified SW Version:', swVersion);
 
     // Check for critical console errors (ignore benign network aborts if any)
@@ -121,7 +121,7 @@ test.describe('Live Deployed Site Verification', () => {
       document.getElementById('hamms-login-overlay').style.cssText = 'display:none !important';
       document.getElementById('app').style.visibility = 'visible';
       if (typeof _memDB === 'undefined') window._memDB = {};
-      const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
+      const stores = ['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills','locations'];
       stores.forEach(s => { if (!_memDB[s]) _memDB[s] = []; });
       if (!window._FB) window._FB = { enabled: false, db: null };
       else { window._FB.enabled = false; }
@@ -221,9 +221,9 @@ test.describe('Live Deployed Site Verification', () => {
       };
     });
 
-    expect(codes.flCode).toMatch(/^FL-ELEC-RM101-\d{2}$/);
-    expect(codes.flouroCode).toMatch(/^FL-ELEC-RM102-\d{2}$/);
-    expect(codes.bulbCode).toMatch(/^LB-ELEC-RM103-\d{2}$/);
+    expect(codes.flCode).toMatch(/^FL-ELEC-RM101-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.flouroCode).toMatch(/^FL-ELEC-RM102-\d{2}-[A-F0-9]{8}$/);
+    expect(codes.bulbCode).toMatch(/^LB-ELEC-RM103-\d{2}-[A-F0-9]{8}$/);
 
     // 3. Live search normalization
     const normResults = await page.evaluate(() => {
@@ -237,4 +237,33 @@ test.describe('Live Deployed Site Verification', () => {
     expect(normResults.fluorescentNorm).toBe('fluorescent lamp');
   });
 
+  test('Live Check 6: Stable asset history survives different names and isolates similar assets', async ({ page }) => {
+    await bootstrapLiveApp(page);
+    const result = await page.evaluate(() => {
+      window._FB.enabled = false;
+      _memDB.assets = [
+        {id:1,_docId:'synthetic-ramp-01',name:'FLOURESCENT TUBE 18W',section:'Electrical',location:'RAMP'},
+        {id:3,_docId:'synthetic-ramp-03',name:'FLOURESCENT TUBE 18W',section:'Electrical',location:'RAMP'}
+      ];
+      _memDB.wo = [{id:11,_docId:'synthetic-wo-11',code:'ELEC-HI-0011',asset:'Flourescent Tube 18 Watts',assetDocId:'synthetic-ramp-01',section:'Electrical',location:'RAMP',description:'Synthetic linked repair',status:'Closed'}];
+      viewHistory(1);const owner=document.getElementById('history-tbody').textContent;
+      viewHistory(3);const other=document.getElementById('history-tbody').textContent;
+      return {owner,other};
+    });
+    expect(result.owner).toContain('ELEC-HI-0011');
+    expect(result.other).not.toContain('ELEC-HI-0011');
+  });
+  test('Live Check 7: RSA assets show empty repair status and new work orders retain ownership', async ({ page }) => {
+    await bootstrapLiveApp(page);
+    const result=await page.evaluate(()=>{
+      window._FB.enabled=false;
+      STORES.forEach(store=>applyStoreData(store,[]));
+      applyStoreData('assets',[{id:1,_docId:'synthetic-rsa-tube',assetCode:'OT-ELEC-DIETAR-09',name:'FLOURESCENT TUBE 18W',section:'Electrical',location:'DIETARY RSA'},{id:2,_docId:'synthetic-rsa-bulb',assetCode:'OT-ELEC-DIETAR-10',name:'COMPACT BULB 15W',section:'Electrical',location:'DIETARY RSA'},{id:3,_docId:'synthetic-department',assetCode:'GENERAL-01',name:'Department fixture',section:'Plumbing',location:'Dietary'}]);
+      openRoomView('DIETARY RSA');const before=document.getElementById('room-view-assets').textContent;
+      createAssetWorkOrder(2);const selected=document.getElementById('m-wo-asset').selectedOptions[0].dataset.docId;
+      document.getElementById('m-wo-desc').value='Synthetic RSA verification';saveWO();
+      return {before,selected,saved:DB.g('wo')[0]?.assetDocId,tubeStatus:assetRepairStatus(DB.g('assets')[0]),bulbStatus:assetRepairStatus(DB.g('assets')[1])};
+    });
+    expect(result.before).toContain('OT-ELEC-DIETAR-09');expect(result.before).toContain('OT-ELEC-DIETAR-10');expect(result.before).toContain('No recorded repairs');expect(result.before).not.toContain('GENERAL-01');expect(result.selected).toBe('synthetic-rsa-bulb');expect(result.saved).toBe('synthetic-rsa-bulb');expect(result.tubeStatus).toBe('No recorded repairs');expect(result.bulbStatus).toBe('1 linked work order');
+  });
 });

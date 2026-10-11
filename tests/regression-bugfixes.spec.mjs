@@ -220,15 +220,13 @@ test.describe('T6 — calcAssetKwh demandFactor', () => {
     expect(kwh).toBeCloseTo(192, 1);
   });
 
-  test('demandFactor=0 is treated as 0.80 (falsy but valid edge case)', async ({ page }) => {
+  test('explicit demandFactor=0 produces zero consumption', async ({ page }) => {
     await bootstrapApp(page);
     const kwh = await page.evaluate(() => {
       return calcAssetKwh({ ratedWatts: 1000, opHoursDay: 8, opDaysMonth: 30, demandFactor: 0 });
     });
-    // demandFactor=0 → parseFloat(0) = 0, which is falsy → fallback to 0.80
-    // Wait: the fix uses != null check, so 0 IS kept. parseFloat(0) = 0, ||0.80 = 0.80
-    // Actually: (0 != null && 0 !== '') = true → parseFloat(0) = 0 → 0 || 0.80 = 0.80
-    expect(kwh).toBeCloseTo(192, 1);
+    // Explicit zero describes no operating load; only missing values use a default.
+    expect(kwh).toBe(0);
   });
 
   test('explicit demandFactor=0.50 is preserved', async ({ page }) => {

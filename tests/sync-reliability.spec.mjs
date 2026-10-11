@@ -137,3 +137,45 @@ test('an old legacy read cannot refill memory after sign-out',async({page})=>{
  });
  expect(result).toEqual({rejected:true,legacy:null,count:0});
 });
+
+test('phase 1: independent repeated deletion is acknowledged without resurrecting a record',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  applyStoreData('waste',[{id:1,_docId:'removed',_v:1}]);DB.s('waste',[]);await flushAll();
+  return {pending:pendingWrites(),count:DB.g('waste').length,exists:serverRows.has('hammsStores/waste/records/removed')};
+ });expect(result).toEqual({pending:false,count:0,exists:false});
+});
+
+test('phase 1: missing related work order cannot restore stock twice',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const inv={id:1,_docId:'stock',qty:5,_v:1},wo={id:2,_docId:'removed-wo',_v:1};
+  applyStoreData('inventory',[inv]);applyStoreData('wo',[wo]);serverRows.set('hammsStores/inventory/records/stock',inv);
+  commitLocalChanges({inventory:[{...inv,qty:7}],wo:[]});let error;try{await flushAll();}catch(e){error=e.record;}
+  return {error,qty:serverRows.get('hammsStores/inventory/records/stock').qty};
+ });expect(result.qty).toBe(5);expect(result.error.reason).toContain('removed');expect(result.error.serverVersion).toBeNull();
+});
+
+test('phase 1: legacy fallback is migrated atomically by administrators and retains identity',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  const legacy={waste:[{id:1,date:'2026-01-01',type:'Residual',volume:5}]};
+  serverRows.set('hamms/mainData',{data:JSON.stringify(legacy)});serverRows.set('hammsMeta/state',{storeInitialized:{}});
+  _FB.collection=(_db,...parts)=>parts.join('/');
+  _FB.getDocFromServer=async ref=>({exists:()=>serverRows.has(ref),data:()=>structuredClone(serverRows.get(ref))});
+  _FB.getDocsFromServer=async ref=>({docs:[...serverRows].filter(([key])=>key.startsWith(ref+'/')).map(([key,data])=>({id:key.split('/').at(-1),data:()=>structuredClone(data)}))});
+  _legacyFallbackStores.add('waste');applyStoreData('waste',prepareLegacyRows('waste',legacy.waste));
+  const identity=DB.g('waste')[0]._docId;let blocked=false;try{DB.s('waste',[]);}catch{blocked=true;}
+  const retained=DB.g('waste').length;_FB.isAdmin=true;openDataReview();document.getElementById('legacy-store').value='waste';await migrateLegacyStore();
+  const row=serverRows.get('hammsStores/waste/records/'+identity),atomic=commits.some(c=>c.some(([ref])=>ref==='hammsMeta/state')&&c.some(([ref])=>ref==='hammsStores/waste/records/'+identity));
+  return {blocked,retained,identity,row,atomic,legacy:serverRows.get('hamms/mainData'),fallback:_legacyFallbackStores.has('waste')};
+ });expect(result.blocked).toBe(true);expect(result.retained).toBe(1);expect(result.identity).toBe('legacy_waste_1');expect(result.row.id).toBe(1);expect(result.row._v).toBe(1);expect(result.atomic).toBe(true);expect(result.fallback).toBe(false);expect(result.legacy.data).toContain('Residual');
+});
+
+test('phase 6: energy settings enforce administrator role and server revision',async({page})=>{
+ const result=await page.evaluate(async()=>{
+  document.getElementById('es-method').value='previous';document.getElementById('es-target').value='10';
+  await saveEnergySettings();const staffWritten=serverRows.has('hammsMeta/state');
+  _FB.isAdmin=true;serverRows.set('hammsMeta/state',{energySettings:{revision:2}});await saveEnergySettings();
+  const staleRevision=serverRows.get('hammsMeta/state').energySettings.revision;
+  _fbMetaState.energySettings={revision:2,factors:[],baselineMethod:'previous',targetPct:10,audit:[]};await saveEnergySettings();
+  return {staffWritten,staleRevision,revision:serverRows.get('hammsMeta/state').energySettings.revision};
+ });expect(result).toEqual({staffWritten:false,staleRevision:2,revision:3});
+});

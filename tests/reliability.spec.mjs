@@ -15,7 +15,7 @@ test('inventory edit retains its document identity and queues no delete', async 
 test('material rows cannot collectively overdraw stock or use negative quantities', async ({ page }) => {
   const result = await page.evaluate(() => {
     applyStoreData('inventory',[{id:1,_docId:'inv1',description:'Lamp',category:'Electrical',qty:10,unit:'piece'}]);
-    openWOModal(); document.getElementById('m-wo-section').value='Electrical'; document.getElementById('m-wo-desc').value='Stock test';
+    openWOModal(); document.getElementById('m-wo-section').value='Electrical'; document.getElementById('m-wo-desc').value='Stock test';document.getElementById('m-wo-loc').value='Test room';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
     _woMaterials=[{invId:1,qty:6},{invId:1,qty:6}]; saveWO();
     const first=DB.g('inventory')[0].qty;
     _woMaterials=[{invId:1,qty:-2}]; saveWO();
@@ -27,7 +27,7 @@ test('material rows cannot collectively overdraw stock or use negative quantitie
 test('remarks-only work-order edit preserves stock and its single issuance at zero stock', async ({ page }) => {
   const result = await page.evaluate(() => {
     applyStoreData('inventory',[{id:1,_docId:'inv1',description:'Lamp',category:'Electrical',qty:2,unit:'piece'}]);
-    openWOModal(); document.getElementById('m-wo-section').value='Electrical'; document.getElementById('m-wo-desc').value='Stock test';
+    openWOModal(); document.getElementById('m-wo-section').value='Electrical'; document.getElementById('m-wo-desc').value='Stock test';document.getElementById('m-wo-loc').value='Test room';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
     _woMaterials=[{invId:1,qty:2,issuedTo:'Staff'}]; saveWO();
     const id=DB.g('wo')[0].id; openWOModal(id); document.getElementById('m-wo-remarks').value='Updated'; saveWO();
     return {qty:DB.g('inventory')[0].qty,issuances:DB.g('issuance').length,remarks:DB.g('wo')[0].remarks};

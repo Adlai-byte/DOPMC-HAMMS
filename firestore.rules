@@ -5,7 +5,7 @@ service cloud.firestore {
     function isAdmin() { return isNamedUser() && request.auth.token.get('admin', false) == true; }
     function validStore(store) {
       return store in ['wo','assets','inventory','issuance','waste','safety','projects',
-        'waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
+        'waterLogs','waterTank','effluent','medWasteProd','wwProd','censusLog','waterSettings','energyBills','locations'];
     }
     function validRecord(docId) {
       return request.resource.data.keys().size() < 100
@@ -14,6 +14,14 @@ service cloud.firestore {
         && request.resource.data._updatedAt is int
         && request.resource.data._updatedBy == request.auth.token.email;
     }
+    function validBillFactor(store) {
+      let incoming = request.resource.data.get('carbonFactor', null);
+      return store != 'energyBills' || incoming == null
+        || (resource != null && incoming == resource.data.get('carbonFactor', null))
+        || (incoming is map && incoming.id is string
+          && incoming == getAfter(/databases/$(database)/documents/hammsMeta/state).data
+            .get('energySettings', {}).get('factorById', {}).get(incoming.id, null));
+    }
     match /hamms/mainData {
       allow read: if isNamedUser();
       allow delete: if isAdmin();
@@ -21,9 +29,9 @@ service cloud.firestore {
     }
     match /hammsStores/{store}/records/{docId} {
       allow read: if isNamedUser() && validStore(store);
-      allow create: if isNamedUser() && validStore(store) && validRecord(docId)
+      allow create: if isNamedUser() && validStore(store) && validRecord(docId) && validBillFactor(store)
         && request.resource.data._v == 1;
-      allow update: if isNamedUser() && validStore(store) && validRecord(docId)
+      allow update: if isNamedUser() && validStore(store) && validRecord(docId) && validBillFactor(store)
         && request.resource.data._v == resource.data.get('_v', 0) + 1;
       // Operational records are shared: any authorized staff member may delete.
       allow delete: if isNamedUser() && validStore(store);
@@ -31,9 +39,9 @@ service cloud.firestore {
     match /hammsMeta/state {
       allow read: if isNamedUser();
       allow create: if isNamedUser() && validMeta()
-        && (isAdmin() || !request.resource.data.keys().hasAny(['resetAt','restoreAt']));
+        && (isAdmin() || !request.resource.data.keys().hasAny(['resetAt','restoreAt','energySettings','legacyMigrations']));
       allow update: if isNamedUser() && validMeta()
-        && (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['resetAt','restoreAt']));
+        && (isAdmin() || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['resetAt','restoreAt','energySettings','legacyMigrations']));
       allow delete: if isAdmin();
       function validMeta() {
         return request.resource.data.keys().size() < 50

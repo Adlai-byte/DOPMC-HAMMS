@@ -22,6 +22,7 @@ test.describe('Work Orders CRUD', () => {
     await page.evaluate(() => {
       document.getElementById('m-wo-section').value = 'Electrical';
       document.getElementById('m-wo-desc').value = 'Replace faulty circuit breaker in Ward 3';
+      document.getElementById('m-wo-loc').value='Ward 3';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
       document.getElementById('m-wo-priority').value = 'High';
       document.getElementById('m-wo-status').value = 'Open';
       document.getElementById('m-wo-dstart').value = '2026-03-19';
@@ -68,6 +69,7 @@ test.describe('Work Orders CRUD', () => {
 
     // Change status to Closed
     await page.evaluate(() => {
+      document.getElementById('m-wo-loc').value='Ward 3';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
       document.getElementById('m-wo-status').value = 'Closed';
       document.getElementById('m-wo-dend').value = '2026-03-19';
     });
@@ -656,6 +658,7 @@ test.describe('Record integrity', () => {
       openWOModal();
       document.getElementById('m-wo-section').value = 'Electrical';
       document.getElementById('m-wo-desc').value = 'WO number one';
+      document.getElementById('m-wo-loc').value='Test room';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
       document.getElementById('m-wo-priority').value = 'High';
       saveWO();
     });
@@ -663,6 +666,7 @@ test.describe('Record integrity', () => {
       openWOModal();
       document.getElementById('m-wo-section').value = 'Plumbing';
       document.getElementById('m-wo-desc').value = 'WO number two';
+      document.getElementById('m-wo-loc').value='Test room';fillAssetDrop();document.getElementById('m-wo-asset').value='__room_general__';
       document.getElementById('m-wo-priority').value = 'Low';
       saveWO();
     });

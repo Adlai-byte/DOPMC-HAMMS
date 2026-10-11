@@ -107,7 +107,7 @@ test.describe('Audit Bug Fixes', () => {
     });
     expect(rm316View.summary).toContain('0\nOpen Repairs');
     expect(rm316View.summary).toContain('0\nTotal Repairs');
-    expect(rm316View.wosHtml).toContain('No work orders for this room');
+    expect(rm316View.wosHtml).toContain('No recorded repairs for this room');
     expect(rm316View.wosHtml).not.toContain('WO-0201');
     expect(rm316View.wosHtml).not.toContain('AC Compressor failure');
 
@@ -121,7 +121,7 @@ test.describe('Audit Bug Fixes', () => {
     });
     expect(rm306View.summary).toContain('0\nOpen Repairs');
     expect(rm306View.summary).toContain('0\nTotal Repairs');
-    expect(rm306View.wosHtml).toContain('No work orders for this room');
+    expect(rm306View.wosHtml).toContain('No recorded repairs for this room');
     expect(rm306View.wosHtml).not.toContain('WO-0201');
 
     // 3. Open Room View for RM 317 (where the WO actually belongs)
@@ -171,7 +171,7 @@ test.describe('Audit Bug Fixes', () => {
       viewHistory(101);
       return document.getElementById('history-tbody').innerHTML;
     });
-    expect(history316).toContain('No work orders for this asset');
+    expect(history316).toContain('No recorded repairs for this asset');
     expect(history316).not.toContain('WO-0201');
 
     // Test viewHistory on RM 317 asset
@@ -694,7 +694,7 @@ test.describe('Audit Bug Fixes', () => {
     });
     expect(rm102View.assetsHtml).toContain('AC-MECH-RM102-01');
     expect(rm102View.assetsHtml).not.toContain('AC-MECH-RM101-01');
-    expect(rm102View.wosHtml).toContain('No work orders for this room');
+    expect(rm102View.wosHtml).toContain('No recorded repairs for this room');
     expect(rm102View.wosHtml).not.toContain('WO-0921');
     expect(rm102View.summary).toContain('0\nOpen Repairs');
   });
