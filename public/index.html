@@ -1038,6 +1038,8 @@ resetIdleTimer();
           <select id="wof-section" onchange="_woShowAll=false;renderWO()"><option value="">All Sections</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select>
           <select id="wof-status" onchange="_woShowAll=false;renderWO()"><option value="">All Status</option><option>Open</option><option>In Progress</option><option>Closed</option><option>Overdue</option><option>Late Completed</option></select>
           <select id="wof-priority" onchange="_woShowAll=false;renderWO()"><option value="">All Priority</option><option>Low</option><option>Medium</option><option>High</option><option>Emergency</option></select>
+          <select id="wo-filter-bld" onchange="if(typeof onWOBuildingFilterChange==='function')onWOBuildingFilterChange();renderWO()"><option value="">All Buildings</option></select>
+          <select id="wo-filter-room" onchange="renderWO()"><option value="">All Rooms</option></select>
           <select id="wof-month" onchange="renderWO()"><option value="">All Months</option></select>
           <select id="wof-year" onchange="renderWO()"><option value="">All Years</option></select>
           <input type="text" id="wof-loc" placeholder="Filter location…" oninput="renderWO()" style="width:140px;"> <!-- PATCH: add scroll and better filters -->
@@ -2247,8 +2249,20 @@ resetIdleTimer();
       <div class="form-grid fg-3 mb14">
         <div class="form-group"><label>Section *</label>
           <select id="m-wo-section" onchange="fillAssetDrop()"><option value="">Select…</option><option>CMW</option><option>Electrical</option><option>Plumbing</option><option>Mechanical</option><option>Housekeeping</option><option>Biomedical</option></select></div>
-        <div class="form-group"><div style="display:flex;justify-content:space-between;align-items:center;"><label for="m-wo-loc" style="margin-bottom:0;">Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(filter by room)</span></label><button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){document.getElementById('m-wo-loc').value=newLoc.roomName||newLoc.roomNumber||'';fillAssetDrop();})">+ New Room</button></div>
-          <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Select section first, then type room…" oninput="clearTimeout(window._fadTimer);window._fadTimer=setTimeout(()=>fillAssetDrop(document.getElementById('m-wo-asset').value),200)" autocomplete="off"></div>
+        <div class="form-group">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+            <label for="m-wo-loc" style="margin-bottom:0;">Location <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected room)</span></label>
+            <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToWO(newLoc);})">+ New Room</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <select id="m-wo-loc-select" style="font-size:12px;width:100%;" onchange="onWOLocationSelect(this.value)">
+              <option value="">🏢 Choose room…</option>
+            </select>
+            <input type="text" id="m-wo-loc" list="wo-loc-list" placeholder="Or type room…" oninput="onWOLocationInput(this.value)" onchange="onWOLocationInput(this.value)" autocomplete="off">
+          </div>
+          <input type="hidden" id="m-wo-loc-docid">
+          <div id="m-wo-loc-badge" style="margin-top:4px;font-size:11px;min-height:16px;"></div>
+        </div>
         <div class="form-group"><label>Asset or room/general maintenance *</label>
           <select id="m-wo-asset" onchange="onWOAssetChange()"><option value="">Select section first…</option></select>
           <div class="form-hint" id="wo-asset-hint" style="margin-top:3px;"></div><div class="form-hint" id="wo-selected-asset"></div></div>
@@ -2899,7 +2913,20 @@ resetIdleTimer();
         <div class="form-group"><label>Category</label>
           <select id="m-pj-cat"><option value="">Select…</option><option>Infrastructure</option><option>Electrical</option><option>Plumbing</option><option>HVAC</option><option>Civil Works</option><option>Safety</option><option>Environmental</option><option>Equipment</option><option>Other</option></select></div>
         <div class="form-group" style="grid-column:1/-1;"><label>Project Title *</label><input type="text" id="m-pj-title" placeholder="Describe the project…"></div>
-        <div class="form-group"><label>Location</label><input type="text" id="m-pj-loc" placeholder="Area / Room / Building"></div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+            <label for="m-pj-loc" style="margin-bottom:0;">Location / Space <span style="font-weight:400;font-size:11px;color:var(--muted);">(connected room or area)</span></label>
+            <button type="button" class="btn btn-sm btn-ghost" style="padding:1px 6px;font-size:11px;height:auto;" onclick="openLocationModal(null,function(newLoc){applyLocationToProject(newLoc);})">+ New Room</button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <select id="m-pj-loc-select" style="font-size:12px;width:100%;" onchange="onProjectLocationSelect(this.value)">
+              <option value="">🏢 Choose registered room…</option>
+            </select>
+            <input type="text" id="m-pj-loc" list="room-loc-list" placeholder="Or type room/area name…" oninput="onProjectLocationInput(this.value)" onchange="onProjectLocationInput(this.value)" autocomplete="off">
+          </div>
+          <input type="hidden" id="m-pj-loc-docid">
+          <div id="m-pj-loc-badge" style="margin-top:4px;font-size:11px;min-height:16px;"></div>
+        </div>
         <div class="form-group"><label>Status</label>
           <select id="m-pj-status"><option>Proposed</option><option>For Approval</option><option>Ongoing</option><option>Delayed</option><option>Completed</option><option>Closed</option></select></div>
         <div class="form-group"><label>Budget (₱)</label><input type="number" id="m-pj-budget" min="0" step="0.01" placeholder="e.g. 500000"></div>
@@ -4906,19 +4933,25 @@ function openWOModal(id=null){
   const repInput=document.getElementById('m-wo-report');if(repInput)repInput.value='';
   document.getElementById('mo-wo-title').textContent=id?'Edit Work Order':'New Work Order';
   if(!id){
-    ['m-wo-section','m-wo-asset','m-wo-loc','m-wo-dstart','m-wo-dend','m-wo-desc','m-wo-assigned','m-wo-remarks','m-wo-target-completion','m-wo-delay-reason','m-wo-delay-other'].forEach(x=>{const el=document.getElementById(x);if(!el)return;if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
+    ['m-wo-section','m-wo-asset','m-wo-loc','m-wo-loc-docid','m-wo-dstart','m-wo-dend','m-wo-desc','m-wo-assigned','m-wo-remarks','m-wo-target-completion','m-wo-delay-reason','m-wo-delay-other'].forEach(x=>{const el=document.getElementById(x);if(!el)return;if(el.tagName==='SELECT')el.selectedIndex=0;else el.value='';});
     document.getElementById('m-wo-dstart').value=today();
     document.getElementById('m-wo-status').value='Open';
     document.getElementById('m-wo-priority').value='High';
     document.getElementById('m-wo-asset').innerHTML='<option value="">Select section first\u2026</option>';
     document.getElementById('delay-reason-wrap').style.display='none';
     document.getElementById('delay-other-wrap').style.display='none';
+    const locSel = document.getElementById('m-wo-loc-select'); if(locSel) locSel.value = '';
+    const locBadge = document.getElementById('m-wo-loc-badge'); if(locBadge) locBadge.innerHTML = '';
     const _woh=document.getElementById('wo-asset-hint');if(_woh)_woh.textContent='';
     if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
+    if(typeof populateWOLocationControls==='function') populateWOLocationControls(null);
   }else{
     const w=DB.g('wo').find(x=>x.id===id);if(!w)return;
     document.getElementById('m-wo-section').value=w.section||'';
     document.getElementById('m-wo-loc').value=w.location||'';
+    const docIdEl = document.getElementById('m-wo-loc-docid');
+    if(docIdEl) docIdEl.value = w.locationDocId || '';
+    if(typeof populateWOLocationControls==='function') populateWOLocationControls(w);
     document.getElementById('m-wo-asset').innerHTML='<option value="">Select asset…</option>';
     fillAssetDrop(w.asset);
     const assetSelect=document.getElementById('m-wo-asset');
@@ -5070,8 +5103,16 @@ function onWOAssetChange(){
   if(!el||!locEl)return;
   const opt=el.options[el.selectedIndex];
   document.getElementById('wo-selected-asset').textContent=opt?.dataset.docId?'Selected: '+opt.textContent:opt?.dataset.workScope==='room'?'Room/general maintenance will appear in room history, without assigning it to an individual asset.':'';
-  if(opt&&opt.dataset?.location&&!locEl.value.trim()){
+  if(opt && opt.dataset?.docId){
+    const registeredAsset=DB.g('assets').find(a=>a._docId&&a._docId===opt.dataset.docId);
+    if(registeredAsset){
+      const locName = registeredAsset.location || registeredAsset.roomName || registeredAsset.roomNumber || '';
+      if(locName) locEl.value = locName;
+      if(typeof onWOLocationInput === 'function') onWOLocationInput(locName, registeredAsset.locationDocId);
+    }
+  } else if(opt&&opt.dataset?.location&&!locEl.value.trim()){
     locEl.value=opt.dataset.location;
+    if(typeof onWOLocationInput === 'function') onWOLocationInput(opt.dataset.location);
   }
 }
 function createAssetWorkOrder(id){
@@ -5153,11 +5194,26 @@ function saveWO(){
   });
 
   let woLoc=(document.getElementById('m-wo-loc').value||'').trim();
+  let woLocDocId=document.getElementById('m-wo-loc-docid')?.value||'';
   const woAsset=roomWork?'':registeredAsset.name;
   const selectedAsset=document.getElementById('m-wo-asset').selectedOptions[0];
   if(!woLoc&&woAsset){
     const selAsset=DB.g('assets').find(a=>a.name===woAsset&&(!sec||a.section===sec));
-    if(selAsset)woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
+    if(selAsset){
+      woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
+      if(!woLocDocId) woLocDocId = selAsset.locationDocId||'';
+    }
+  }
+  if(!woLocDocId && woLoc){
+    const locs = DB.g('locations') || [];
+    const q = woLoc.toLowerCase();
+    const matched = locs.find(l => 
+      (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+      (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+      (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q)
+    );
+    if(matched) woLocDocId = matched._docId || ('loc_' + matched.id);
   }
   const o={
     id:newWoId,_docId:newWoDocId,code:newWoCode,section:sec,
@@ -5165,6 +5221,7 @@ function saveWO(){
     assetDocId:selectedAsset?.dataset.docId||null,
     workScope:roomWork?'room':'asset',
     location:woLoc,
+    locationDocId:woLocDocId||null,
     priority:document.getElementById('m-wo-priority').value,
     status:document.getElementById('m-wo-status').value,
     dateStart:document.getElementById('m-wo-dstart').value,
@@ -7360,6 +7417,8 @@ function updateMasterLocationDatalist(){
     wardDl.innerHTML = wardOptions.map(w => `<option value="${escapeHTML(w)}">`).join('');
   }
   if(typeof populateAssetLocationControls === 'function') populateAssetLocationControls();
+  if(typeof populateWOLocationControls === 'function') populateWOLocationControls();
+  if(typeof populateProjectLocationControls === 'function') populateProjectLocationControls();
 }
 
 // ═══════════════════════════════════════
@@ -7538,6 +7597,332 @@ function renderAssetLocationBadge(loc){
   badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:2px 8px;border-radius:4px;font-weight:500;">
     <span style="font-size:12px;">✓</span> Linked: ${escapeHTML(details)}
   </span>`;
+}
+
+// ═══════════════════════════════════════
+// WORK ORDER LOCATION COMBO BOX CONTROLS
+// ═══════════════════════════════════════
+function populateWOLocationControls(currentWO = null){
+  const select = document.getElementById('m-wo-loc-select');
+  const locInput = document.getElementById('m-wo-loc');
+  const docIdInput = document.getElementById('m-wo-loc-docid');
+  const badge = document.getElementById('m-wo-loc-badge');
+  if(!select) return;
+
+  const locs = DB.g('locations') || [];
+  const byBld = {};
+  locs.forEach(l => {
+    const bld = l.building || 'General / Unassigned';
+    if(!byBld[bld]) byBld[bld] = [];
+    byBld[bld].push(l);
+  });
+
+  const bldNames = Object.keys(byBld).sort();
+  let html = `<option value="">🏢 Choose room (${locs.length} registered)…</option>`;
+  bldNames.forEach(b => {
+    html += `<optgroup label="${escapeHTML(b)}">`;
+    byBld[b].sort((a,b) => (a.roomName || a.roomNumber || '').localeCompare(b.roomName || b.roomNumber || ''))
+      .forEach(l => {
+        const title = (l.roomName || l.roomNumber || 'Unnamed Space');
+        const extra = [l.floor, l.roomNumber && l.roomNumber !== l.roomName ? `RM ${l.roomNumber}` : ''].filter(Boolean).join(', ');
+        const docId = l._docId || ('loc_' + l.id);
+        html += `<option value="${escapeHTML(docId)}">${escapeHTML(title)}${extra ? ' (' + escapeHTML(extra) + ')' : ''}</option>`;
+      });
+    html += `</optgroup>`;
+  });
+  select.innerHTML = html;
+
+  if(!currentWO){
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  let matched = null;
+  if(currentWO.locationDocId){
+    matched = locs.find(l => (l._docId === currentWO.locationDocId || ('loc_' + l.id) === currentWO.locationDocId));
+  }
+  if(!matched && currentWO.location){
+    const q = currentWO.location.trim().toLowerCase();
+    matched = locs.find(l => (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+                             (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q));
+  }
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    renderWOLocationBadge(matched);
+  } else {
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(currentWO.location && badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space (not linked to Buildings & Rooms)</span>`;
+    } else if(badge) {
+      badge.innerHTML = '';
+    }
+  }
+}
+
+function onWOLocationSelect(docId){
+  const locInput = document.getElementById('m-wo-loc');
+  const docIdInput = document.getElementById('m-wo-loc-docid');
+  const badge = document.getElementById('m-wo-loc-badge');
+
+  if(!docId){
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  const locs = DB.g('locations') || [];
+  const loc = locs.find(l => (l._docId === docId || ('loc_' + l.id) === docId));
+  if(!loc) return;
+
+  if(locInput) locInput.value = loc.roomName || loc.roomNumber || '';
+  if(docIdInput) docIdInput.value = loc._docId || ('loc_' + loc.id);
+
+  renderWOLocationBadge(loc);
+  if(typeof fillAssetDrop === 'function') fillAssetDrop();
+}
+
+function onWOLocationInput(val, explicitDocId = null){
+  const select = document.getElementById('m-wo-loc-select');
+  const docIdInput = document.getElementById('m-wo-loc-docid');
+  const badge = document.getElementById('m-wo-loc-badge');
+
+  const locs = DB.g('locations') || [];
+  let matched = null;
+  if(explicitDocId){
+    matched = locs.find(l => (l._docId === explicitDocId || ('loc_' + l.id) === explicitDocId));
+  }
+
+  const q = (val || '').trim().toLowerCase();
+  if(!matched && q){
+    matched = locs.find(l => 
+      (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+      (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+      (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.roomName || ''} (${l.building || ''})`.trim().toLowerCase() === q)
+    );
+  }
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    if(select) select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    renderWOLocationBadge(matched);
+  } else {
+    if(select) select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(q && badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space — use [+ New Room] to register</span>`;
+    } else if(badge){
+      badge.innerHTML = '';
+    }
+  }
+}
+
+function applyLocationToWO(newLoc){
+  if(!newLoc) return;
+  if(typeof updateMasterLocationDatalist === 'function') updateMasterLocationDatalist();
+  if(typeof populateWOLocationControls === 'function') populateWOLocationControls();
+
+  const select = document.getElementById('m-wo-loc-select');
+  const locInput = document.getElementById('m-wo-loc');
+  const docIdInput = document.getElementById('m-wo-loc-docid');
+
+  const docId = newLoc._docId || ('loc_' + newLoc.id);
+  if(select) select.value = docId;
+  if(locInput) locInput.value = newLoc.roomName || newLoc.roomNumber || '';
+  if(docIdInput) docIdInput.value = docId;
+
+  renderWOLocationBadge(newLoc);
+  if(typeof fillAssetDrop === 'function') fillAssetDrop();
+}
+
+function renderWOLocationBadge(loc){
+  const badge = document.getElementById('m-wo-loc-badge');
+  if(!badge) return;
+  const bld = loc.building || 'General';
+  const flr = loc.floor || 'Floor N/A';
+  const rm = loc.roomNumber ? `RM ${loc.roomNumber}` : '';
+  const details = [bld, flr, rm].filter(Boolean).join(' • ');
+  badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:2px 8px;border-radius:4px;font-weight:500;">
+    <span style="font-size:12px;">✓</span> Linked: ${escapeHTML(details)}
+  </span>`;
+}
+
+// ═══════════════════════════════════════
+// PROJECT LOCATION COMBO BOX CONTROLS
+// ═══════════════════════════════════════
+function populateProjectLocationControls(currentProject = null){
+  const select = document.getElementById('m-pj-loc-select');
+  const locInput = document.getElementById('m-pj-loc');
+  const docIdInput = document.getElementById('m-pj-loc-docid');
+  const badge = document.getElementById('m-pj-loc-badge');
+  if(!select) return;
+
+  const locs = DB.g('locations') || [];
+  const byBld = {};
+  locs.forEach(l => {
+    const bld = l.building || 'General / Unassigned';
+    if(!byBld[bld]) byBld[bld] = [];
+    byBld[bld].push(l);
+  });
+
+  const bldNames = Object.keys(byBld).sort();
+  let html = `<option value="">🏢 Choose registered room (${locs.length} registered)…</option>`;
+  bldNames.forEach(b => {
+    html += `<optgroup label="${escapeHTML(b)}">`;
+    byBld[b].sort((a,b) => (a.roomName || a.roomNumber || '').localeCompare(b.roomName || b.roomNumber || ''))
+      .forEach(l => {
+        const title = (l.roomName || l.roomNumber || 'Unnamed Space');
+        const extra = [l.floor, l.roomNumber && l.roomNumber !== l.roomName ? `RM ${l.roomNumber}` : ''].filter(Boolean).join(', ');
+        const docId = l._docId || ('loc_' + l.id);
+        html += `<option value="${escapeHTML(docId)}">${escapeHTML(title)}${extra ? ' (' + escapeHTML(extra) + ')' : ''}</option>`;
+      });
+    html += `</optgroup>`;
+  });
+  select.innerHTML = html;
+
+  if(!currentProject){
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  let matched = null;
+  if(currentProject.locationDocId){
+    matched = locs.find(l => (l._docId === currentProject.locationDocId || ('loc_' + l.id) === currentProject.locationDocId));
+  }
+  if(!matched && currentProject.location){
+    const q = currentProject.location.trim().toLowerCase();
+    matched = locs.find(l => (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+                             (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+                             (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q));
+  }
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    renderProjectLocationBadge(matched);
+  } else {
+    select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(currentProject.location && badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space (not linked to Buildings & Rooms)</span>`;
+    } else if(badge) {
+      badge.innerHTML = '';
+    }
+  }
+}
+
+function onProjectLocationSelect(docId){
+  const locInput = document.getElementById('m-pj-loc');
+  const docIdInput = document.getElementById('m-pj-loc-docid');
+  const badge = document.getElementById('m-pj-loc-badge');
+
+  if(!docId){
+    if(docIdInput) docIdInput.value = '';
+    if(badge) badge.innerHTML = '';
+    return;
+  }
+
+  const locs = DB.g('locations') || [];
+  const loc = locs.find(l => (l._docId === docId || ('loc_' + l.id) === docId));
+  if(!loc) return;
+
+  if(locInput) locInput.value = loc.roomName || loc.roomNumber || '';
+  if(docIdInput) docIdInput.value = loc._docId || ('loc_' + loc.id);
+
+  renderProjectLocationBadge(loc);
+}
+
+function onProjectLocationInput(val, explicitDocId = null){
+  const select = document.getElementById('m-pj-loc-select');
+  const docIdInput = document.getElementById('m-pj-loc-docid');
+  const badge = document.getElementById('m-pj-loc-badge');
+
+  const locs = DB.g('locations') || [];
+  let matched = null;
+  if(explicitDocId){
+    matched = locs.find(l => (l._docId === explicitDocId || ('loc_' + l.id) === explicitDocId));
+  }
+
+  const q = (val || '').trim().toLowerCase();
+  if(!matched && q){
+    matched = locs.find(l => 
+      (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+      (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+      (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.roomName || ''} (${l.building || ''})`.trim().toLowerCase() === q)
+    );
+  }
+
+  if(matched){
+    const targetDocId = matched._docId || ('loc_' + matched.id);
+    if(select) select.value = targetDocId;
+    if(docIdInput) docIdInput.value = targetDocId;
+    renderProjectLocationBadge(matched);
+  } else {
+    if(select) select.value = '';
+    if(docIdInput) docIdInput.value = '';
+    if(q && badge){
+      badge.innerHTML = `<span class="badge" style="background:#fef3c7;color:#92400e;">ℹ Custom space — use [+ New Room] to register</span>`;
+    } else if(badge){
+      badge.innerHTML = '';
+    }
+  }
+}
+
+function applyLocationToProject(newLoc){
+  if(!newLoc) return;
+  if(typeof updateMasterLocationDatalist === 'function') updateMasterLocationDatalist();
+  if(typeof populateProjectLocationControls === 'function') populateProjectLocationControls();
+
+  const select = document.getElementById('m-pj-loc-select');
+  const locInput = document.getElementById('m-pj-loc');
+  const docIdInput = document.getElementById('m-pj-loc-docid');
+
+  const docId = newLoc._docId || ('loc_' + newLoc.id);
+  if(select) select.value = docId;
+  if(locInput) locInput.value = newLoc.roomName || newLoc.roomNumber || '';
+  if(docIdInput) docIdInput.value = docId;
+
+  renderProjectLocationBadge(newLoc);
+}
+
+function renderProjectLocationBadge(loc){
+  const badge = document.getElementById('m-pj-loc-badge');
+  if(!badge) return;
+  const bld = loc.building || 'General';
+  const flr = loc.floor || 'Floor N/A';
+  const rm = loc.roomNumber ? `RM ${loc.roomNumber}` : '';
+  const details = [bld, flr, rm].filter(Boolean).join(' • ');
+  badge.innerHTML = `<span style="display:inline-flex;align-items:center;gap:5px;background:#ecfdf5;color:#065f46;border:1px solid #a7f3d0;padding:2px 8px;border-radius:4px;font-weight:500;">
+    <span style="font-size:12px;">✓</span> Linked: ${escapeHTML(details)}
+  </span>`;
+}
+
+function onWOBuildingFilterChange(){
+  const bldSelect = document.getElementById('wo-filter-bld');
+  const roomSelect = document.getElementById('wo-filter-room');
+  if(!roomSelect) return;
+  const curBld = bldSelect?.value || '';
+  let locs = DB.g('locations');
+  if(curBld) locs = locs.filter(l => (l.building || '').toLowerCase().trim() === curBld.toLowerCase().trim());
+  const rooms = Array.from(new Set(locs.map(l => (l.roomName || l.roomNumber || '').trim()))).filter(Boolean).sort();
+  roomSelect.innerHTML = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
+  roomSelect.value = '';
 }
 
 // ═══════════════════════════════════════
@@ -7782,13 +8167,18 @@ function openProjectModal(id=null){
   _editProject=id;captureEditSnapshot('projects',id);
   document.getElementById('mo-project-title').textContent=id?'Edit Project':'Add Project';
   if(!id){
-    ['m-pj-code','m-pj-title','m-pj-loc','m-pj-budget','m-pj-fund','m-pj-resp','m-pj-start','m-pj-target','m-pj-actual','m-pj-physical','m-pj-financial','m-pj-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
+    ['m-pj-code','m-pj-title','m-pj-loc','m-pj-loc-docid','m-pj-budget','m-pj-fund','m-pj-resp','m-pj-start','m-pj-target','m-pj-actual','m-pj-physical','m-pj-financial','m-pj-remarks'].forEach(x=>{const el=document.getElementById(x);if(el)el.value='';});
     document.getElementById('m-pj-cat').selectedIndex=0;
     document.getElementById('m-pj-status').selectedIndex=0;
+    const locSel = document.getElementById('m-pj-loc-select'); if(locSel) locSel.value = '';
+    const locBadge = document.getElementById('m-pj-loc-badge'); if(locBadge) locBadge.innerHTML = '';
+    if(typeof populateProjectLocationControls==='function') populateProjectLocationControls(null);
   }else{
     const p=DB.g('projects').find(x=>x.id===id);if(!p)return;
     const sv=(fid,v)=>{const el=document.getElementById(fid);if(el)el.value=v||'';};
     sv('m-pj-code',p.code);sv('m-pj-title',p.title);sv('m-pj-loc',p.location);
+    sv('m-pj-loc-docid',p.locationDocId);
+    if(typeof populateProjectLocationControls==='function') populateProjectLocationControls(p);
     sv('m-pj-budget',p.budget);sv('m-pj-fund',p.fundingSource);sv('m-pj-resp',p.responsible);
     sv('m-pj-start',p.startDate);sv('m-pj-target',p.targetDate);sv('m-pj-actual',p.actualDate);
     sv('m-pj-physical',p.physicalPct);sv('m-pj-financial',p.financialPct);sv('m-pj-remarks',p.remarks);
@@ -7817,11 +8207,27 @@ function saveProject(){
   const startDate=document.getElementById('m-pj-start').value,targetDate=document.getElementById('m-pj-target').value,actualDate=document.getElementById('m-pj-actual').value;
   for(const [id,date] of [['m-pj-start',startDate],['m-pj-target',targetDate],['m-pj-actual',actualDate]])if(date&&!validReportDate(date)){showFieldError(id,'Invalid date.');return;}
   if(startDate&&((targetDate&&targetDate<startDate)||(actualDate&&actualDate<startDate))){showFieldError('m-pj-target','Completion dates cannot precede the start date.');return;}
+
+  let pjLocDocId = document.getElementById('m-pj-loc-docid')?.value || '';
+  let pjLoc = (document.getElementById('m-pj-loc').value || '').trim();
+  if(!pjLocDocId && pjLoc){
+    const locs = DB.g('locations') || [];
+    const q = pjLoc.toLowerCase();
+    const matched = locs.find(l => 
+      (l.roomName && l.roomName.trim().toLowerCase() === q) ||
+      (l.roomNumber && l.roomNumber.trim().toLowerCase() === q) ||
+      (`${l.building || ''} - ${l.roomName || ''}`.trim().toLowerCase() === q) ||
+      (`${l.building || ''} — ${l.roomName || ''}`.trim().toLowerCase() === q)
+    );
+    if(matched) pjLocDocId = matched._docId || ('loc_' + matched.id);
+  }
+
   const p={
     ...old,
     id:_editProject||DB.nid('projects'),code,title,
     category:document.getElementById('m-pj-cat').value,
-    location:document.getElementById('m-pj-loc').value,
+    location:pjLoc,
+    locationDocId:pjLocDocId||null,
     status:document.getElementById('m-pj-status').value,
     budget:parseFloat(document.getElementById('m-pj-budget').value)||null,
     fundingSource:document.getElementById('m-pj-fund').value,
@@ -10068,12 +10474,59 @@ function renderWO(){
       <div class="stat-card s-inv"><div class="stat-label">Total WOs</div><div class="stat-val">${allWOs.length}</div><div class="stat-sub">all time</div></div>`;
   })();
   // PATCH END
+  const bldSelect = document.getElementById('wo-filter-bld');
+  if(bldSelect){
+    const curBld = bldSelect.value;
+    const blds = Array.from(new Set([
+      ...DB.g('locations').map(l => (l.building || '').trim()),
+      ...DB.g('assets').map(a => (a.building || '').trim())
+    ])).filter(Boolean).sort();
+    const html = '<option value="">All Buildings</option>' + blds.map(b => `<option value="${escapeHTML(b)}">${escapeHTML(b)}</option>`).join('');
+    if(bldSelect.innerHTML !== html){
+      bldSelect.innerHTML = html;
+      if(blds.includes(curBld)) bldSelect.value = curBld;
+    }
+  }
+  const roomSelect = document.getElementById('wo-filter-room');
+  if(roomSelect){
+    const curRoom = roomSelect.value;
+    const curBld = bldSelect?.value || '';
+    let locs = DB.g('locations');
+    if(curBld) locs = locs.filter(l => (l.building || '').toLowerCase().trim() === curBld.toLowerCase().trim());
+    const rooms = Array.from(new Set(locs.map(l => (l.roomName || l.roomNumber || '').trim()))).filter(Boolean).sort();
+    const html = '<option value="">All Rooms</option>' + rooms.map(r => `<option value="${escapeHTML(r)}">${escapeHTML(r)}</option>`).join('');
+    if(roomSelect.innerHTML !== html){
+      roomSelect.innerHTML = html;
+      if(rooms.includes(curRoom)) roomSelect.value = curRoom;
+    }
+  }
+  const fbld = (document.getElementById('wo-filter-bld')||{}).value||'';
+  const froom = (document.getElementById('wo-filter-room')||{}).value||'';
   const sec=document.getElementById('wof-section')?.value||'';
   const st=document.getElementById('wof-status')?.value||'';
   const pri=document.getElementById('wof-priority')?.value||'';
   const q=(document.getElementById('wof-search')?.value||'').trim().toLowerCase();
   const locF=(document.getElementById('wof-loc')?.value||'').trim().toLowerCase();
   let wos=DB.g('wo');
+  if(fbld){
+    const fbldLower = fbld.toLowerCase().trim();
+    const matchingRoomNames = new Set(DB.g('locations').filter(l => (l.building || '').toLowerCase().trim() === fbldLower).map(l => (l.roomName || l.roomNumber || '').toLowerCase().trim()));
+    const matchingDocIds = new Set(DB.g('locations').filter(l => (l.building || '').toLowerCase().trim() === fbldLower).map(l => l._docId));
+    wos = wos.filter(w => {
+      if(w.locationDocId && matchingDocIds.has(w.locationDocId)) return true;
+      const wLoc = (w.location || '').toLowerCase().trim();
+      return matchingRoomNames.has(wLoc);
+    });
+  }
+  if(froom){
+    const froomLower = froom.toLowerCase().trim();
+    const matchedLoc = DB.g('locations').find(l => (l.roomName || l.roomNumber || '').toLowerCase().trim() === froomLower);
+    wos = wos.filter(w => {
+      if(matchedLoc && w.locationDocId && w.locationDocId === matchedLoc._docId) return true;
+      const wLoc = (w.location || '').toLowerCase().trim();
+      return wLoc === froomLower || (matchedLoc && (wLoc === (matchedLoc.roomName || '').toLowerCase() || wLoc === (matchedLoc.roomNumber || '').toLowerCase()));
+    });
+  }
   if(sec)wos=wos.filter(w=>w.section===sec);
   if(st){if(st==='Overdue')wos=wos.filter(w=>overdue(w));else if(st==='Late Completed')wos=wos.filter(w=>lateCompleted(w));else wos=wos.filter(w=>w.status===st);}
   if(pri)wos=wos.filter(w=>w.priority===pri);
@@ -14404,7 +14857,7 @@ window._locMigrationSnapshot = null;
 
 function switchLocMigStore(storeKey){
   _activeLocMigStore = storeKey;
-  ['wo','assets','safety','waterLogs'].forEach(s => {
+  ['wo','assets','projects','safety','waterLogs'].forEach(s => {
     const btn = document.getElementById('loc-tab-btn-' + s);
     if(btn){
       btn.className = s === storeKey ? 'btn btn-sm btn-outline' : 'btn btn-sm btn-ghost';
@@ -14415,7 +14868,7 @@ function switchLocMigStore(storeKey){
 
 function renderLocationMigrationAssistant(){
   const locs = DB.g('locations');
-  const stores = ['wo', 'assets', 'safety', 'waterLogs'];
+  const stores = ['wo', 'assets', 'projects', 'safety', 'waterLogs'];
   const plans = {};
 
   stores.forEach(s => {
@@ -14469,6 +14922,7 @@ function renderLocationMigrationAssistant(){
         currentPlan.high.map(item => {
           const recLabel = _activeLocMigStore === 'wo' ? ('WO #' + (item.record.code || item.record.id)) :
             _activeLocMigStore === 'assets' ? (item.record.assetCode || ('AST-' + item.record.id) + ' — ' + item.record.name) :
+            _activeLocMigStore === 'projects' ? (item.record.code || ('PRJ-' + item.record.id) + ' — ' + item.record.title) :
             _activeLocMigStore === 'safety' ? ('SF #' + item.record.id + ' — ' + (item.record.issue || item.record.title || '')) :
             ('WL #' + item.record.id + ' — ' + (item.record.parameter || 'Water Log'));
           return '<tr style="border-bottom:1px solid #f1f5f9;">' +
@@ -14497,6 +14951,7 @@ function renderLocationMigrationAssistant(){
         currentPlan.ambiguous.map(item => {
           const recLabel = _activeLocMigStore === 'wo' ? ('WO #' + (item.record.code || item.record.id)) :
             _activeLocMigStore === 'assets' ? (item.record.assetCode || ('AST-' + item.record.id) + ' — ' + item.record.name) :
+            _activeLocMigStore === 'projects' ? (item.record.code || ('PRJ-' + item.record.id) + ' — ' + item.record.title) :
             _activeLocMigStore === 'safety' ? ('SF #' + item.record.id + ' — ' + (item.record.issue || item.record.title || '')) :
             ('WL #' + item.record.id + ' — ' + (item.record.parameter || 'Water Log'));
           const optionsHtml = '<option value="">-- Choose Room --</option>' +
@@ -14534,13 +14989,14 @@ function applyLocationMigrationPlan(){
     stores: {
       wo: cloneForFirebase(DB.g('wo')),
       assets: cloneForFirebase(DB.g('assets')),
+      projects: cloneForFirebase(DB.g('projects')),
       safety: cloneForFirebase(DB.g('safety')),
       waterLogs: cloneForFirebase(DB.g('waterLogs'))
     }
   };
 
   let totalBackfilled = 0;
-  const stores = ['wo', 'assets', 'safety', 'waterLogs'];
+  const stores = ['wo', 'assets', 'projects', 'safety', 'waterLogs'];
 
   stores.forEach(storeKey => {
     const storeRecords = cloneForFirebase(DB.g(storeKey) || []);
@@ -14660,7 +15116,7 @@ async function migrateLegacyStore(){
   document.body.insertAdjacentHTML('beforeend',`<div class="modal-overlay" id="mo-energy-settings" role="dialog" aria-modal="true" aria-labelledby="es-title"><div class="modal report-settings"><div class="modal-header"><h3 id="es-title">Energy reporting settings</h3><button class="modal-close" onclick="closeModal('mo-energy-settings')">×</button></div><div class="modal-body"><p class="report-note">Administrator settings. Add sourced factors with their applicable dates. Provisional or overlapping factors are not used for billed carbon. Saved bill snapshots remain unchanged.</p><div class="form-grid fg-2"><div class="form-group"><label for="es-method">Baseline method</label><select id="es-method"><option value="year">Selected baseline year</option><option value="previous">Previous year</option><option value="manual">Manual full-year kWh</option></select></div><div class="form-group"><label for="es-year">Baseline year</label><input id="es-year" type="number" min="2000" max="2100"></div><div class="form-group"><label for="es-target">Reduction target %</label><input id="es-target" type="number" min="0" max="100"></div><div class="form-group"><label for="es-manual">Manual annual baseline kWh</label><input id="es-manual" type="number" min="0"></div><div class="form-group"><label for="es-factor">New factor kgCO₂e/kWh (optional)</label><input id="es-factor" type="number" min="0" step="0.000001"></div><div class="form-group"><label for="es-grid">Grid</label><input id="es-grid" placeholder="e.g. Mindanao"></div><div class="form-group"><label for="es-from">Applicable from</label><input id="es-from" type="date"></div><div class="form-group"><label for="es-to">Applicable through</label><input id="es-to" type="date"></div><div class="form-group"><label for="es-status">Source verification</label><select id="es-status"><option value="provisional">Provisional — excluded</option><option value="verified">Verified applicable source</option></select></div><div class="form-group"><label for="es-source">Source document / URL and method</label><input id="es-source" placeholder="Source, reporting period and method"></div></div><p class="report-note"><a href="https://doe.gov.ph/national-grid-emission-factor" target="_blank" rel="noopener noreferrer">DOE emission-factor publications</a>. Verify the factor's grid, units, method and reporting period before marking it verified.</p><div id="energy-factor-registry"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-energy-settings')">Cancel</button><button id="energy-settings-save" class="btn btn-primary" onclick="saveEnergySettings()">Save settings</button></div></div></div>
   <div class="modal-overlay" id="mo-conflict-review" role="dialog" aria-modal="true" aria-labelledby="cr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="cr-title">Review latest server records</h3><button class="modal-close" onclick="closeModal('mo-conflict-review')">×</button></div><div class="modal-body"><p class="report-note">Compare these records with your retained form. Using this version as the save base does not save the form. Removed records cannot be edited.</p><div id="conflict-comparison"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-conflict-review')">Close</button><button class="btn btn-primary" onclick="acceptReviewedSaveBase()">Use reviewed version as save base</button></div></div></div>
   <div class="modal-overlay" id="mo-wo-links" role="dialog" aria-modal="true" aria-labelledby="wl-title"><div class="modal report-settings"><div class="modal-header"><h3 id="wl-title">Review asset links</h3><button class="modal-close" onclick="closeModal('mo-wo-links')">×</button></div><div class="modal-body"><p class="report-note">Review existing repairs individually. Select the confirmed registered asset, or room/general maintenance. No repairs or ownership are inferred.</p><div id="wo-link-review"></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-wo-links')">Close</button></div></div></div>
-  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button><div id="loc-migration-section" style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h4 style="margin:0;font-size:14px;color:var(--navy);font-weight:700;">📍 Location Normalization &amp; Historical Backfill</h4><div><button type="button" id="loc-mig-undo-btn" class="btn btn-sm btn-ghost" style="display:none;color:var(--red);border:1px solid #fecaca;" onclick="rollbackLocationMigration()">↩ Undo Migration (Rollback)</button> <button type="button" id="loc-mig-apply-btn" class="btn btn-sm btn-primary" onclick="applyLocationMigrationPlan()">Apply Location Backfill</button></div></div><p class="report-note">Scan unnormalized historical location text across Work Orders, Assets, Safety, and Water Logs to link canonical room references.</p><div style="display:flex;gap:6px;margin-bottom:12px;"><button type="button" id="loc-tab-btn-wo" class="btn btn-sm btn-outline" onclick="switchLocMigStore('wo')">Work Orders (<span id="loc-mig-cnt-wo">0</span>)</button><button type="button" id="loc-tab-btn-assets" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('assets')">Assets (<span id="loc-mig-cnt-assets">0</span>)</button><button type="button" id="loc-tab-btn-safety" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('safety')">Safety (<span id="loc-mig-cnt-safety">0</span>)</button><button type="button" id="loc-tab-btn-waterLogs" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('waterLogs')">Water Logs (<span id="loc-mig-cnt-waterLogs">0</span>)</button></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">High-Confidence Matches (100% Exact &amp; 90% Alias)</div><div id="loc-mig-high-conf" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;background:#fff;"></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">Ambiguous / Unresolved Records (Select Target Room)</div><div id="loc-mig-ambiguous" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:#fff;"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
+  <div class="modal-overlay" id="mo-data-review" role="dialog" aria-modal="true" aria-labelledby="dr-title"><div class="modal report-settings"><div class="modal-header"><h3 id="dr-title">Data review and repair preview</h3><button class="modal-close" onclick="closeModal('mo-data-review')">×</button></div><div class="modal-body"><p class="report-note">Export evidence before any migration or batch repair. Existing record IDs stay unchanged; ambiguous work orders require individual asset selection.</p><button class="btn btn-outline" onclick="exportTroubleshootingEvidence()">Export evidence / backup</button><h4>Lighting classification and codes</h4><div id="data-review-changes"></div><h4>Unambiguous historical links</h4><div id="data-review-links"></div><h4>Unresolved historical links</h4><div id="data-review-ambiguous"></div><h4>Legacy storage migration</h4><p class="report-note">Migrate one empty target store atomically, up to 449 records. Larger or partially migrated stores require a reviewed administrator migration.</p><select id="legacy-store" aria-label="Legacy store"></select><button id="legacy-migrate" class="btn btn-outline" onclick="migrateLegacyStore()">Migrate selected store</button><div id="loc-migration-section" style="margin-top:20px;padding-top:16px;border-top:2px solid var(--border);"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><h4 style="margin:0;font-size:14px;color:var(--navy);font-weight:700;">📍 Location Normalization &amp; Historical Backfill</h4><div><button type="button" id="loc-mig-undo-btn" class="btn btn-sm btn-ghost" style="display:none;color:var(--red);border:1px solid #fecaca;" onclick="rollbackLocationMigration()">↩ Undo Migration (Rollback)</button> <button type="button" id="loc-mig-apply-btn" class="btn btn-sm btn-primary" onclick="applyLocationMigrationPlan()">Apply Location Backfill</button></div></div><p class="report-note">Scan unnormalized historical location text across Work Orders, Assets, Safety, and Water Logs to link canonical room references.</p><div style="display:flex;gap:6px;margin-bottom:12px;"><button type="button" id="loc-tab-btn-wo" class="btn btn-sm btn-outline" onclick="switchLocMigStore('wo')">Work Orders (<span id="loc-mig-cnt-wo">0</span>)</button><button type="button" id="loc-tab-btn-assets" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('assets')">Assets (<span id="loc-mig-cnt-assets">0</span>)</button><button type="button" id="loc-tab-btn-projects" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('projects')">Projects (<span id="loc-mig-cnt-projects">0</span>)</button><button type="button" id="loc-tab-btn-safety" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('safety')">Safety (<span id="loc-mig-cnt-safety">0</span>)</button><button type="button" id="loc-tab-btn-waterLogs" class="btn btn-sm btn-ghost" onclick="switchLocMigStore('waterLogs')">Water Logs (<span id="loc-mig-cnt-waterLogs">0</span>)</button></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">High-Confidence Matches (100% Exact &amp; 90% Alias)</div><div id="loc-mig-high-conf" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;margin-bottom:14px;background:#fff;"></div><div style="font-weight:600;font-size:12px;color:var(--navy);margin-bottom:6px;">Ambiguous / Unresolved Records (Select Target Room)</div><div id="loc-mig-ambiguous" style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;background:#fff;"></div></div></div><div class="modal-footer"><button class="btn btn-ghost" onclick="closeModal('mo-data-review')">Close</button><button id="data-repair-apply" class="btn btn-primary" onclick="applyAssetRepairPlan()">Apply displayed asset repairs</button></div></div></div>`);
   for(const page of ['assets','reports']){const button=document.createElement('button');button.type='button';button.className='btn btn-outline mb14';button.textContent='Data review';button.addEventListener('click',openDataReview);document.getElementById('page-'+page).prepend(button);}
   for(const [parent,id] of [['project-progress','project-progress-chart'],['project-budget','project-budget-chart'],['energy-yearly','energy-yearly-chart']]){const chart=document.createElement('div');chart.id=id;document.getElementById(parent).before(chart);}
   const safety=renderSafety;renderSafety=function(){safety();renderSafetyAnalytics();};

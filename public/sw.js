@@ -1,7 +1,7 @@
-// HAMMS Service Worker v2.13.1
+// HAMMS Service Worker v2.13.2
 // Caches the app shell for full offline use
 
-const CACHE_NAME = 'hamms-v2-13-1';
+const CACHE_NAME = 'hamms-v2-13-2';
 const SHELL_FILES = [
   '/',
   '/index.html',
