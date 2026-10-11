@@ -5260,7 +5260,34 @@ async function delWO(id){
 // ── ASSET ─────────────────────────────
 
 
-async function delAsset(id){return delRecord('assets',id,'asset',renderAssets);}
+async function delAsset(id){
+  const asset = DB.g('assets').find(x => x.id === id);
+  if(!asset) return;
+
+  const allWos = DB.g('wo') || [];
+  const allAssets = DB.g('assets') || [];
+
+  // 1. Check for active/open work orders
+  const openWos = allWos.filter(w => 
+    (w.assetDocId && asset._docId && w.assetDocId === asset._docId) ||
+    (w.assetId && w.assetId === asset.id) ||
+    (w.asset && asset.name && w.asset.trim().toLowerCase() === asset.name.trim().toLowerCase())
+  ).filter(w => w.status === 'Open' || w.status === 'In Progress');
+
+  if(openWos.length > 0){
+    alert(`Cannot delete asset "${asset.name}": It has ${openWos.length} active work order(s) assigned. Please close or reassign them first.`);
+    return;
+  }
+
+  // 2. Check for child sub-assembly components
+  const childAssets = allAssets.filter(a => a.parentAssetDocId && asset._docId && a.parentAssetDocId === asset._docId);
+  if(childAssets.length > 0){
+    alert(`Cannot delete asset "${asset.name}": It has ${childAssets.length} child component asset(s) linked to it. Please reassign the child equipment first.`);
+    return;
+  }
+
+  return delRecord('assets', id, 'asset', renderAssets);
+}
 function normalizedAssetName(name){
   return String(name||'').toLowerCase().replace(/flourescent/g,'fluorescent').replace(/\bwatts?\b/g,'w').replace(/[^a-z0-9]/g,'');
 }
@@ -5348,7 +5375,32 @@ function saveInvItem(){
   if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-inv');return;}inv[idx]=item;}else inv.push(item);
   DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
-async function delInvItem(id){return delRecord('inventory',id,'inventory item',renderInventory,updateInvAlerts);}
+async function delInvItem(id){
+  const item = DB.g('inventory').find(x => x.id === id);
+  if(!item) return;
+
+  const allWos = DB.g('wo') || [];
+  const openWosWithItem = allWos.filter(w => (w.status === 'Open' || w.status === 'In Progress') && 
+    (w.materials || []).some(m => m.invDocId ? m.invDocId === item._docId : m.invId === item.id)
+  );
+
+  if(openWosWithItem.length > 0){
+    alert(`Cannot delete inventory item "${item.description}": It is allocated in ${openWosWithItem.length} active work order(s). Please remove it from active work orders first.`);
+    return;
+  }
+
+  let confirmMsg = `Delete this inventory item (${item.description})? This action cannot be undone.`;
+  if((item.qty || 0) > 0){
+    confirmMsg = `Warning: "${item.description}" still has ${item.qty} ${item.unit || 'units'} in stock. Are you sure you want to delete this inventory item? This action cannot be undone.`;
+  }
+
+  if(!await confirmDialog(confirmMsg, { title: 'Confirm Delete', confirmText: 'Delete', confirmClass: 'btn btn-danger' })) return;
+  DB.s('inventory', DB.g('inventory').filter(x => x.id !== id));
+  await flushAll();
+  renderInventory();
+  updateInvAlerts();
+  showToast('Inventory item deleted.', 'info');
+}
 
 // ── MANUAL ISSUE ──────────────────────
 function openIssueModal(){
@@ -6480,6 +6532,22 @@ function loadInpatient(){
   if(el&&_memDB.inpatientToday!=null)el.value=_memDB.inpatientToday;
 }
 
+function getDescendantAssetDocIds(assetDocId, allAssets = DB.g('assets')){
+  if(!assetDocId) return new Set();
+  const descendants = new Set();
+  const queue = [assetDocId];
+  while(queue.length > 0){
+    const cur = queue.shift();
+    for(const a of allAssets){
+      if(a.parentAssetDocId === cur && a._docId && !descendants.has(a._docId)){
+        descendants.add(a._docId);
+        queue.push(a._docId);
+      }
+    }
+  }
+  return descendants;
+}
+
 // ═══════════════════════════════════════
 // NEW: ENHANCED ASSET MODAL open/save
 // ═══════════════════════════════════════
@@ -6513,10 +6581,13 @@ function openAssetModal(id=null){
   setTimeout(()=>{ if(typeof populateLinkedPumpDropdown==='function') populateLinkedPumpDropdown(); },0);
   if(typeof updateMasterLocationDatalist==='function') updateMasterLocationDatalist();
   if(typeof populateAssetLocationControls==='function') populateAssetLocationControls(id ? DB.g('assets').find(x=>x.id===id) : null);
+
   const parentSelect = document.getElementById('m-a-parent');
   if(parentSelect){
     const allAssets = DB.g('assets');
-    const candidates = allAssets.filter(x => !id || x.id !== id);
+    const curAsset = id ? allAssets.find(x => x.id === id) : null;
+    const descendants = curAsset?._docId ? getDescendantAssetDocIds(curAsset._docId, allAssets) : new Set();
+    const candidates = allAssets.filter(x => (!id || x.id !== id) && (!x._docId || !descendants.has(x._docId)));
     parentSelect.innerHTML = '<option value="">None (Top-Level Equipment)</option>' +
       candidates.map(x => `<option value="${escapeHTML(x._docId)}">${escapeHTML(x.assetCode || assNum(x.id))} — ${escapeHTML(x.name)}${x.location ? ' (' + escapeHTML(x.location) + ')' : ''}</option>`).join('');
     parentSelect.value = '';
@@ -6664,6 +6735,15 @@ function saveAsset(){
   const nextMaint=gv('m-a-nextmaint');
   const lastMaint=gv('m-a-lastmaint');
 
+  const parentAssetDocId = gv('m-a-parent') || null;
+  if(parentAssetDocId && existing?._docId){
+    const descendants = getDescendantAssetDocIds(existing._docId);
+    if(descendants.has(parentAssetDocId) || parentAssetDocId === existing._docId){
+      showToast('Circular reference detected: Cannot select a descendant as parent equipment.', 'error');
+      return;
+    }
+  }
+
   const a={
     ...existing,
     id:_editAsset||DB.nid('assets'),
@@ -6673,7 +6753,7 @@ function saveAsset(){
     acquired:gv('m-a-acquired'),remarks:gv('m-a-remarks'),
     qty:qty2,
     assetCode,
-    parentAssetDocId: gv('m-a-parent') || null,
+    parentAssetDocId,
     locationDocId: locDocId || null,
     // Category
     mainCategory:maincat,assetClass:gv('m-a-class'),assetType:gv('m-a-type'),
@@ -7057,7 +7137,59 @@ function saveLocation(){
 }
 
 async function delLocation(id){
-  return delRecord('locations', id, 'room space', renderLocations, populateLocationFilters, updateMasterLocationDatalist);
+  const loc = DB.g('locations').find(x => x.id === id);
+  if(!loc) return;
+
+  const allWos = DB.g('wo') || [];
+  const allAssets = DB.g('assets') || [];
+  const allProjects = DB.g('projects') || [];
+
+  // Match records by locationDocId or name
+  const isTargetLoc = (r) => {
+    if(r.locationDocId && (r.locationDocId === loc._docId || r.locationDocId === ('loc_' + loc.id))) return true;
+    if(r.location && loc.roomName && isSameLocation(r.location, loc.roomName)) return true;
+    return false;
+  };
+
+  const openWos = allWos.filter(w => isTargetLoc(w) && (w.status === 'Open' || w.status === 'In Progress'));
+  if(openWos.length > 0){
+    alert(`Cannot delete room "${loc.roomName}": It has ${openWos.length} active work order(s) assigned. Please complete or reassign them first.`);
+    return;
+  }
+
+  const linkedAssets = allAssets.filter(a => isTargetLoc(a));
+  const linkedProjects = allProjects.filter(p => isTargetLoc(p));
+  const totalLinked = linkedAssets.length + linkedProjects.length;
+
+  let confirmMsg = `Delete this room space (${loc.roomName})? This action cannot be undone.`;
+  if(totalLinked > 0){
+    confirmMsg = `Delete room "${loc.roomName}"? This will detach ${linkedAssets.length} asset(s) and ${linkedProjects.length} project(s) to 'Unassigned' while preserving their history. This action cannot be undone.`;
+  }
+
+  if(!await confirmDialog(confirmMsg, { title: 'Confirm Delete Room', confirmText: 'Delete & Detach', confirmClass: 'btn btn-danger' })) return;
+
+  // Cascade detach: clear locationDocId from linked assets, projects, and work orders
+  if(linkedAssets.length > 0){
+    const updatedAssets = allAssets.map(a => isTargetLoc(a) ? { ...a, locationDocId: null } : a);
+    DB.s('assets', updatedAssets);
+  }
+  if(linkedProjects.length > 0){
+    const updatedProjects = allProjects.map(p => isTargetLoc(p) ? { ...p, locationDocId: null } : p);
+    DB.s('projects', updatedProjects);
+  }
+  const linkedWos = allWos.filter(w => isTargetLoc(w) && w.locationDocId);
+  if(linkedWos.length > 0){
+    const updatedWos = allWos.map(w => isTargetLoc(w) ? { ...w, locationDocId: null } : w);
+    DB.s('wo', updatedWos);
+  }
+
+  // Delete the location record
+  DB.s('locations', DB.g('locations').filter(x => x.id !== id));
+  await flushAll();
+  renderLocations();
+  populateLocationFilters();
+  updateMasterLocationDatalist();
+  showToast('Room space deleted and references detached.', 'info');
 }
 
 function populateLocationFilters(){
@@ -7122,49 +7254,47 @@ function renderLocations(){
     });
   }
 
-  // Pre-calculate asset and WO counts for fast rendering
+  // Pre-calculate asset, WO, and PMS counts via indexed maps in O(N)
+  const locByDocId = new Map();
+  const locByName = new Map();
+  const locByNo = new Map();
+
+  locs.forEach(l => {
+    if(l._docId) locByDocId.set(l._docId, l.id);
+    if(l.id) locByDocId.set('loc_' + l.id, l.id);
+    if(l.roomName) locByName.set(l.roomName.toLowerCase().trim(), l.id);
+    if(l.roomNumber) locByNo.set(l.roomNumber.toLowerCase().trim(), l.id);
+  });
+
+  const resolveLocId = (docId, rawText) => {
+    if(docId && locByDocId.has(docId)) return locByDocId.get(docId);
+    if(!rawText) return null;
+    const lower = rawText.toLowerCase().trim();
+    if(locByName.has(lower)) return locByName.get(lower);
+    if(locByNo.has(lower)) return locByNo.get(lower);
+    const matched = locs.find(l => (l.roomName && isSameLocation(lower, l.roomName)) || (l.roomNumber && isSameLocation(lower, l.roomNumber)));
+    return matched ? matched.id : null;
+  };
+
   const assetCountMap = Object.create(null);
+  const pmsOverdueMap = Object.create(null);
   allAssets.forEach(a => {
-    const aLoc = (a.location || a.roomName || a.roomNumber || '').toLowerCase().trim();
-    if(!aLoc) return;
-    locs.forEach(l => {
-      const rName = (l.roomName || '').toLowerCase().trim();
-      const rNo = (l.roomNumber || '').toLowerCase().trim();
-      if((rName && (aLoc === rName || isSameLocation(aLoc, rName))) ||
-         (rNo && (aLoc === rNo || isSameLocation(aLoc, rNo)))){
-        assetCountMap[l.id] = (assetCountMap[l.id] || 0) + (a.qty ?? 1);
+    const aLoc = a.location || a.roomName || a.roomNumber || '';
+    const locId = resolveLocId(a.locationDocId, aLoc);
+    if(locId != null){
+      assetCountMap[locId] = (assetCountMap[locId] || 0) + (a.qty ?? 1);
+      const st = getPMSStatus(a);
+      if(st === 'Overdue' || st === 'Critical Overdue'){
+        pmsOverdueMap[locId] = (pmsOverdueMap[locId] || 0) + 1;
       }
-    });
+    }
   });
 
   const woCountMap = Object.create(null);
   allWos.forEach(w => {
-    const wLoc = (w.location || '').toLowerCase().trim();
-    if(!wLoc) return;
-    locs.forEach(l => {
-      const rName = (l.roomName || '').toLowerCase().trim();
-      const rNo = (l.roomNumber || '').toLowerCase().trim();
-      if((rName && (wLoc === rName || isSameLocation(wLoc, rName))) ||
-         (rNo && (wLoc === rNo || isSameLocation(wLoc, rNo)))){
-        woCountMap[l.id] = (woCountMap[l.id] || 0) + 1;
-      }
-    });
-  });
-
-  const pmsOverdueMap = Object.create(null);
-  allAssets.forEach(a => {
-    const aLoc = (a.location || a.roomName || a.roomNumber || '').toLowerCase().trim();
-    if(!aLoc) return;
-    const st = getPMSStatus(a);
-    if(st === 'Overdue' || st === 'Critical Overdue'){
-      locs.forEach(l => {
-        const rName = (l.roomName || '').toLowerCase().trim();
-        const rNo = (l.roomNumber || '').toLowerCase().trim();
-        if((rName && (aLoc === rName || isSameLocation(aLoc, rName))) ||
-           (rNo && (aLoc === rNo || isSameLocation(aLoc, rNo)))){
-          pmsOverdueMap[l.id] = (pmsOverdueMap[l.id] || 0) + 1;
-        }
-      });
+    const locId = resolveLocId(w.locationDocId, w.location || '');
+    if(locId != null){
+      woCountMap[locId] = (woCountMap[locId] || 0) + 1;
     }
   });
   filtered.sort((a, b) => {
@@ -13525,6 +13655,8 @@ function openRoomView(room){
   const roomClean = roomLower.replace(/[_]+$/, '').trim();
 
   const matchedLoc = DB.g('locations').find(l => {
+    if(l._docId && l._docId === room) return true;
+    if(('loc_' + l.id) === room) return true;
     const rn = (l.roomName || '').toLowerCase().trim();
     const rno = (l.roomNumber || '').toLowerCase().trim();
     return rn === roomLower || rn === roomClean || (rno && (rno === roomLower || rno === roomClean));
@@ -15030,6 +15162,11 @@ function applyLocationMigrationPlan(){
   });
 
   renderLocationMigrationAssistant();
+  if(typeof renderWO==='function') renderWO();
+  if(typeof renderAssets==='function') renderAssets();
+  if(typeof renderProjects==='function') renderProjects();
+  if(typeof renderSafety==='function') renderSafety();
+  if(typeof renderWaterLogs==='function') renderWaterLogs();
   const undoBtn = document.getElementById('loc-mig-undo-btn');
   if(undoBtn) undoBtn.style.display = 'inline-block';
 
@@ -15052,6 +15189,11 @@ function rollbackLocationMigration(){
   if(undoBtn) undoBtn.style.display = 'none';
 
   renderLocationMigrationAssistant();
+  if(typeof renderWO==='function') renderWO();
+  if(typeof renderAssets==='function') renderAssets();
+  if(typeof renderProjects==='function') renderProjects();
+  if(typeof renderSafety==='function') renderSafety();
+  if(typeof renderWaterLogs==='function') renderWaterLogs();
   showToast('Migration rolled back successfully. Records reverted to pre-migration state.');
 }
 
