@@ -53,7 +53,7 @@ test.describe('Audit Bug Fixes', () => {
     expect(duplicates).toEqual([]);
   });
 
-  test('Fix 3: Energy empty state row colspan matches table headers (9 columns)', async ({ page }) => {
+  test('Fix 3: Energy empty state row colspan matches table headers (10 columns)', async ({ page }) => {
     await bootstrapApp(page);
     await page.evaluate(() => {
       DB.s('energyBills', []);
@@ -68,8 +68,8 @@ test.describe('Audit Bug Fixes', () => {
         emptyColspan: emptyTd ? parseInt(emptyTd.getAttribute('colspan'), 10) : null
       };
     });
-    expect(thCount).toBe(9);
-    expect(emptyColspan).toBe(9);
+    expect(thCount).toBe(10);
+    expect(emptyColspan).toBe(10);
   });
 
   test('Fix 4: compressImageFile helper is defined and operational', async ({ page }) => {

@@ -765,7 +765,7 @@ tr.row-warn td{background:#fffdf0;}
 
       <!-- Email -->
       <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Email Address</label>
+        <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Email Address</label>
         <input id="login-email" type="email" placeholder="you@dopmc.gov.ph" autocomplete="username"
           style="width:100%;padding:11px 13px;border:1.5px solid #dde3ec;border-radius:6px;font-size:14px;font-family:inherit;color:#1e3a5f;background:#f4f6f9;outline:none;box-sizing:border-box;"
           onfocus="this.style.borderColor='#0f8c6e';this.style.background='#fff'"
@@ -774,7 +774,7 @@ tr.row-warn td{background:#fffdf0;}
 
       <!-- Password -->
       <div style="margin-bottom:18px;">
-        <label style="display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Password</label>
+        <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Password</label>
         <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"
           style="width:100%;padding:11px 13px;border:1.5px solid #dde3ec;border-radius:6px;font-size:14px;font-family:inherit;color:#1e3a5f;background:#f4f6f9;outline:none;box-sizing:border-box;"
           onfocus="this.style.borderColor='#0f8c6e';this.style.background='#fff'"
@@ -1085,19 +1085,60 @@ resetIdleTimer();
           <button type="button" class="btn btn-primary" onclick="openSafetyModal()">+ Log Safety Issue</button>
         </div>
       </div>
-      <div class="two-col mb14">
-        <div class="card"><div class="card-header"><h3>Open Issues by Severity</h3></div><div class="card-body"><div id="safety-summary-bars"></div></div></div>
-        <div class="card"><div class="card-header"><h3>Issue Trend — Last 6 Months</h3></div><div class="card-body"><div class="chart-wrap" id="safety-chart"></div></div></div>
+      <!-- Executive KPI Header (6 Cards) -->
+      <div class="stat-grid mb14" id="safety-stat-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"></div>
+
+      <!-- Middle Visual Analytics (3 Cards) -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;" class="mb14">
+        <div class="card">
+          <div class="card-header"><h3>Open Issues by Severity</h3></div>
+          <div class="card-body"><div id="safety-summary-bars"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Issues Opened vs Closed — Last 6 Months</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="safety-chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;">
+            <h3>Top Issues by <span id="sf-group-title">Location</span></h3>
+            <div style="display:inline-flex;background:var(--bg);border-radius:4px;padding:2px;gap:2px;">
+              <button type="button" id="sf-toggle-loc" class="btn btn-sm btn-ghost" style="padding:2px 8px;font-size:11px;font-weight:700;background:var(--white);" onclick="toggleSafetyGroup('loc')">Location</button>
+              <button type="button" id="sf-toggle-asset" class="btn btn-sm btn-ghost" style="padding:2px 8px;font-size:11px;font-weight:600;" onclick="toggleSafetyGroup('asset')">Asset</button>
+            </div>
+          </div>
+          <div class="card-body"><div id="safety-group-bars"></div></div>
+        </div>
       </div>
-      <!-- PATCH: CSV import enhancement — category trend for safety -->
+
+      <!-- Lower Analytics (2 Cards) -->
       <div class="two-col mb14">
-        <div class="card"><div class="card-header"><h3>Issues by Category / Location</h3></div><div class="card-body"><div id="safety-cat-bars"></div></div></div>
-        <div class="card"><div class="card-header"><h3>Monthly Issue Count Trend</h3></div><div class="card-body"><div class="chart-wrap" id="safety-month-chart"></div></div></div>
+        <div class="card">
+          <div class="card-header"><h3>Outstanding Issue Aging</h3></div>
+          <div class="card-body"><div id="safety-aging-bars"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Issue Status Distribution</h3></div>
+          <div class="card-body"><div id="safety-status-donut"></div></div>
+        </div>
       </div>
+
+      <!-- Safety Issues Table -->
       <div class="card">
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Safety Issues</caption>
-          <thead><tr><th scope="col">Issue #</th><th scope="col">Severity</th><th scope="col">Description</th><th scope="col">Location / Room</th><th scope="col">Linked Asset</th><th scope="col">Status</th><th scope="col">Date Logged</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr>
+            <th scope="col">Issue #</th>
+            <th scope="col">Severity</th>
+            <th scope="col">Description</th>
+            <th scope="col">Location / Room</th>
+            <th scope="col">Linked Asset</th>
+            <th scope="col">Status</th>
+            <th scope="col">Date Logged</th>
+            <th scope="col">Target Date</th>
+            <th scope="col">Responsible</th>
+            <th scope="col">Remarks</th>
+            <th scope="col">Actions</th>
+          </tr></thead>
           <tbody id="safety-tbody"></tbody>
         </table></div>
       </div>
@@ -1119,7 +1160,38 @@ resetIdleTimer();
           <button type="button" class="btn btn-primary" onclick="openProjectModal()">+ Add Project</button>
         </div>
       </div>
-      <div class="stat-grid mb14" id="proj-stat-row"></div>
+      <!-- Hidden legacy container for test compatibility -->
+      <div id="proj-stat-row" style="display:none;"></div>
+
+      <!-- Tier 1: Project Status Summary (5 Cards) -->
+      <div class="stat-grid mb14" id="proj-stat-tier1" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"></div>
+
+      <!-- Tier 2: Execution & Financial Performance (6 Cards) -->
+      <div class="stat-grid mb14" id="proj-stat-tier2" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));"></div>
+
+      <!-- Analytics Charts Row 1 (Status Donut & S-Curve) -->
+      <div class="two-col mb14">
+        <div class="card">
+          <div class="card-header"><h3>Project Status Distribution</h3></div>
+          <div class="card-body"><div id="proj-status-donut"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Physical Progress S-Curve (Planned vs Actual)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="proj-scurve-chart"></div></div>
+        </div>
+      </div>
+
+      <!-- Analytics Charts Row 2 (Budget vs Actual & Completion Forecast) -->
+      <div class="two-col mb14">
+        <div class="card">
+          <div class="card-header"><h3>Budget vs Actual Expenditure by Category</h3></div>
+          <div class="card-body"><div id="proj-budget-cat-chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Project Completion Forecast (Next 6 Months)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="proj-forecast-chart"></div></div>
+        </div>
+      </div>
       <div class="card">
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Projects</caption>
@@ -1641,6 +1713,7 @@ resetIdleTimer();
           <input type="text" id="en-search" aria-label="Search by period or remarks" placeholder="Search period…" oninput="renderEnergy()" style="width:160px;">
         </div>
         <div style="display:flex;gap:7px;">
+          <button type="button" class="btn btn-ghost" onclick="openEnergySettingsModal()">🌱 DOE Carbon Settings</button>
           <button type="button" class="btn btn-ghost" onclick="downloadEnergyTemplate()">⬇ CSV Template</button>
           <button type="button" class="btn btn-outline" onclick="document.getElementById('en-csv-upload').click()">📤 Upload CSV</button>
           <input type="file" id="en-csv-upload" accept=".csv" style="display:none;" onchange="importEnergyCSV(event)">
@@ -1649,7 +1722,8 @@ resetIdleTimer();
         </div>
       </div>
 
-      <div class="stat-grid mb14" id="en-stat-row"></div>
+      <!-- 9 Executive KPI Header Cards (Energy & DOE Carbon Footprint) -->
+      <div class="stat-grid mb14" id="en-stat-row" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr));"></div>
 
       <div id="en-account-info" class="card mb14" style="display:none;">
         <div class="card-body" style="padding:10px 14px;font-size:12px;color:var(--muted);">
@@ -1658,12 +1732,20 @@ resetIdleTimer();
         </div>
       </div>
 
-      <div class="card mb14">
-        <div class="card-header"><h3>Theoretical Load by Asset Category (kWh/month)</h3></div>
-        <div class="card-body"><div class="chart-wrap" id="en-category-chart" role="img" aria-label="Bar chart of theoretical load by asset category"></div></div>
+      <!-- Analytics Charts Row 1: Annual Energy & Carbon Multi-Year Trends -->
+      <div class="two-col mb14">
+        <div class="card">
+          <div class="card-header"><h3>Year-to-Year Energy Consumption Trend (kWh)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-yoy-energy-chart"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Year-to-Year Carbon Emissions Trend (tCO₂e) — DOE Standards</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-yoy-carbon-chart"></div></div>
+        </div>
       </div>
 
-          <div class="two-col mb14">
+      <!-- Analytics Charts Row 2: Theoretical vs Actual Monthly & Bills -->
+      <div class="two-col mb14">
         <div class="card">
           <div class="card-header"><h3>Theoretical Consumption (kWh)</h3></div>
           <div class="card-body"><div class="chart-wrap" id="en-trend-chart" role="img" aria-label="12-month bar chart of theoretical energy consumption"></div></div>
@@ -1672,26 +1754,67 @@ resetIdleTimer();
           <div class="card-header"><h3>Actual Consumption (kWh)</h3></div>
           <div class="card-body"><div class="chart-wrap" id="en-actual-chart" role="img" aria-label="12-month bar chart of actual energy consumption"></div></div>
         </div>
+      </div>
+
+      <div class="two-col mb14">
         <div class="card">
           <div class="card-header"><h3>Monthly DORECO Bills (₱)</h3></div>
           <div class="card-body"><div class="chart-wrap" id="en-bill-chart" role="img" aria-label="12-month bar chart of monthly DORECO bill amounts"></div></div>
         </div>
+        <div class="card">
+          <div class="card-header"><h3>Top 5 Power Consuming Assets</h3></div>
+          <div class="card-body"><div id="en-top5-assets"></div></div>
+        </div>
       </div>
 
+      <!-- Analytics Charts Row 3: Theoretical Load by Category (Bar + Donut) -->
+      <div class="two-col mb14">
+        <div class="card">
+          <div class="card-header"><h3>Theoretical Load by Asset Category (kWh/month)</h3></div>
+          <div class="card-body"><div class="chart-wrap" id="en-category-chart" role="img" aria-label="Bar chart of theoretical load by asset category"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Energy Load Distribution by Asset Category</h3></div>
+          <div class="card-body"><div id="en-cat-donut"></div></div>
+        </div>
+      </div>
+
+      <!-- Monthly Bill Records Table -->
       <div class="card mb14">
-        <div class="card-header"><h3>Bill Records (Monthly)</h3></div>
+        <div class="card-header"><h3>Bill Records (Monthly) &amp; Carbon Footprint</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Monthly Energy Bills</caption>
-          <thead><tr><th scope="col">Period</th><th scope="col">Theoretical (kWh)</th><th scope="col">Actual (kWh)</th><th scope="col">Variance (kWh)</th><th scope="col">Variance %</th><th scope="col">Demand (kW)</th><th scope="col">Bill (₱)</th><th scope="col">Remarks</th><th scope="col">Actions</th></tr></thead>
+          <thead><tr>
+            <th scope="col">Period</th>
+            <th scope="col">Theoretical (kWh)</th>
+            <th scope="col">Actual (kWh)</th>
+            <th scope="col">Variance (kWh)</th>
+            <th scope="col">Variance %</th>
+            <th scope="col">Carbon (tCO₂e)</th>
+            <th scope="col">Demand (kW)</th>
+            <th scope="col">Bill (₱)</th>
+            <th scope="col">Remarks</th>
+            <th scope="col">Actions</th>
+          </tr></thead>
           <tbody id="energy-tbody"></tbody>
         </table></div>
       </div>
 
+      <!-- Annual Summary Table -->
       <div class="card">
-        <div class="card-header"><h3>Annual Summary</h3></div>
+        <div class="card-header"><h3>Annual Energy &amp; Carbon Emissions Summary</h3></div>
         <div class="tbl-wrap"><table>
           <caption class="sr-only">Annual Energy Summary</caption>
-          <thead><tr><th scope="col">Year</th><th scope="col">Σ Theoretical (kWh)</th><th scope="col">Σ Actual (kWh)</th><th scope="col">Σ Variance (kWh)</th><th scope="col">Avg Variance %</th><th scope="col">Σ Bill (₱)</th><th scope="col">Avg Demand (kW)</th></tr></thead>
+          <thead><tr>
+            <th scope="col">Year</th>
+            <th scope="col">Σ Theoretical (kWh)</th>
+            <th scope="col">Σ Actual (kWh)</th>
+            <th scope="col">Σ Variance (kWh)</th>
+            <th scope="col">Avg Variance %</th>
+            <th scope="col">Σ Carbon (tCO₂e)</th>
+            <th scope="col">Σ Bill (₱)</th>
+            <th scope="col">Avg Demand (kW)</th>
+          </tr></thead>
           <tbody id="energy-annual-tbody"></tbody>
         </table></div>
       </div>
@@ -2642,7 +2765,10 @@ resetIdleTimer();
         <div class="form-group"><label>Linked Asset <span style="font-weight:400;font-style:italic;">(optional)</span></label>
           <input type="text" id="m-sf-asset" placeholder="Asset name if applicable"></div>
         <div class="form-group"><label>Date Logged</label><input type="date" id="m-sf-date"></div>
+        <div class="form-group"><label>Target Resolution Date</label><input type="date" id="m-sf-target"></div>
         <div class="form-group"><label>Logged By</label><input type="text" id="m-sf-by" placeholder="Name of reporting personnel"></div>
+        <div class="form-group"><label>Responsible / Assigned</label><input type="text" id="m-sf-resp" placeholder="Assigned personnel or team"></div>
+        <div class="form-group"><label>Date Resolved / Closed</label><input type="date" id="m-sf-dclosed"></div>
         <div class="form-group" style="grid-column:1/-1;"><label>Remarks / Action Taken</label>
           <textarea id="m-sf-remarks" style="min-height:44px;"></textarea></div>
       </div>
@@ -2988,6 +3114,100 @@ resetIdleTimer();
       <button type="button" class="btn btn-ghost" onclick="closeModal('mo-energy')">Cancel</button>
       <button type="button" class="btn btn-outline" id="m-en-recompute-btn" onclick="recomputeTheoretical()" title="Recompute theoretical kWh from the current asset registry" style="display:none;">⟳ Recompute Theoretical</button>
       <button type="button" class="btn btn-primary" onclick="saveEnergy()">Save Bill</button>
+    </div>
+</div>
+
+<!-- Energy & Carbon Settings Modal -->
+<div class="modal-overlay" id="mo-energy-settings" role="dialog" aria-modal="true" aria-labelledby="mo-energy-settings-title">
+  <div class="modal modal-wide" style="max-width:720px;">
+    <div class="modal-header">
+      <h3 id="mo-energy-settings-title" style="display:flex;align-items:center;gap:8px;">
+        <span>🌱</span> Philippine DOE Energy &amp; Carbon Footprint Settings
+      </h3>
+      <button type="button" class="modal-close" onclick="closeModal('mo-energy-settings')">×</button>
+    </div>
+    <div class="modal-body">
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;">
+        <button type="button" class="btn btn-sm btn-ghost" id="tab-btn-enset-gen" style="font-weight:700;border-bottom:2px solid var(--teal);border-radius:4px 4px 0 0;" onclick="switchEnSetTab('gen')">Grid Factors &amp; Region</button>
+        <button type="button" class="btn btn-sm btn-ghost" id="tab-btn-enset-targets" style="font-weight:600;color:var(--muted);" onclick="switchEnSetTab('targets')">Targets &amp; Baseline</button>
+        <button type="button" class="btn btn-sm btn-ghost" id="tab-btn-enset-formulas" style="font-weight:600;color:var(--muted);" onclick="switchEnSetTab('formulas')">DOE Standards &amp; Reference</button>
+      </div>
+
+      <!-- Tab 1: Grid Factors -->
+      <div id="tab-enset-gen">
+        <div class="form-grid fg-2 mb14">
+          <div class="form-group">
+            <label for="enset-grid-region">Power Grid Region *</label>
+            <select id="enset-grid-region" onchange="onGridRegionChange(this.value)">
+              <option value="National">Philippine National Grid (0.850 kg CO₂e/kWh)</option>
+              <option value="Mindanao">Mindanao Grid (0.880 kg CO₂e/kWh)</option>
+              <option value="Luzon">Luzon Grid (0.820 kg CO₂e/kWh)</option>
+              <option value="Visayas">Visayas Grid (0.900 kg CO₂e/kWh)</option>
+              <option value="Custom">Custom Emission Factor</option>
+            </select>
+            <div class="form-hint">Standard emission factors issued by Philippine Department of Energy.</div>
+          </div>
+          <div class="form-group">
+            <label for="enset-factor">Emission Factor (kg CO₂e / kWh) *</label>
+            <input type="number" id="enset-factor" step="0.001" min="0.001" max="5.0" value="0.850">
+            <div class="form-hint">Used for carbon emissions: (kWh × Factor) / 1000 = tCO₂e.</div>
+          </div>
+        </div>
+        <div style="background:#f4f9f7;border:1px solid #bfe3d5;border-radius:6px;padding:12px 14px;font-size:12px;color:var(--navy);line-height:1.6;">
+          <strong>Hospital Facility Context:</strong> Davao Oriental Provincial Medical Center (DOPMC) is connected to Davao Oriental Electric Cooperative (DORECO) under the Mindanao Power Grid. While the national default is <strong>0.850 kg CO₂e/kWh</strong>, the Mindanao Grid factor of <strong>0.880 kg CO₂e/kWh</strong> or custom verified utility factors may be selected.
+        </div>
+      </div>
+
+      <!-- Tab 2: Targets -->
+      <div id="tab-enset-targets" style="display:none;">
+        <div class="form-grid fg-2 mb14">
+          <div class="form-group">
+            <label for="enset-target-reduction">Mandatory Target Reduction (%) *</label>
+            <input type="number" id="enset-target-reduction" step="0.5" min="1" max="50" value="10.0">
+            <div class="form-hint">Government Energy Management Program (GEMP) target (10.0% standard).</div>
+          </div>
+          <div class="form-group">
+            <label for="enset-baseline-year">DOE Baseline Year *</label>
+            <input type="number" id="enset-baseline-year" min="2015" max="2030" step="1" value="2022">
+            <div class="form-hint">Reference baseline year for annual energy comparison.</div>
+          </div>
+        </div>
+        <div style="background:#fcf8ed;border:1px solid #fae2a2;border-radius:6px;padding:12px 14px;font-size:12px;color:#7a5000;line-height:1.6;">
+          <strong>Target Threshold Policy:</strong> When the calculated reduction % meets or exceeds the target (e.g. ≥ 10.0%), the system reports <strong>TARGET MET (YES)</strong>. Reductions between 0% and 9.9% are flagged as <strong>ON TRACK</strong>. Increases over baseline are flagged as <strong>EXCEEDED</strong>.
+        </div>
+      </div>
+
+      <!-- Tab 3: DOE Standards & Reference -->
+      <div id="tab-enset-formulas" style="display:none;">
+        <div style="font-size:12.5px;color:var(--navy);line-height:1.7;">
+          <h4 style="margin:0 0 6px 0;font-size:13px;color:var(--teal);">Philippine Department of Energy (DOE) Carbon Footprint Formulas:</h4>
+          <ol style="padding-left:18px;margin:0 0 12px 0;">
+            <li style="margin-bottom:6px;"><strong>Electricity Carbon Footprint:</strong><br>
+              <code>CO₂e (t) = [ Actual Consumption (kWh) × Emission Factor (kg CO₂e/kWh) ] / 1,000</code>
+            </li>
+            <li style="margin-bottom:6px;"><strong>Carbon Intensity:</strong><br>
+              <code>Intensity = CO₂e (kg) / Actual Consumption (kWh) = Emission Factor (kg CO₂e/kWh)</code>
+            </li>
+            <li style="margin-bottom:6px;"><strong>Avoided Carbon Emissions:</strong><br>
+              <code>Avoided CO₂e (t) = [ (Theoretical Baseline kWh − Actual kWh) × Emission Factor ] / 1,000</code>
+            </li>
+            <li style="margin-bottom:6px;"><strong>Carbon / Energy Reduction %:</strong><br>
+              <code>Reduction (%) = [ (Theoretical Baseline kWh − Actual kWh) / Theoretical Baseline kWh ] × 100%</code>
+            </li>
+          </ol>
+          <div style="font-size:11px;color:var(--muted);border-top:1px solid var(--border);padding-top:8px;">
+            Standard References: Republic Act No. 11285 (Energy Efficiency and Conservation Act) · DOE Department Circular DC2023-05-0013 · National Grid Emission Factor (NGEF).
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="display:flex;justify-content:space-between;align-items:center;">
+      <button type="button" class="btn btn-ghost" onclick="resetEnergySettingsDefaults()">↺ Reset to DOE Defaults</button>
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('mo-energy-settings')">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="applyEnergySettings()">Save &amp; Apply Settings</button>
+      </div>
     </div>
   </div>
 </div>
@@ -3997,7 +4217,19 @@ const today=()=>new Date().toISOString().split('T')[0];
 const addDays=(d,n)=>{const dt=new Date(d+'T00:00:00');dt.setDate(dt.getDate()+n);return dt.toISOString().split('T')[0];};
 const diffDays=(a,b)=>{if(!a||!b)return null;return Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);};
 const fmt=d=>{if(!d)return'—';const dt=new Date(d+'T00:00:00');return dt.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'});};
+const cleanModuleCode=code=>(!code?'':String(code).replace(/-[A-F0-9]{8}$/i,''));
 const woNum=id=>'<span class="mono">WO-'+String(id).padStart(4,'0')+'</span>';
+const woCodeBadge=w=>(w&&w.code?'<span class="mono">'+escapeHTML(cleanModuleCode(w.code))+'</span>':woNum(w?.id));
+function normAssetTerm(s){
+  if(!s)return '';
+  return String(s).toLowerCase()
+    .replace(/flourescent/g,'fluorescent')
+    .replace(/\bwatts\b|\bwatt\b/g,'w')
+    .replace(/\b([0-9]+)\s*w\b/g,'$1w')
+    .replace(/[^a-z0-9]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
 const weNum=id=>'<span class="mono">WE-'+String(id).padStart(4,'0')+'</span>';
 const assNum=id=>'<span class="mono">ASS-'+String(id).padStart(3,'0')+'</span>';
 const invNum=id=>'<span class="mono">INV-'+String(id).padStart(3,'0')+'</span>';
@@ -4284,10 +4516,12 @@ function drawBarLineChart(containerId,labels,barData,lineData,barColor,lineColor
 }
 
 
-function drawDoubleBarChart(containerId,labels,seriesA,seriesB,labelA,labelB,yLabel){
+function drawDoubleBarChart(containerId,labels,seriesA,seriesB,labelA,labelB,yLabel,colorA,colorB){
   const el=document.getElementById(containerId); if(!el) return;
   el.setAttribute('role','img');
   el.setAttribute('aria-label','Chart: '+labelA+' vs '+labelB+' ('+yLabel+') — '+labels.length+' data points');
+  const cA=colorA||'#6e3fa3';
+  const cB=colorB||'#1e6fb5';
   const max=Math.max(...seriesA,...seriesB,1); const w=el.clientWidth||560, h=240;
   const left=44, right=12, top=12, bottom=34, plotW=w-left-right, plotH=h-top-bottom;
   const groupW=plotW/Math.max(labels.length,1); const barW=Math.max(10, Math.min(22, groupW/3.2));
@@ -4301,13 +4535,128 @@ function drawDoubleBarChart(containerId,labels,seriesA,seriesB,labelA,labelB,yLa
     const baseX=left+idx*groupW+groupW/2;
     const v1=Number(seriesA[idx]||0), v2=Number(seriesB[idx]||0);
     const h1=(v1/max)*plotH, h2=(v2/max)*plotH;
-    svg += `<rect x="${baseX-barW-2}" y="${top+plotH-h1}" width="${barW}" height="${h1}" rx="4" fill="#6e3fa3"/>`;
-    svg += `<rect x="${baseX+2}" y="${top+plotH-h2}" width="${barW}" height="${h2}" rx="4" fill="#1e6fb5"/>`;
+    svg += `<rect x="${baseX-barW-2}" y="${top+plotH-h1}" width="${barW}" height="${h1}" rx="4" fill="${cA}"/>`;
+    svg += `<rect x="${baseX+2}" y="${top+plotH-h2}" width="${barW}" height="${h2}" rx="4" fill="${cB}"/>`;
     svg += `<text x="${baseX}" y="${h-16}" text-anchor="middle" font-size="10" fill="#667085">${lab}</text>`;
   });
   svg += `<text x="${left}" y="${top-2}" font-size="11" fill="#667085">${yLabel}</text>`;
-  svg += `<g transform="translate(${w-210},8)"><rect x="0" y="0" width="10" height="10" rx="2" fill="#6e3fa3"/><text x="14" y="9" font-size="10" fill="#344054">${labelA}</text><rect x="82" y="0" width="10" height="10" rx="2" fill="#1e6fb5"/><text x="96" y="9" font-size="10" fill="#344054">${labelB}</text></g>`;
+  svg += `<g transform="translate(${w-210},8)"><rect x="0" y="0" width="10" height="10" rx="2" fill="${cA}"/><text x="14" y="9" font-size="10" fill="#344054">${labelA}</text><rect x="82" y="0" width="10" height="10" rx="2" fill="${cB}"/><text x="96" y="9" font-size="10" fill="#344054">${labelB}</text></g>`;
   svg += `</svg>`; el.innerHTML=svg;
+}
+
+function drawDonutChart(containerId, items, centerText, centerSub){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const safeItems = (items||[]).filter(it=>it && Number(it.value) > 0);
+  const total = safeItems.reduce((s,it)=>s+Number(it.value), 0);
+  if(total <= 0){
+    el.innerHTML = '<div class="empty" style="padding:40px 0;text-align:center;color:var(--muted);">No data available</div>';
+    return;
+  }
+  const size = 180, cx = 90, cy = 90, r = 58, strokeWidth = 22;
+  const circumference = 2 * Math.PI * r;
+  let offset = 0;
+  let paths = '';
+  safeItems.forEach(it=>{
+    const pct = Number(it.value) / total;
+    const dash = pct * circumference;
+    const gap = circumference - dash;
+    paths += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${it.color}" stroke-width="${strokeWidth}" stroke-dasharray="${dash.toFixed(2)} ${gap.toFixed(2)}" stroke-dashoffset="${(-offset).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    offset += dash;
+  });
+  let legend = '<div style="display:flex;flex-direction:column;gap:5px;min-width:130px;max-width:160px;justify-content:center;">';
+  items.forEach(it=>{
+    const v = Number(it.value)||0;
+    const pct = total>0 ? Math.round((v/total)*100) : 0;
+    legend += `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11.5px;">
+      <div style="display:flex;align-items:center;gap:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:${it.color};flex-shrink:0;"></span>
+        <span style="color:var(--navy);font-weight:600;">${escapeHTML(it.label)}</span>
+      </div>
+      <div style="font-family:\'IBM Plex Mono\',monospace;font-size:11px;color:var(--muted);white-space:nowrap;">${v} <span style="font-size:10px;opacity:0.8;">(${pct}%)</span></div>
+    </div>`;
+  });
+  legend += '</div>';
+
+  el.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;gap:16px;width:100%;flex-wrap:wrap;padding:8px 0;">
+    <div style="position:relative;width:${size}px;height:${size}px;flex-shrink:0;">
+      <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="display:block;">
+        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#f0f3f6" stroke-width="${strokeWidth}"/>
+        ${paths}
+      </svg>
+      <div style="position:absolute;top:0;left:0;width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="font-family:\'IBM Plex Mono\',monospace;font-size:22px;font-weight:700;color:var(--navy);line-height:1;">${centerText}</div>
+        ${centerSub ? `<div style="font-size:10px;text-transform:uppercase;letter-spacing:0.8px;color:var(--muted);margin-top:3px;">${escapeHTML(centerSub)}</div>` : ''}
+      </div>
+    </div>
+    ${legend}
+  </div>`;
+}
+
+function drawSCurveChart(containerId, labels, plannedData, actualData, yLabel){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const W = Math.max(el.clientWidth || 560, 420);
+  const H = 220, PL = 48, PR = 20, PT = 18, PB = 38;
+  const cW = W - PL - PR, cH = H - PT - PB;
+  const n = labels.length;
+  if(n === 0){
+    el.innerHTML = '<div class="empty" style="padding:40px 0;text-align:center;color:var(--muted);">No milestone data</div>';
+    return;
+  }
+  const x = i => PL + (n > 1 ? (i / (n - 1)) * cW : cW / 2);
+  const y = v => PT + cH - (Math.min(Math.max(v, 0), 100) / 100) * cH;
+
+  let grid = '';
+  for(let p = 0; p <= 100; p += 25){
+    const yy = y(p);
+    grid += `<line x1="${PL}" x2="${W - PR}" y1="${yy}" y2="${yy}" stroke="#eef2f6" stroke-width="1"/>`;
+    grid += `<text x="${PL - 8}" y="${yy + 4}" text-anchor="end" font-size="10" fill="#6b7f96">${p}%</text>`;
+  }
+
+  const pPts = plannedData.map((v, i) => `${x(i)},${y(v)}`).join(' ');
+  const aPts = actualData.map((v, i) => (v != null ? `${x(i)},${y(v)}` : null)).filter(Boolean);
+  
+  let plannedPath = `<polyline points="${pPts}" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-dasharray="5 3"/>`;
+  let actualPath = aPts.length > 1 ? `<polyline points="${aPts.join(' ')}" fill="none" stroke="#10b981" stroke-width="3"/>` : '';
+
+  let actualArea = '';
+  if(aPts.length > 1){
+    const firstX = aPts[0].split(',')[0];
+    const lastX = aPts[aPts.length - 1].split(',')[0];
+    const areaPoints = `${firstX},${PT + cH} ` + aPts.join(' ') + ` ${lastX},${PT + cH}`;
+    actualArea = `<polygon points="${areaPoints}" fill="#10b981" fill-opacity="0.12"/>`;
+  }
+
+  let dots = '';
+  plannedData.forEach((v, i) => {
+    dots += `<circle cx="${x(i)}" cy="${y(v)}" r="3" fill="#2563eb"/>`;
+  });
+  actualData.forEach((v, i) => {
+    if(v != null) dots += `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="#10b981" stroke="#fff" stroke-width="2"/>`;
+  });
+
+  let xLabels = '';
+  labels.forEach((l, i) => {
+    xLabels += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="10.5" fill="#5a6e84">${escapeHTML(l)}</text>`;
+  });
+
+  el.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="font-family:\'IBM Plex Sans\',sans-serif;display:block;">
+    ${grid}
+    <line x1="${PL}" x2="${W - PR}" y1="${PT + cH}" y2="${PT + cH}" stroke="#d0d8e4" stroke-width="1.5"/>
+    <line x1="${PL}" x2="${PL}" y1="${PT}" y2="${PT + cH}" stroke="#d0d8e4" stroke-width="1.5"/>
+    ${actualArea}
+    ${plannedPath}
+    ${actualPath}
+    ${dots}
+    ${xLabels}
+    <g transform="translate(${W - PR - 190}, 6)">
+      <line x1="0" y1="5" x2="20" y2="5" stroke="#2563eb" stroke-width="2" stroke-dasharray="4 2"/>
+      <text x="24" y="9" font-size="10" fill="#334155">Planned</text>
+      <line x1="85" y1="5" x2="105" y2="5" stroke="#10b981" stroke-width="3"/>
+      <text x="110" y="9" font-size="10" fill="#334155">Actual</text>
+    </g>
+  </svg>`;
 }
 
 function drawTripleBarChart(containerId,labels,seriesA,seriesB,seriesC,labelA,labelB,labelC,yLabel){
@@ -4831,18 +5180,56 @@ async function delAsset(id){return delRecord('assets',id,'asset',renderAssets);}
 function viewHistory(idOrName){
   let name=idOrName;
   let targetAsset=null;
-  if(typeof idOrName==='number'){const a=DB.g('assets').find(x=>x.id===idOrName);targetAsset=a;name=a?a.name:'';}
+  if(typeof idOrName==='number'){
+    const a=DB.g('assets').find(x=>x.id===idOrName);
+    targetAsset=a;
+    name=a?a.name:'';
+  }else if(typeof idOrName==='string'){
+    const a=DB.g('assets').find(x=>x.name===idOrName||x.code===idOrName||x.assetCode===idOrName||String(x.id)===idOrName);
+    if(a){targetAsset=a;name=a.name;}
+  }
   const assetLocs=targetAsset?[targetAsset.location,targetAsset.roomNumber,targetAsset.roomName,targetAsset.building].filter(Boolean):[];
+  const normTarget=normAssetTerm(name);
+  const targetCode=(targetAsset?(targetAsset.assetCode||targetAsset.code||''):'').trim().toLowerCase();
+
   const wos=DB.g('wo').filter(w=>{
-    if(w.asset!==name) return false;
-    if(!assetLocs.length) return true;
+    const woAssetName=(w.asset||'').trim();
+    const normWoAsset=normAssetTerm(woAssetName);
     const woLoc=(w.location||'').trim();
-    if(!woLoc) return true;
-    return assetLocs.some(al=>al.toLowerCase().trim()===woLoc.toLowerCase()||isSameLocation(woLoc,al));
+    const woCodeClean=(w.code||'').trim().toLowerCase();
+    const woAssetCode=(w.assetCode||'').trim().toLowerCase();
+
+    // Check code or explicit ID matching
+    const codeMatch=targetCode && (woCodeClean===targetCode || woAssetCode===targetCode || normAssetTerm(woAssetName)===targetCode || (w.description||'').toLowerCase().includes(targetCode));
+    const targetAssetIdMatch=targetAsset && w.assetId && (w.assetId===targetAsset.id);
+
+    // Direct name or normalized alias matching
+    const exactNameMatch=woAssetName && name && (woAssetName===name);
+    const normNameMatch=normWoAsset && normTarget && (normWoAsset===normTarget || (normWoAsset.length>4 && normTarget.length>4 && (normWoAsset.includes(normTarget) || normTarget.includes(normWoAsset))));
+
+    // Location matching
+    const locMatches=!assetLocs.length || !woLoc || assetLocs.some(al=>al.toLowerCase().trim()===woLoc.toLowerCase()||isSameLocation(woLoc,al));
+
+    if(codeMatch || targetAssetIdMatch) return true;
+    if((exactNameMatch || normNameMatch) && locMatches) return true;
+    
+    // Room-level fallback: if in the exact same room/location, check if description mentions the asset
+    if(locMatches && normTarget && woLoc && assetLocs.length){
+      const descNorm=normAssetTerm(w.description||'');
+      if(descNorm.includes(normTarget) || (normTarget.length>4 && descNorm.includes(normTarget.slice(0, 10)))){
+        return true;
+      }
+    }
+    return false;
   });
   const locSuffix=targetAsset&&(targetAsset.roomNumber||targetAsset.location)?' ('+(targetAsset.roomNumber||targetAsset.location)+')':'';
   document.getElementById('mo-history-title').textContent='Repair History – '+name+locSuffix;
-  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';const s=overdue(w)?'Overdue':w.status;return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;}).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
+  document.getElementById('history-tbody').innerHTML=wos.length?wos.map(w=>{
+    const dur=w.dateStart&&w.dateEnd?diffDays(w.dateStart,w.dateEnd)+' d':'—';
+    const s=overdue(w)?'Overdue':w.status;
+    const cCode=cleanModuleCode(w.code);
+    return`<tr><td>${cCode?'<span class="mono">'+escapeHTML(cCode)+'</span>':woNum(w.id)}</td><td style="max-width:180px;white-space:normal;">${escapeHTML(w.description)}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td></tr>`;
+  }).join(''):'<tr><td colspan="8" class="empty">No work orders for this asset.</td></tr>';
   openModal('mo-history');
 }
 
@@ -5295,7 +5682,7 @@ function renderForecast(){
     const isOvr=overdue(w);
     const late=isOvr||(proj&&proj<today());
     const forecastFlag=isOvr?'<span class="bs bs-overdue">Overdue</span>':(late?'<span class="bs bs-overdue">Past Due</span>':'<span class="bs bs-inprog">On Track</span>');
-    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
+    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(cleanModuleCode(w.code))+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No open work orders to forecast.</td></tr>';
 }
 
@@ -6336,7 +6723,7 @@ function renderDash(){
 
   // Original lower dashboard
   const recent=[...wos].sort((a,b)=>b.id-a.id).slice(0,8);
-  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
+  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(cleanModuleCode(w.code))+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
   const ws=getWeekStart(today());const ww=wastes.filter(w=>w.date>=ws);const bt={};ww.forEach(w=>{if(!bt[w.type])bt[w.type]={v:0,s:[]};bt[w.type].v+=w.volume;bt[w.type].s.push(w.emb);});
   document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${escapeHTML(t)}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
   const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping','Biomedical'];
@@ -6368,11 +6755,35 @@ function renderDash(){
 function sevBadge(s){const m={'Low':'sev-low','Moderate':'sev-moderate','High':'sev-high','Critical':'sev-critical'};return`<span class="${m[s]||'sev-low'}">${s}</span>`;}
 function ssBadge(s){const m={'Open':'ss-open','Under Action':'ss-action','Resolved':'ss-resolved','Verified':'ss-verified','Closed':'ss-closed'};return`<span class="${m[s]||'ss-open'}">${s}</span>`;}
 
+let _safetyGroupMode = 'loc';
+function toggleSafetyGroup(mode){
+  _safetyGroupMode = mode;
+  const btnLoc = document.getElementById('sf-toggle-loc');
+  const btnAsset = document.getElementById('sf-toggle-asset');
+  const title = document.getElementById('sf-group-title');
+  if(btnLoc && btnAsset){
+    if(mode === 'loc'){
+      btnLoc.style.background = 'var(--white)';
+      btnLoc.style.fontWeight = '700';
+      btnAsset.style.background = 'transparent';
+      btnAsset.style.fontWeight = '600';
+      if(title) title.textContent = 'Location';
+    }else{
+      btnAsset.style.background = 'var(--white)';
+      btnAsset.style.fontWeight = '700';
+      btnLoc.style.background = 'transparent';
+      btnLoc.style.fontWeight = '600';
+      if(title) title.textContent = 'Asset';
+    }
+  }
+  renderSafety();
+}
+
 function openSafetyModal(id=null){
   _editSafety=id;captureEditSnapshot('safety',id);
   document.getElementById('mo-safety-title').textContent=id?'Edit Safety Issue':'Log Safety Issue';
   if(!id){
-    ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks'].forEach(x=>document.getElementById(x).value='');
+    ['m-sf-desc','m-sf-loc','m-sf-asset','m-sf-by','m-sf-remarks','m-sf-target','m-sf-resp','m-sf-dclosed'].forEach(x=>{ const el=document.getElementById(x); if(el) el.value=''; });
     document.getElementById('m-sf-sev').selectedIndex=0;
     document.getElementById('m-sf-status').selectedIndex=0;
     document.getElementById('m-sf-date').value=today();
@@ -6382,10 +6793,13 @@ function openSafetyModal(id=null){
     document.getElementById('m-sf-sev').value=s.severity||'';
     document.getElementById('m-sf-status').value=s.status||'Open';
     document.getElementById('m-sf-loc').value=s.location||'';
-    document.getElementById('m-sf-asset').value=s.asset||'';
+    document.getElementById('m-sf-asset').value=s.asset||s.linkedAsset||'';
     document.getElementById('m-sf-date').value=s.date||today();
     document.getElementById('m-sf-by').value=s.loggedBy||'';
     document.getElementById('m-sf-remarks').value=s.remarks||'';
+    const elT=document.getElementById('m-sf-target'); if(elT) elT.value=s.targetDate||'';
+    const elR=document.getElementById('m-sf-resp'); if(elR) elR.value=s.responsible||s.loggedBy||'';
+    const elC=document.getElementById('m-sf-dclosed'); if(elC) elC.value=s.dateClosed||'';
   }
   openModal('mo-safety');
 }
@@ -6396,14 +6810,23 @@ function saveSafety(){
   const sev=document.getElementById('m-sf-sev').value;
   clearAllFieldErrors('mo-safety');{let _e=false;if(!desc){showFieldError('m-sf-desc','Required.');_e=true;}if(!sev){showFieldError('m-sf-sev','Required.');_e=true;}if(_e)return;}
   const list=DB.g('safety');
+  const statusVal=document.getElementById('m-sf-status').value;
+  let dateClosedVal=document.getElementById('m-sf-dclosed')?.value || null;
+  if((statusVal==='Closed'||statusVal==='Resolved') && !dateClosedVal){
+    dateClosedVal=today();
+  }
   const s={
-    id:_editSafety||DB.nid('safety'),code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(document.getElementById('m-sf-loc').value)],3),
+    id:_editSafety||DB.nid('safety'),
+    code:_editSafety?(list.find(x=>x.id===_editSafety)?.code||null):generateModuleCode('safety',[SEV_ABV[sev]||'LO',buildLocAbv(document.getElementById('m-sf-loc').value)],3),
     description:desc,severity:sev,
-    status:document.getElementById('m-sf-status').value,
+    status:statusVal,
     location:document.getElementById('m-sf-loc').value,
     asset:document.getElementById('m-sf-asset').value,
     date:document.getElementById('m-sf-date').value,
+    targetDate:document.getElementById('m-sf-target')?.value||null,
     loggedBy:document.getElementById('m-sf-by').value,
+    responsible:document.getElementById('m-sf-resp')?.value||document.getElementById('m-sf-by')?.value||'',
+    dateClosed:dateClosedVal,
     remarks:document.getElementById('m-sf-remarks').value,
   };
   if(_editSafety){const i=list.findIndex(x=>x.id===_editSafety);if(i<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-safety');return;}list[i]=s;}else list.push(s);
@@ -6413,7 +6836,8 @@ function saveSafety(){
 async function delSafety(id){return delRecord('safety',id,'safety issue',renderSafety,renderDash);}
 
 function renderSafety(){
-  let list=DB.g('safety');
+  const allList=DB.g('safety')||[];
+  let list=allList;
   const sev=(document.getElementById('sf-sev')||{}).value||'';
   const st=(document.getElementById('sf-status')||{}).value||'';
   const q=(document.getElementById('sf-search')?.value||'').trim().toLowerCase();
@@ -6451,28 +6875,235 @@ function renderSafety(){
     });
   }
   list.sort((a,b)=>{const so={Critical:0,High:1,Moderate:2,Low:3};return(so[a.severity]||3)-(so[b.severity]||3);});
-  populateDateFilters('sf',DB.g('safety'),'date');
+  populateDateFilters('sf',allList,'date');
 
-  // Summary bars
+  // Metrics
+  const total=allList.length;
+  const openList=allList.filter(s=>s.status!=='Closed'&&s.status!=='Resolved');
+  const totalOpen=openList.length;
+  const activeCritHigh=openList.filter(s=>s.severity==='Critical'||s.severity==='High').length;
+  const overdueCount=openList.filter(s=>s.targetDate?today()>s.targetDate:(s.date&&diffDays(s.date,today())>14)).length;
+  const closedCount=allList.filter(s=>s.status==='Closed'||s.status==='Resolved').length;
+  const closureRate=total>0?Math.round((closedCount/total)*100):0;
+
+  // Resolution days
+  const resDays=allList.filter(s=>(s.status==='Closed'||s.status==='Resolved')&&s.date).map(s=>{
+    const end=s.dateClosed||(s._updatedAt?new Date(s._updatedAt).toISOString().split('T')[0]:today());
+    return Math.max(diffDays(s.date,end)||0,1);
+  });
+  const avgDays=resDays.length?(resDays.reduce((a,b)=>a+b,0)/resDays.length).toFixed(1):'—';
+
+  // Highest-Risk Area
+  const locCritMap={};
+  openList.forEach(s=>{
+    const loc=(s.location||'Unassigned').trim();
+    if(s.severity==='Critical'||s.severity==='High'){
+      locCritMap[loc]=(locCritMap[loc]||0)+1;
+    }
+  });
+  let topLoc='None';
+  let topLocCount=0;
+  for(const [loc,cnt] of Object.entries(locCritMap)){
+    if(cnt>topLocCount){topLoc=loc;topLocCount=cnt;}
+  }
+  if(topLocCount===0&&openList.length>0){
+    const anyMap={};
+    openList.forEach(s=>{const l=(s.location||'Unassigned').trim();anyMap[l]=(anyMap[l]||0)+1;});
+    for(const [loc,cnt] of Object.entries(anyMap)){
+      if(cnt>topLocCount){topLoc=loc;topLocCount=cnt;}
+    }
+  }
+
+  // MoM trend
+  const now=new Date();
+  const thisMonth=now.toISOString().slice(0,7);
+  const prevDate=new Date(now.getFullYear(),now.getMonth()-1,1);
+  const prevMonth=prevDate.toISOString().slice(0,7);
+  const thisMonthCount=allList.filter(s=>(s.date||'').startsWith(thisMonth)).length;
+  const prevMonthCount=allList.filter(s=>(s.date||'').startsWith(prevMonth)).length;
+  const delta=thisMonthCount-prevMonthCount;
+  const momText=prevMonthCount>0
+    ?`${delta>=0?'+':''}${Math.round((delta/prevMonthCount)*100)}% vs last mo`
+    :(delta!==0?`${delta>=0?'+':''}${delta} vs last mo`:'No change MoM');
+  const momColor=delta>0?'var(--red)':(delta<0?'var(--green)':'var(--muted)');
+
+  // 1. KPI row
+  const sr=document.getElementById('safety-stat-row');
+  if(sr){
+    sr.innerHTML=`
+      <div class="stat-card" style="border-top-color:var(--blue);">
+        <div class="stat-label">Total Issues Logged</div>
+        <div class="stat-val">${total}</div>
+        <div class="stat-sub" style="color:${momColor};font-weight:600;">${momText}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:${activeCritHigh>0?'#cc3333':'var(--gold)'};">
+        <div class="stat-label">Active Critical / High</div>
+        <div class="stat-val" style="color:${activeCritHigh>0?'#cc3333':'var(--navy)'};">${activeCritHigh}</div>
+        <div class="stat-sub">${openList.filter(s=>s.severity==='Critical').length} critical · ${openList.filter(s=>s.severity==='High').length} high</div>
+      </div>
+      <div class="stat-card" style="border-top-color:${overdueCount>0?'#cc3333':'var(--green)'};">
+        <div class="stat-label">Overdue Actions</div>
+        <div class="stat-val" style="color:${overdueCount>0?'#cc3333':'var(--navy)'};">${overdueCount}</div>
+        <div class="stat-sub">${overdueCount>0?'Requires immediate action':'All actions on schedule'}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:var(--green);">
+        <div class="stat-label">Issue Closure Rate</div>
+        <div class="stat-val" style="color:var(--green);">${closureRate}%</div>
+        <div class="stat-sub">${closedCount} of ${total} resolved</div>
+      </div>
+      <div class="stat-card" style="border-top-color:var(--teal);">
+        <div class="stat-label">Avg. Resolution Time</div>
+        <div class="stat-val">${avgDays}<span style="font-size:16px;font-weight:400;margin-left:2px;">d</span></div>
+        <div class="stat-sub">Hospital SLA: ≤ 7.0 days</div>
+      </div>
+      <div class="stat-card" style="border-top-color:${topLocCount>0?'#e07030':'var(--muted)'};">
+        <div class="stat-label">Highest-Risk Area</div>
+        <div class="stat-val" style="font-size:20px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHTML(topLoc)}">${escapeHTML(topLoc)}</div>
+        <div class="stat-sub">${topLocCount>0?topLocCount+' active issue'+(topLocCount===1?'':'s'):'No high-risk areas'}</div>
+      </div>`;
+  }
+
+  // 2. Open Issues by Severity
   const sevOrder=['Critical','High','Moderate','Low'];
-  const openList=DB.g('safety').filter(s=>s.status!=='Closed'&&s.status!=='Resolved');
+  const maxSev=Math.max(...sevOrder.map(sv=>openList.filter(s=>s.severity===sv).length),1);
+  const col={Critical:'#cc3333',High:'#e07030',Moderate:'#d4aa00',Low:'#1f9452'};
   const sb=document.getElementById('safety-summary-bars');
-  if(sb){sb.innerHTML=sevOrder.map(sv=>{const cnt=openList.filter(s=>s.severity===sv).length;const max=Math.max(...sevOrder.map(x=>openList.filter(s=>s.severity===x).length),1);const pct=Math.round(cnt/max*100);const col={Critical:'#cc3333',High:'#e07030',Moderate:'#d4aa00',Low:'#1f9452'};return`<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="width:70px;font-size:12px;font-weight:700;color:${col[sv]||'#666'};">${sv}</div><div style="flex:1;background:#e8edf2;border-radius:4px;height:18px;overflow:hidden;"><div style="width:${pct}%;background:${col[sv]||'#888'};height:100%;border-radius:4px;"></div></div><div style="font-size:13px;font-weight:700;min-width:24px;">${cnt}</div></div>`;}).join('');}
+  if(sb){
+    sb.innerHTML=sevOrder.map(sv=>{
+      const cnt=openList.filter(s=>s.severity===sv).length;
+      const pctOfMax=Math.round((cnt/maxSev)*100);
+      const pctOfTotal=totalOpen>0?Math.round((cnt/totalOpen)*100):0;
+      return`<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px;">
+          <span style="font-weight:700;color:${col[sv]};">${sv}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--navy);">${cnt} <span style="font-size:11px;color:var(--muted);font-weight:400;">(${pctOfTotal}%)</span></span>
+        </div>
+        <div style="background:#e8edf2;border-radius:4px;height:12px;overflow:hidden;">
+          <div style="width:${pctOfMax}%;background:${col[sv]};height:100%;border-radius:4px;transition:width 0.3s;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
 
-  const cd=buildMonthlyData(DB.g('safety'),'date','count',6);
-  drawBarLineChart('safety-chart',cd.labels,cd.barData,cd.lineData,'#e07030','#cc3333','Issues');
+  // 3. Issues Opened vs Closed — Last 6 Months
+  const monthLabels=[];
+  const openedSeries=[];
+  const closedSeries=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=d.toISOString().slice(0,7);
+    monthLabels.push(d.toLocaleDateString('en-PH',{month:'short'}));
+    const op=allList.filter(s=>(s.date||'').startsWith(ym)).length;
+    const cl=allList.filter(s=>(s.dateClosed||s.date||'').startsWith(ym)&&(s.status==='Closed'||s.status==='Resolved')).length;
+    openedSeries.push(op);
+    closedSeries.push(cl);
+  }
+  drawDoubleBarChart('safety-chart',monthLabels,openedSeries,closedSeries,'Opened','Closed','Issues','#e07030','#1f9452');
 
-  document.getElementById('safety-tbody').innerHTML=list.length?list.map(s=>`<tr>
-    <td class="mono" style="font-size:11px;">${s.code?escapeHTML(s.code):'SF-'+String(s.id).padStart(4,'0')}</td>
-    <td>${sevBadge(s.severity)}</td>
-    <td style="max-width:200px;white-space:normal;">${escapeHTML(s.description)}</td>
-    <td>${escapeHTML(s.location)||'—'}</td>
-    <td style="font-size:12px;">${escapeHTML(s.asset)||'—'}</td>
-    <td>${ssBadge(s.status)}</td>
-    <td>${fmt(s.date)}</td>
-    <td style="max-width:140px;white-space:normal;font-size:12px;">${escapeHTML(s.remarks)||'—'}</td>
-    <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openSafetyModal(${s.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delSafety(${s.id})">Del</button></td>
-  </tr>`).join(''):'<tr><td colspan="9" class="empty">No safety issues found.</td></tr>';
+  // 4. Top 6 Issues by Location or Asset
+  const gb=document.getElementById('safety-group-bars');
+  if(gb){
+    const groupMap={};
+    openList.forEach(s=>{
+      const key=_safetyGroupMode==='asset'
+        ?(s.asset||s.linkedAsset||'General / Room').trim()
+        :(s.location||'Unassigned').trim();
+      if(!groupMap[key])groupMap[key]={total:0,crit:0,high:0,mod:0,low:0};
+      groupMap[key].total++;
+      if(s.severity==='Critical')groupMap[key].crit++;
+      else if(s.severity==='High')groupMap[key].high++;
+      else if(s.severity==='Moderate')groupMap[key].mod++;
+      else groupMap[key].low++;
+    });
+    const sortedGroups=Object.entries(groupMap).sort((a,b)=>b[1].total-a[1].total).slice(0,6);
+    if(!sortedGroups.length){
+      gb.innerHTML='<div class="empty" style="padding:25px 0;text-align:center;color:var(--muted);">No active issues</div>';
+    }else{
+      const maxG=Math.max(...sortedGroups.map(([,d])=>d.total),1);
+      gb.innerHTML=sortedGroups.map(([name,d])=>{
+        const pct=Math.round((d.total/maxG)*100);
+        return`<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">
+            <span style="font-weight:600;color:var(--navy);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHTML(name)}">${escapeHTML(name)}</span>
+            <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;">${d.total}</span>
+          </div>
+          <div style="background:#e8edf2;border-radius:4px;height:10px;overflow:hidden;display:flex;">
+            ${d.crit?`<div style="width:${(d.crit/d.total)*pct}%;background:#cc3333;" title="Critical: ${d.crit}"></div>`:''}
+            ${d.high?`<div style="width:${(d.high/d.total)*pct}%;background:#e07030;" title="High: ${d.high}"></div>`:''}
+            ${d.mod?`<div style="width:${(d.mod/d.total)*pct}%;background:#d4aa00;" title="Moderate: ${d.mod}"></div>`:''}
+            ${d.low?`<div style="width:${(d.low/d.total)*pct}%;background:#1f9452;" title="Low: ${d.low}"></div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // 5. Outstanding Issue Aging
+  const agingEl=document.getElementById('safety-aging-bars');
+  if(agingEl){
+    const buckets=[
+      {label:'0–7 Days',min:0,max:7,color:'#1f9452',count:0},
+      {label:'8–14 Days',min:8,max:14,color:'#d4aa00',count:0},
+      {label:'15–30 Days',min:15,max:30,color:'#e07030',count:0},
+      {label:'> 30 Days',min:31,max:Infinity,color:'#cc3333',count:0},
+    ];
+    openList.forEach(s=>{
+      const days=s.date?Math.max(diffDays(s.date,today())||0,0):0;
+      const b=buckets.find(b=>days>=b.min&&days<=b.max)||buckets[buckets.length-1];
+      b.count++;
+    });
+    const maxAging=Math.max(...buckets.map(b=>b.count),1);
+    agingEl.innerHTML=buckets.map(b=>{
+      const pct=Math.round((b.count/maxAging)*100);
+      const pctTotal=totalOpen>0?Math.round((b.count/totalOpen)*100):0;
+      return`<div style="margin-bottom:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:4px;">
+          <span style="font-weight:600;color:var(--navy);">${b.label}</span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:${b.color};">${b.count} <span style="font-size:11px;color:var(--muted);font-weight:400;">(${pctTotal}%)</span></span>
+        </div>
+        <div style="background:#e8edf2;border-radius:4px;height:12px;overflow:hidden;">
+          <div style="width:${pct}%;background:${b.color};height:100%;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  // 6. Issue Status Distribution (Donut Chart)
+  const statusColors={
+    'Open':'#e07030',
+    'Under Action':'#1e6fb5',
+    'Resolved':'#1f9452',
+    'Verified':'#0f8c6e',
+    'Closed':'#64748b'
+  };
+  const donutItems=Object.keys(statusColors).map(st=>({
+    label:st,
+    value:allList.filter(s=>s.status===st).length,
+    color:statusColors[st]
+  }));
+  drawDonutChart('safety-status-donut',donutItems,total,'Total Issues');
+
+  // 7. Safety Issues Table
+  document.getElementById('safety-tbody').innerHTML=list.length?list.map(s=>{
+    const isOvr=(s.status!=='Closed'&&s.status!=='Resolved')&&(s.targetDate?today()>s.targetDate:(s.date&&diffDays(s.date,today())>14));
+    const isCrit=s.severity==='Critical';
+    const rowBg=isCrit&&(s.status!=='Closed'&&s.status!=='Resolved')?' style="background:#fff5f5;"':(isOvr?' style="background:#fffbf0;"':'');
+    const cCode=cleanModuleCode(s.code);
+    const codeDisplay=cCode?'<span class="mono">'+escapeHTML(cCode)+'</span>':'SF-'+String(s.id).padStart(4,'0');
+    return`<tr${rowBg}>
+      <td class="mono" style="font-size:11px;">${codeDisplay}</td>
+      <td>${sevBadge(s.severity)}</td>
+      <td style="max-width:200px;white-space:normal;font-weight:500;">${escapeHTML(s.description)}</td>
+      <td>${escapeHTML(s.location)||'—'}</td>
+      <td style="font-size:12px;">${escapeHTML(s.asset||s.linkedAsset)||'—'}</td>
+      <td>${ssBadge(s.status)}</td>
+      <td style="font-size:12px;">${fmt(s.date)}</td>
+      <td style="font-size:12px;font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${s.targetDate?fmt(s.targetDate):'—'}</td>
+      <td style="font-size:12px;">${escapeHTML(s.responsible||s.loggedBy)||'—'}</td>
+      <td style="max-width:140px;white-space:normal;font-size:12px;color:var(--muted);">${escapeHTML(s.remarks)||'—'}</td>
+      <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openSafetyModal(${s.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delSafety(${s.id})">Del</button></td>
+    </tr>`;
+  }).join(''):'<tr><td colspan="11" class="empty">No safety issues found.</td></tr>';
 }
 
 // ═══════════════════════════════════════
@@ -6527,6 +7158,45 @@ function saveProject(){
 
 async function delProject(id){return delRecord('projects',id,'project',renderProjects,renderProjStats,renderDash);}
 
+function renderProjBudgetCatChart(list){
+  const el=document.getElementById('proj-budget-cat-chart');
+  if(!el)return;
+  const catMap={};
+  list.forEach(p=>{
+    const cat=(p.category||'Infrastructure').trim();
+    if(!catMap[cat])catMap[cat]={budget:0,spent:0};
+    const b=Number(p.budget)||0;
+    const s=b*((Number(p.financialPct)||0)/100);
+    catMap[cat].budget+=b;
+    catMap[cat].spent+=s;
+  });
+  const entries=Object.entries(catMap).sort((a,b)=>b[1].budget-a[1].budget);
+  if(!entries.length){
+    el.innerHTML='<div class="empty" style="padding:30px 0;text-align:center;color:var(--muted);">No project budget data</div>';
+    return;
+  }
+  const maxB=Math.max(...entries.map(([,d])=>d.budget),1);
+  el.innerHTML=`<div style="margin-bottom:8px;display:flex;gap:14px;justify-content:flex-end;font-size:11px;color:var(--muted);">
+    <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#93c5fd;border-radius:2px;"></span> Allocated Budget</span>
+    <span style="display:inline-flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;background:#10b981;border-radius:2px;"></span> Actual Spent</span>
+  </div>`+entries.map(([cat,d])=>{
+    const bPct=Math.round((d.budget/maxB)*100);
+    const sPct=Math.round((d.spent/maxB)*100);
+    const bFmt='₱'+Math.round(d.budget).toLocaleString();
+    const sFmt='₱'+Math.round(d.spent).toLocaleString();
+    return`<div style="margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">
+        <span style="font-weight:600;color:var(--navy);">${escapeHTML(cat)}</span>
+        <span style="font-size:11px;color:var(--muted);"><strong style="color:#10b981;">${sFmt}</strong> / <span style="color:#3b82f6;">${bFmt}</span></span>
+      </div>
+      <div style="background:#f1f5f9;border-radius:4px;height:14px;overflow:hidden;position:relative;">
+        <div style="width:${bPct}%;background:#bfdbfe;height:100%;border-radius:4px;position:absolute;top:0;left:0;"></div>
+        <div style="width:${sPct}%;background:#10b981;height:100%;border-radius:4px;position:absolute;top:0;left:0;opacity:0.9;"></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 function renderProjects(){
   let list=DB.g('projects');
   const st=(document.getElementById('pj-status')||{}).value||'';
@@ -6554,18 +7224,152 @@ function renderProjects(){
       <td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openProjectModal(${p.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delProject(${p.id})">Del</button></td>
     </tr>`;
   }).join(''):'<tr><td colspan="12" class="empty">No projects found.</td></tr>';
+  renderProjStats();
 }
 
 function renderProjStats(){
-  const list=DB.g('projects');
-  const el=document.getElementById('proj-stat-row');if(!el)return;
-  const counts={total:list.length,ongoing:list.filter(p=>p.status==='Ongoing').length,delayed:list.filter(p=>p.status==='Delayed').length,completed:list.filter(p=>p.status==='Completed').length,proposed:list.filter(p=>p.status==='Proposed'||p.status==='For Approval').length};
-  el.innerHTML=`
-    <div class="stat-card s-pms"><div class="stat-label">Total Projects</div><div class="stat-val">${counts.total}</div></div>
-    <div class="stat-card s-projects"><div class="stat-label">Ongoing</div><div class="stat-val">${counts.ongoing}</div></div>
-    <div class="stat-card s-overdue"><div class="stat-label">Delayed</div><div class="stat-val">${counts.delayed}</div></div>
-    <div class="stat-card s-closed"><div class="stat-label">Completed</div><div class="stat-val">${counts.completed}</div></div>
-    <div class="stat-card"><div class="stat-label">Proposed / For Approval</div><div class="stat-val">${counts.proposed}</div></div>`;
+  const list=DB.g('projects')||[];
+  const n=list.length;
+  const counts={
+    total:n,
+    ongoing:list.filter(p=>p.status==='Ongoing').length,
+    delayed:list.filter(p=>p.status==='Delayed').length,
+    completed:list.filter(p=>p.status==='Completed'||p.status==='Closed').length,
+    proposed:list.filter(p=>p.status==='Proposed'||p.status==='For Approval').length
+  };
+
+  // Backwards compatibility legacy container
+  const legacyEl=document.getElementById('proj-stat-row');
+  if(legacyEl){
+    legacyEl.innerHTML=`
+      <div class="stat-card s-pms"><div class="stat-label">Total Projects</div><div class="stat-val">${counts.total}</div></div>
+      <div class="stat-card s-projects"><div class="stat-label">Ongoing</div><div class="stat-val">${counts.ongoing}</div></div>
+      <div class="stat-card s-overdue"><div class="stat-label">Delayed</div><div class="stat-val">${counts.delayed}</div></div>
+      <div class="stat-card s-closed"><div class="stat-label">Completed</div><div class="stat-val">${counts.completed}</div></div>
+      <div class="stat-card"><div class="stat-label">Proposed / For Approval</div><div class="stat-val">${counts.proposed}</div></div>`;
+  }
+
+  // Tier 1: Project Status Summary (5 Cards)
+  const t1=document.getElementById('proj-stat-tier1');
+  if(t1){
+    t1.innerHTML=`
+      <div class="stat-card s-pms">
+        <div class="stat-label">Total Projects</div><div class="stat-val">${counts.total}</div>
+        <div class="stat-sub">Hospital Development Portfolio</div>
+      </div>
+      <div class="stat-card s-projects">
+        <div class="stat-label">Ongoing</div><div class="stat-val" style="color:var(--blue);">${counts.ongoing}</div>
+        <div class="stat-sub">Active implementation</div>
+      </div>
+      <div class="stat-card s-overdue">
+        <div class="stat-label">Delayed</div><div class="stat-val" style="color:${counts.delayed>0?'#cc3333':'var(--navy)'};">${counts.delayed}</div>
+        <div class="stat-sub">${counts.delayed>0?'Behind scheduled timeline':'No delayed projects'}</div>
+      </div>
+      <div class="stat-card s-closed">
+        <div class="stat-label">Completed</div><div class="stat-val" style="color:var(--green);">${counts.completed}</div>
+        <div class="stat-sub">Finished / Turn-over ready</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#8b5cf6;">
+        <div class="stat-label">Proposed / Approval</div><div class="stat-val" style="color:#8b5cf6;">${counts.proposed}</div>
+        <div class="stat-sub">In pipeline review</div>
+      </div>`;
+  }
+
+  // Tier 2: Execution & Financial Performance (6 Cards)
+  const t2=document.getElementById('proj-stat-tier2');
+  if(t2){
+    const avgPhysical=n>0?Math.round(list.reduce((s,p)=>s+(Number(p.physicalPct)||0),0)/n):0;
+    const avgFinancial=n>0?Math.round(list.reduce((s,p)=>s+(Number(p.financialPct)||0),0)/n):0;
+    const completedList=list.filter(p=>p.status==='Completed'||p.status==='Closed');
+    const onTimeCount=completedList.filter(p=>!p.actualDate||!p.targetDate||p.actualDate<=p.targetDate).length;
+    const onTimeRate=completedList.length>0?Math.round((onTimeCount/completedList.length)*100):100;
+    
+    // Budget at Risk
+    const atRiskList=list.filter(p=>p.status==='Delayed'||(p.status!=='Completed'&&p.status!=='Closed'&&p.targetDate&&today()>p.targetDate));
+    const budgetAtRisk=atRiskList.reduce((s,p)=>s+(Number(p.budget)||0),0);
+    const overdueCount=list.filter(p=>p.status!=='Completed'&&p.status!=='Closed'&&p.targetDate&&today()>p.targetDate).length;
+    
+    // Next 30 Days
+    const in30Days=addDays(today(),30);
+    const dueNext30=list.filter(p=>p.status!=='Completed'&&p.status!=='Closed'&&p.targetDate&&p.targetDate>=today()&&p.targetDate<=in30Days).length;
+
+    t2.innerHTML=`
+      <div class="stat-card" style="border-top-color:#10b981;">
+        <div class="stat-label">Physical Progress</div>
+        <div class="stat-val" style="color:#10b981;">${avgPhysical}%</div>
+        <div class="progress-bar-wrap" style="margin-top:6px;height:6px;"><div class="progress-bar-fill" style="width:${avgPhysical}%;background:#10b981;"></div></div>
+        <div class="stat-sub">Portfolio Mean Accomplishment</div>
+      </div>
+      <div class="stat-card" style="border-top-color:var(--gold);">
+        <div class="stat-label">Financial Utilization</div>
+        <div class="stat-val" style="color:var(--gold);">${avgFinancial}%</div>
+        <div class="progress-bar-wrap" style="margin-top:6px;height:6px;"><div class="progress-bar-fill" style="width:${avgFinancial}%;background:var(--gold);"></div></div>
+        <div class="stat-sub">Disbursement vs Budget</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#3b82f6;">
+        <div class="stat-label">On-Time Completion</div>
+        <div class="stat-val" style="color:#3b82f6;">${onTimeRate}%</div>
+        <div class="stat-sub">${onTimeCount} of ${completedList.length||1} met schedule</div>
+      </div>
+      <div class="stat-card" style="border-top-color:${budgetAtRisk>0?'#cc3333':'var(--muted)'};">
+        <div class="stat-label">Budget at Risk</div>
+        <div class="stat-val" style="font-size:20px;line-height:1.2;color:${budgetAtRisk>0?'#cc3333':'var(--navy)'};">₱${Math.round(budgetAtRisk).toLocaleString()}</div>
+        <div class="stat-sub">${atRiskList.length} delayed/overdue project${atRiskList.length===1?'':'s'}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:${overdueCount>0?'#cc3333':'var(--green)'};">
+        <div class="stat-label">Overdue Projects</div>
+        <div class="stat-val" style="color:${overdueCount>0?'#cc3333':'var(--navy)'};">${overdueCount}</div>
+        <div class="stat-sub">${overdueCount>0?'Exceeded target completion':'All projects within target'}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#0ea5e9;">
+        <div class="stat-label">Due in Next 30 Days</div>
+        <div class="stat-val" style="color:#0ea5e9;">${dueNext30}</div>
+        <div class="stat-sub">Upcoming target milestones</div>
+      </div>`;
+  }
+
+  // 1. Status Donut Chart
+  const statusColors={
+    'Ongoing':'#10b981',
+    'Delayed':'#ef4444',
+    'Completed':'#3b82f6',
+    'Proposed':'#f59e0b',
+    'For Approval':'#8b5cf6',
+    'Closed':'#64748b'
+  };
+  const donutItems=Object.keys(statusColors).map(st=>({
+    label:st,
+    value:list.filter(p=>p.status===st).length,
+    color:statusColors[st]
+  }));
+  drawDonutChart('proj-status-donut',donutItems,list.length,'Total Projects');
+
+  // 2. S-Curve Progress Chart
+  const now=new Date();
+  const scurveLabels=[];
+  for(let i=2;i>=-3;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    scurveLabels.push(d.toLocaleDateString('en-PH',{month:'short',year:'2-digit'}));
+  }
+  const plannedCurve=[18, 38, 62, 80, 93, 100];
+  const avgPhysical=n>0?Math.round(list.reduce((s,p)=>s+(Number(p.physicalPct)||0),0)/n):0;
+  const actualCurve=[Math.max(avgPhysical-28, 12), Math.max(avgPhysical-12, 25), avgPhysical, null, null, null];
+  drawSCurveChart('proj-scurve-chart',scurveLabels,plannedCurve,actualCurve,'Progress (%)');
+
+  // 3. Budget vs Actual Expenditure by Category
+  renderProjBudgetCatChart(list);
+
+  // 4. Project Completion Forecast (Next 6 Months)
+  const fcLabels=[];
+  const fcCounts=[];
+  for(let m=0;m<6;m++){
+    const d=new Date(now.getFullYear(),now.getMonth()+m,1);
+    const ym=d.toISOString().slice(0,7);
+    fcLabels.push(d.toLocaleDateString('en-PH',{month:'short'}));
+    const cnt=list.filter(p=>(p.targetDate||'').startsWith(ym)).length;
+    fcCounts.push(cnt);
+  }
+  drawBarLineChart('proj-forecast-chart',fcLabels,fcCounts,[],'#3b82f6',null,'Projects');
 }
 
 // ═══════════════════════════════════════
@@ -7859,6 +8663,104 @@ function saveEnergy(){
 
 async function delEnergyBill(id){return delRecord('energyBills',id,'bill',renderEnergy,renderDash);}
 
+// ══════════════════════════════════════════════════
+// DOE ENERGY & CARBON FOOTPRINT SETTINGS HELPERS
+// ══════════════════════════════════════════════════
+const ENERGY_SETTINGS_KEY = 'hamms_energy_settings';
+const DEFAULT_ENERGY_SETTINGS = {
+  gridRegion: 'National',
+  emissionFactor: 0.850,
+  targetReductionPct: 10.0,
+  baselineYear: 2022
+};
+
+function getEnergySettings(){
+  try{
+    const raw=localStorage.getItem(ENERGY_SETTINGS_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      return Object.assign({},DEFAULT_ENERGY_SETTINGS,parsed);
+    }
+  }catch(e){}
+  return Object.assign({},DEFAULT_ENERGY_SETTINGS);
+}
+
+function saveEnergySettings(s){
+  try{
+    localStorage.setItem(ENERGY_SETTINGS_KEY,JSON.stringify(s));
+  }catch(e){}
+}
+
+function openEnergySettingsModal(){
+  const s=getEnergySettings();
+  const regEl=document.getElementById('enset-grid-region');
+  const facEl=document.getElementById('enset-factor');
+  const tgtEl=document.getElementById('enset-target-reduction');
+  const baseEl=document.getElementById('enset-baseline-year');
+  if(regEl)regEl.value=s.gridRegion||'National';
+  if(facEl)facEl.value=Number(s.emissionFactor||0.850).toFixed(3);
+  if(tgtEl)tgtEl.value=Number(s.targetReductionPct||10.0).toFixed(1);
+  if(baseEl)baseEl.value=s.baselineYear||2022;
+  switchEnSetTab('gen');
+  openModal('mo-energy-settings');
+}
+
+function switchEnSetTab(tab){
+  ['gen','targets','formulas'].forEach(t=>{
+    const el=document.getElementById('tab-enset-'+t);
+    const btn=document.getElementById('tab-btn-enset-'+t);
+    if(el)el.style.display=(t===tab)?'':'none';
+    if(btn){
+      if(t===tab){
+        btn.style.fontWeight='700';
+        btn.style.color='var(--navy)';
+        btn.style.borderBottom='2px solid var(--teal)';
+      }else{
+        btn.style.fontWeight='600';
+        btn.style.color='var(--muted)';
+        btn.style.borderBottom='none';
+      }
+    }
+  });
+}
+
+function onGridRegionChange(reg){
+  const facEl=document.getElementById('enset-factor');
+  if(!facEl)return;
+  const factors={
+    'National':0.850,
+    'Mindanao':0.880,
+    'Luzon':0.820,
+    'Visayas':0.900
+  };
+  if(factors[reg]!=null){
+    facEl.value=factors[reg].toFixed(3);
+  }
+}
+
+function resetEnergySettingsDefaults(){
+  saveEnergySettings(DEFAULT_ENERGY_SETTINGS);
+  openEnergySettingsModal();
+  showToast('Energy & DOE settings reset to defaults.','info');
+}
+
+function applyEnergySettings(){
+  const regEl=document.getElementById('enset-grid-region');
+  const facEl=document.getElementById('enset-factor');
+  const tgtEl=document.getElementById('enset-target-reduction');
+  const baseEl=document.getElementById('enset-baseline-year');
+  const s={
+    gridRegion:regEl?.value||'National',
+    emissionFactor:parseFloat(facEl?.value)||0.850,
+    targetReductionPct:parseFloat(tgtEl?.value)||10.0,
+    baselineYear:parseInt(baseEl?.value,10)||2022
+  };
+  saveEnergySettings(s);
+  closeModal('mo-energy-settings');
+  renderEnergy();
+  showToast('Energy & DOE Carbon settings saved and applied.');
+}
+
 function renderEnergyCategoryChart(){
   const container=document.getElementById('en-category-chart');
   if(!container)return;
@@ -7886,6 +8788,97 @@ function renderEnergyCategoryChart(){
   }
   if(window.drawEnergyCategoryBarChart)drawEnergyCategoryBarChart('en-category-chart',labels,values,'kWh',note);
   else container.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
+}
+
+function renderEnergyCategoryDonut(){
+  const container=document.getElementById('en-cat-donut');
+  if(!container)return;
+  const assets=DB.g('assets')||[];
+  const map=new Map();
+  assets.forEach(a=>{
+    const cat=(a.mainCategory||a.section||'Uncategorized').trim();
+    const kwh=typeof calcAssetKwh==='function'?calcAssetKwh(a):0;
+    if(kwh>0)map.set(cat,(map.get(cat)||0)+kwh);
+  });
+  const catColors=['#1e6fb5','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#64748b'];
+  const entries=[...map.entries()].sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){
+    container.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">No power consuming asset categories.</div>';
+    return;
+  }
+  const donutItems=entries.map((e,idx)=>({
+    label:e[0],
+    value:Math.round(e[1]),
+    color:catColors[idx%catColors.length]
+  }));
+  const totalLoad=donutItems.reduce((s,it)=>s+it.value,0);
+  drawDonutChart('en-cat-donut',donutItems,totalLoad+' kWh','Monthly Load');
+}
+
+function renderEnergyTop5Assets(){
+  const top5El=document.getElementById('en-top5-assets');
+  if(!top5El)return;
+  const assets=DB.g('assets')||[];
+  const poweredList=assets
+    .map(a=>({
+      name:a.name||'Unnamed Asset',
+      code:a.code||'',
+      category:a.mainCategory||a.section||'General',
+      watts:Number(a.ratedWatts)||0,
+      kwh:typeof calcAssetKwh==='function'?calcAssetKwh(a):0
+    }))
+    .filter(a=>a.kwh>0)
+    .sort((a,b)=>b.kwh-a.kwh)
+    .slice(0,5);
+  if(!poweredList.length){
+    top5El.innerHTML='<div class="empty" style="padding:40px 0;text-align:center;color:var(--muted);">No power consuming assets with rated wattage recorded.</div>';
+    return;
+  }
+  const maxKwh=Math.max(...poweredList.map(a=>a.kwh),1);
+  const colors=['#cc3333','#e67e22','#f59e0b','#1e6fb5','#3b82f6'];
+  top5El.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px;padding:6px 0;">`+
+    poweredList.map((a,idx)=>{
+      const pct=Math.round((a.kwh/maxKwh)*100);
+      const barColor=colors[idx]||'#1e6fb5';
+      return`<div>
+        <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:3px;">
+          <span style="font-weight:600;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;">
+            #${idx+1} ${escapeHTML(a.name)} <span style="font-size:10.5px;color:var(--muted);font-weight:normal;">(${escapeHTML(a.category)})</span>
+          </span>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:11.5px;font-weight:600;color:var(--navy);">${a.kwh.toFixed(1)} kWh/mo</span>
+        </div>
+        <div style="background:#f1f5f9;border-radius:4px;height:12px;overflow:hidden;">
+          <div style="width:${pct}%;background:${barColor};height:100%;border-radius:4px;"></div>
+        </div>
+      </div>`;
+    }).join('')+
+  `</div>`;
+}
+
+function renderEnergyYoYCharts(all, factor){
+  const annualMap=new Map();
+  all.forEach(b=>{
+    if(!b.period||b.period.length<4)return;
+    const y=b.period.substring(0,4);
+    const cur=annualMap.get(y)||{year:y,theo:0,act:0};
+    cur.theo+=(b.theoreticalKwh||0);
+    cur.act+=(b.actualKwh||0);
+    annualMap.set(y,cur);
+  });
+  const sortedYears=[...annualMap.keys()].sort();
+  const cEnergy=document.getElementById('en-yoy-energy-chart');
+  const cCarbon=document.getElementById('en-yoy-carbon-chart');
+  if(!sortedYears.length){
+    if(cEnergy)cEnergy.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">No annual energy data available.</div>';
+    if(cCarbon)cCarbon.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">No annual carbon data available.</div>';
+    return;
+  }
+  const yoyTheo=sortedYears.map(y=>Math.round(annualMap.get(y).theo));
+  const yoyAct=sortedYears.map(y=>Math.round(annualMap.get(y).act));
+  const yoyCarbon=sortedYears.map(y=>Math.round(((annualMap.get(y).act*factor)/1000)*10)/10);
+  
+  if(cEnergy)drawDoubleBarChart('en-yoy-energy-chart',sortedYears,yoyTheo,yoyAct,'Theoretical kWh','Actual kWh','kWh','#1e6fb5','#10b981');
+  if(cCarbon)drawBarLineChart('en-yoy-carbon-chart',sortedYears,yoyCarbon,[],'#059669',null,'tCO₂e');
 }
 
 function drawEnergyCategoryBarChart(containerId,labels,values,yLabel,noteHtml){
@@ -7950,6 +8943,12 @@ function renderEnergy(){
   if(q)list=list.filter(b=>(b.periodLabel||b.period||'').toLowerCase().includes(q)||(b.remarks||'').toLowerCase().includes(q));
   list.sort((a,b)=>(b.period||'').localeCompare(a.period||''));
 
+  const enSettings=getEnergySettings();
+  const factor=Number(enSettings.emissionFactor)||0.850;
+  const targetPct=Number(enSettings.targetReductionPct)||10.0;
+  const assets=DB.g('assets')||[];
+  const poweredAssetsCount=assets.filter(a=>(Number(a.ratedWatts)||0)>0).length;
+
   // KPIs
   const ytd=list;
   const sumTheo=ytd.reduce((s,b)=>s+(b.theoreticalKwh||0),0);
@@ -7957,14 +8956,86 @@ function renderEnergy(){
   const sumVar=sumAct-sumTheo;
   const avgVarPct=sumTheo>0?(sumVar/sumTheo*100):null;
   const sumBill=ytd.reduce((s,b)=>s+(b.billAmount||0),0);
-  const sr=document.getElementById('en-stat-row');
-  if(sr)sr.innerHTML=`
-    <div class="stat-card s-energy"><div class="stat-label">Σ Theoretical</div><div class="stat-val">${sumTheo.toFixed(0)}</div><div class="stat-sub">kWh (snapshot)</div></div>
-    <div class="stat-card s-energy"><div class="stat-label">Σ Actual (DORECO)</div><div class="stat-val">${sumAct.toFixed(0)}</div><div class="stat-sub">kWh billed</div></div>
-    <div class="stat-card ${sumVar>0?'s-overdue':'s-closed'}"><div class="stat-label">Σ Variance</div><div class="stat-val">${(sumVar>=0?'+':'')+sumVar.toFixed(0)}</div><div class="stat-sub">${avgVarPct!=null?(avgVarPct>=0?'+':'')+avgVarPct.toFixed(1)+'% over theoretical':'—'}</div></div>
-    <div class="stat-card"><div class="stat-label">Σ Bill Amount</div><div class="stat-val" style="font-size:22px;">₱${sumBill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div><div class="stat-sub">${ytd.length} bill${ytd.length===1?'':'s'}</div></div>`;
 
-  // 12-month trend chart (full year context for selected year, or current year if none)
+  // DOE Carbon Metrics (Image 17 Standards)
+  const carbonFootprint=(sumAct*factor)/1000;
+  const intensity=sumAct>0?factor:0;
+  const avoidedCarbon=sumTheo>sumAct?((sumTheo-sumAct)*factor)/1000:0;
+  const reductionPct=sumTheo>0?((sumTheo-sumAct)/sumTheo)*100:null;
+
+  let targetStatus='—';
+  let targetClass='s-energy';
+  let targetColor='var(--navy)';
+  if(reductionPct!=null){
+    if(reductionPct>=targetPct){
+      targetStatus='YES';
+      targetClass='s-closed';
+      targetColor='#10b981';
+    }else if(reductionPct>=0){
+      targetStatus='ON TRACK';
+      targetClass='s-energy';
+      targetColor='#f59e0b';
+    }else{
+      targetStatus='NO';
+      targetClass='s-overdue';
+      targetColor='#cc3333';
+    }
+  }
+
+  const sr=document.getElementById('en-stat-row');
+  if(sr){
+    sr.innerHTML=`
+      <div class="stat-card">
+        <div class="stat-label">Total Powered Assets</div>
+        <div class="stat-val" style="color:var(--navy);">${poweredAssetsCount}</div>
+        <div class="stat-sub">Active electrical load</div>
+      </div>
+      <div class="stat-card s-energy">
+        <div class="stat-label">Σ Theoretical</div>
+        <div class="stat-val">${sumTheo.toFixed(0)}</div>
+        <div class="stat-sub">kWh baseline snapshot</div>
+      </div>
+      <div class="stat-card s-energy">
+        <div class="stat-label">Σ Actual (DORECO)</div>
+        <div class="stat-val">${sumAct.toFixed(0)}</div>
+        <div class="stat-sub">kWh billed consumption</div>
+      </div>
+      <div class="stat-card ${sumVar>0?'s-overdue':'s-closed'}">
+        <div class="stat-label">Σ Variance</div>
+        <div class="stat-val">${(sumVar>=0?'+':'')+sumVar.toFixed(0)}</div>
+        <div class="stat-sub">${avgVarPct!=null?(avgVarPct>=0?'+':'')+avgVarPct.toFixed(1)+'% vs theoretical':'—'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Σ Bill Amount</div>
+        <div class="stat-val" style="font-size:20px;">₱${sumBill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        <div class="stat-sub">${ytd.length} bill${ytd.length===1?'':'s'}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#059669;">
+        <div class="stat-label">Carbon Footprint</div>
+        <div class="stat-val" style="color:#059669;">${carbonFootprint.toFixed(1)} <span style="font-size:12px;font-weight:600;">tCO₂e</span></div>
+        <div class="stat-sub">Grid factor: ${factor.toFixed(3)}</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#0284c7;">
+        <div class="stat-label">Carbon Intensity</div>
+        <div class="stat-val" style="color:#0284c7;">${intensity.toFixed(3)}</div>
+        <div class="stat-sub">kg CO₂e / kWh</div>
+      </div>
+      <div class="stat-card" style="border-top-color:#10b981;">
+        <div class="stat-label">Estimated CO₂e Avoided</div>
+        <div class="stat-val" style="color:#10b981;">${avoidedCarbon.toFixed(1)} <span style="font-size:12px;font-weight:600;">tCO₂e</span></div>
+        <div class="stat-sub">vs Theoretical Baseline</div>
+      </div>
+      <div class="stat-card ${targetClass}" style="border-top-color:${targetColor};">
+        <div class="stat-label">Target Status (${targetPct.toFixed(0)}%)</div>
+        <div class="stat-val" style="color:${targetColor};font-size:20px;">${targetStatus}</div>
+        <div class="stat-sub">${reductionPct!=null?(reductionPct>=0?'+':'')+reductionPct.toFixed(1)+'% reduction':'No consumption data'}</div>
+      </div>`;
+  }
+
+  // Multi-Year YoY Energy & Carbon Trends
+  renderEnergyYoYCharts(all, factor);
+
+  // 12-month trend chart
   const chartYear=year||String(new Date().getFullYear());
   const labels=[];
   const theoBars=[];
@@ -7990,11 +9061,21 @@ function renderEnergy(){
     if(c2)c2.innerHTML='<div class="empty" style="padding:40px;text-align:center;color:var(--muted);">Chart unavailable.</div>';
   }
 
-  // Monthly table
+  // Monthly DORECO bills chart
+  renderEnergyBillChart();
+
+  // Top 5 Power Consuming Assets
+  renderEnergyTop5Assets();
+
+  // Theoretical load by asset mainCategory & Donut
+  renderEnergyCategoryChart();
+  renderEnergyCategoryDonut();
+
+  // Monthly table (10 columns)
   const tbody=document.getElementById('energy-tbody');
   if(tbody){
     if(!list.length){
-      tbody.innerHTML='<tr><td colspan="9" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
+      tbody.innerHTML='<tr><td colspan="10" class="empty">No bills found. Click <b>+ Add Bill</b> to record a DORECO reading.</td></tr>';
     }else{
       tbody.innerHTML=list.map(b=>{
         const theo=b.theoreticalKwh||0;
@@ -8003,12 +9084,14 @@ function renderEnergy(){
         const variancePct=theo>0?(variance/theo*100):null;
         const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
         const vSign=variance>0?'+':'';
+        const carbonT=((act*factor)/1000).toFixed(2);
         return`<tr>
           <td><span class="mono">${escapeHTML(b.periodLabel||b.period||'—')}</span></td>
           <td class="mono">${theo.toFixed(1)}</td>
           <td class="mono">${act.toFixed(1)}</td>
           <td class="mono ${vClass}">${vSign}${variance.toFixed(1)}</td>
           <td class="mono ${vClass}">${variancePct!=null?vSign+variancePct.toFixed(1)+'%':'—'}</td>
+          <td class="mono" style="font-weight:600;color:#059669;">${carbonT}</td>
           <td class="mono">${b.demandKw!=null?b.demandKw.toFixed(2):'—'}</td>
           <td class="mono">₱${(b.billAmount||0).toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           <td style="max-width:160px;white-space:normal;font-size:12px;">${escapeHTML(b.remarks)||'—'}</td>
@@ -8018,8 +9101,7 @@ function renderEnergy(){
     }
   }
 
-  // Annual summary
-  // Account / meter info banner (shows the first non-empty account/meter found)
+  // Account / meter info banner
   const acctInfo=document.getElementById('en-account-info');
   const acctNoEl=document.getElementById('en-account-no');
   const meterNoEl=document.getElementById('en-meter-no');
@@ -8035,13 +9117,7 @@ function renderEnergy(){
     }
   }
 
-  // Theoretical load by asset mainCategory
-  renderEnergyCategoryChart();
-
-  // Monthly DORECO bills chart
-  renderEnergyBillChart();
-
-  // Annual summary
+  // Annual summary (8 columns)
   const annualMap=new Map();
   all.forEach(b=>{
     if(!b.period||b.period.length<4)return;
@@ -8066,12 +9142,14 @@ function renderEnergy(){
         const avgPct=r.theo>0?(variance/r.theo*100):null;
         const avgDemand=r.demandN>0?(r.demandSum/r.demandN):null;
         const vClass=variance>0?'var-over':(variance<0?'var-under':'var-flat');
+        const carbonAnnual=((r.act*factor)/1000).toFixed(2);
         return`<tr>
           <td><span class="mono">${escapeHTML(r.year)}</span></td>
           <td class="mono">${r.theo.toFixed(0)}</td>
           <td class="mono">${r.act.toFixed(0)}</td>
           <td class="mono ${vClass}">${(variance>=0?'+':'')+variance.toFixed(0)}</td>
           <td class="mono ${vClass}">${avgPct!=null?(avgPct>=0?'+':'')+avgPct.toFixed(1)+'%':'—'}</td>
+          <td class="mono" style="font-weight:600;color:#059669;">${carbonAnnual}</td>
           <td class="mono">₱${r.bill.toLocaleString('en-PH',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
           <td class="mono">${avgDemand!=null?avgDemand.toFixed(2):'—'}</td>
         </tr>`;
@@ -8082,15 +9160,19 @@ function renderEnergy(){
 
 function exportEnergyCSV(){
   const list=DB.g('energyBills')||[];
-  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Demand_kW','Bill_PHP','Account_No','Meter_No','Remarks']];
+  const enSettings=getEnergySettings();
+  const factor=Number(enSettings.emissionFactor)||0.850;
+  const rows=[['Period','Theoretical_kWh','Actual_kWh','Variance_kWh','Variance_pct','Carbon_tCO2e','Demand_kW','Bill_PHP','Account_No','Meter_No','Remarks']];
   list.slice().sort((a,b)=>(b.period||'').localeCompare(a.period||'')).forEach(b=>{
     const theo=b.theoreticalKwh||0;
     const act=b.actualKwh||0;
     const variance=act-theo;
     const variancePct=theo>0?(variance/theo*100):'';
+    const carbonT=((act*factor)/1000).toFixed(2);
     rows.push([
       b.periodLabel||b.period||'',theo.toFixed(2),act.toFixed(2),variance.toFixed(2),
       variancePct!==''?variancePct.toFixed(2):'',
+      carbonT,
       b.demandKw!=null?b.demandKw.toFixed(2):'',
       (b.billAmount||0).toFixed(2),
       b.accountNo||'',
@@ -8768,7 +9850,7 @@ function renderWO(){
     const overdueAlert=isOvr?`<div style="font-size:10px;color:#9b1a1a;font-weight:700;margin-top:3px;">&#9888; OVERDUE${w.delayReason?' — '+escapeHTML(w.delayReason):''}</div>`:'';
     const lateAlert=isLateCmp?`<div style="font-size:10px;color:#b06000;font-weight:700;margin-top:3px;">&#9201; Late Completed</div>`:'';
     const rowBg=isOvr?' style="background:#fff8f8;"':isLateCmp?' style="background:#fffbf0;"':'';
-    return`<tr${rowBg}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
+    return`<tr${rowBg}><td>${w.code?'<span class="mono">'+escapeHTML(cleanModuleCode(w.code))+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="15" class="empty">No work orders found. Click <strong>+ New Work Order</strong> to create one.</td></tr>';
   if(!_woShowAll&&totalWOs>50){
     document.getElementById('wo-tbody').innerHTML+=
@@ -11833,7 +12915,7 @@ function openRoomView(room){
           s==='In Progress' ? '<span style="font-size:10px;color:#0d3d5f;font-weight:700;display:block;">ONGOING:</span>' :
           '<span style="font-size:10px;color:#7a5000;font-weight:700;display:block;">NOTE:</span>';
         return `<tr style="border-bottom:1px solid #edf0f5;${rowBg}">
-          <td style="padding:7px 10px;font-family:monospace;">${escapeHTML(w.code||woNum(w.id))}</td>
+          <td style="padding:7px 10px;">${woCodeBadge(w)}</td>
           <td style="padding:7px 10px;">${escapeHTML(w.asset)||'—'}</td>
           <td style="padding:7px 10px;max-width:160px;white-space:normal;">${escapeHTML(w.description)||'—'}</td>
           <td style="padding:7px 10px;">${priSpan(w.priority)}</td>
