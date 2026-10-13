@@ -894,34 +894,34 @@ resetIdleTimer();
   <nav aria-label="Main navigation">
     <div class="sb-alert-pill" id="sb-inv-alert">⚠ Critical Stock — Action Needed</div>
     <div class="nav-group-label">Overview</div>
-    <div class="nav-item active" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('dashboard')"><span class="ni-icon">⊞</span>Dashboard</div>
+    <div class="nav-item active" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('dashboard')"><span class="ni-icon">⊞</span>Dashboard</div>
     <div class="nav-group-label">Maintenance</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('workorders')"><span class="ni-icon">📋</span>Work Orders</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('assets')"><span class="ni-icon">🔩</span>Asset Registry</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('forecast')"><span class="ni-icon">📈</span>WO Forecast</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('workorders')"><span class="ni-icon">📋</span>Work Orders</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('assets')"><span class="ni-icon">🔩</span>Asset Registry</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('forecast')"><span class="ni-icon">📈</span>WO Forecast</div>
     <div class="nav-group-label">Inventory</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('inventory')"><span class="ni-icon">📦</span>Materials Inventory<span class="nav-badge" id="nb-inv">0</span></div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('issuance')"><span class="ni-icon">📤</span>Issuance Log</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('inventory')"><span class="ni-icon">📦</span>Materials Inventory<span class="nav-badge" id="nb-inv">0</span></div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('issuance')"><span class="ni-icon">📤</span>Issuance Log</div>
     <div class="nav-group-label">EMB Compliance</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('waste')"><span class="ni-icon">♻</span>Waste Management</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wastefcast')"><span class="ni-icon">📊</span>Waste Forecast</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('waste')"><span class="ni-icon">♻</span>Waste Management</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('wastefcast')"><span class="ni-icon">📊</span>Waste Forecast</div>
     <div class="nav-group-label">Facilities</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('safety')"><span class="ni-icon">🦺</span>Safety Management<span class="nav-badge" id="nb-safety" style="display:none;">0</span></div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('projects')"><span class="ni-icon">🏗</span>Project Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('safety')"><span class="ni-icon">🦺</span>Safety Management<span class="nav-badge" id="nb-safety" style="display:none;">0</span></div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('projects')"><span class="ni-icon">🏗</span>Project Monitoring</div>
     <div class="nav-group-label">Water Safety</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('water')"><span class="ni-icon">💧</span>Water Safety Log</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('water')"><span class="ni-icon">💧</span>Water Safety Log</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('watertank')"><span class="ni-icon">🪣</span>Water Supply Monitoring</div>
     <div class="nav-group-label">Environmental</div> <!-- PATCH: effluent monitoring -->
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('effluent')"><span class="ni-icon">🧪</span>Effluent Monitoring</div>
     <div class="nav-group-label">Energy</div> <!-- PATCH: energy conservation & fuel monitoring -->
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('energy')"><span class="ni-icon">⚡</span>Energy Conservation</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="openFuelSystem()"><span class="ni-icon">⛽</span>Fuel Management System<span style="margin-left:auto;font-size:11px;opacity:0.6;">↗</span></div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('energy')"><span class="ni-icon">⚡</span>Energy Conservation</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="openFuelSystem()"><span class="ni-icon">⛽</span>Fuel Management System<span style="margin-left:auto;font-size:11px;opacity:0.6;">↗</span></div>
     <div class="nav-group-label">Production</div> <!-- PATCH: production tabs -->
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('medwaste')"><span class="ni-icon">♨</span>Med. Waste Treatment</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('wwprod')"><span class="ni-icon">💦</span>Wastewater Treatment</div>
     <div class="nav-group-label">System</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('reports')"><span class="ni-icon">🖨</span>Reports &amp; Export</div>
-    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();this.click();}" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('reports')"><span class="ni-icon">🖨</span>Reports &amp; Export</div>
+    <div class="nav-item" tabindex="0" role="button" onkeydown="if(event.key==='Enter'||event.key===' '||event.code==='Space'||event.key==='Spacebar'){event.preventDefault();this.click();}" onclick="navigate('instructions')"><span class="ni-icon">📖</span>Instructions &amp; Help</div>
   </nav>
   <div class="sb-footer">
     <div id="sb-user-email" style="font-size:10px;color:rgba(255,255,255,0.5);margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;"></div>
@@ -3474,6 +3474,7 @@ function startFirebaseListener(){ // PATCHED: stable live listeners — mimic Fu
     setStorageChip(navigator.onLine?'firebase-unavailable':'firebase-offline');
   }
 }
+let _dashCache=null,_dashCacheKey='';
 const DB={
   g(k){return _memDB[k]||[];},
   s(k,v){ // PATCHED: persist only explicit user changes for the target store collection
@@ -3484,6 +3485,10 @@ const DB={
     _cleanStoreState[k]=cloneForFirebase(next);
     queueStoreSync(k, prev, next);
     scheduleFlush();
+    if(k==='assets'||k==='wo'||k==='waste'||k==='inventory'||k==='safety'||k==='projects'){
+      _dashCache=null;
+      _dashCacheKey='';
+    }
   },
   nid(k){const used=new Set((this.g(k)||[]).map(i=>String(i?.id??''))); return generateUniqueNumericId(used);}
 };
@@ -4532,11 +4537,10 @@ function openWOModal(id=null){
     document.getElementById('m-wo-dstart').value=today();
     document.getElementById('m-wo-status').value='Open';
     document.getElementById('m-wo-priority').value='High';
-    document.getElementById('m-wo-asset').innerHTML='<option value="">Select section first\u2026</option>';
     document.getElementById('delay-reason-wrap').style.display='none';
     document.getElementById('delay-other-wrap').style.display='none';
     const _woh=document.getElementById('wo-asset-hint');if(_woh)_woh.textContent='';
-    const _wdl=document.getElementById('wo-loc-list');if(_wdl)_wdl.innerHTML='';
+    fillAssetDrop();
   }else{
     const w=DB.g('wo').find(x=>x.id===id);if(!w)return;
     document.getElementById('m-wo-section').value=w.section||'';
@@ -4585,11 +4589,12 @@ function fillAssetDrop(sel=''){
     sectionFiltered=all.filter(a=>a.section===sec||cats.includes(a.mainCategory));
   }
 
-  // ── Step 2: populate location datalist from section-filtered assets ──
+  // ── Step 2: populate location datalist from assets ──
   const dlEl=document.getElementById('wo-loc-list');
   if(dlEl){
     const locSet=new Set();
-    sectionFiltered.forEach(a=>{
+    const dlSource = sec ? sectionFiltered : all;
+    dlSource.forEach(a=>{
       if(a.roomNumber)locSet.add(a.roomNumber);
       if(a.roomName)locSet.add(a.roomName);
       if(a.location&&a.location.length>1)locSet.add(a.location);
@@ -4635,25 +4640,29 @@ function fillAssetDrop(sel=''){
   }
 
   // ── Step 4: build dropdown ────────────────────────────────
-  if(!sec){
-    el.innerHTML='<option value="">— Select section first —</option>';
+  if(!sec && !loc){
+    el.innerHTML='<option value="">— Select section or enter room… —</option>'+
+      `<option value="__room_general__"${sel==='__room_general__'?' selected':''}>🏢 Room / Facility General Work (No specific asset)</option>`;
     if(hint)hint.textContent='';
-    if(locEl)locEl.placeholder='Select section first, then type room…';
+    if(locEl)locEl.placeholder='Type room # or select section…';
+    if(sel)el.value=sel;
     return;
   }
-  if(locEl)locEl.placeholder='Type room # or name to filter assets…';
+  if(locEl)locEl.placeholder=sec?'Type room # or name to filter assets…':'Type room # or select section…';
   el.innerHTML='<option value="">'+
     (assets.length?'Select asset ('+assets.length+' found)…':'— No assets match this location —')+
-    '</option>';
+    '</option>'+
+    `<option value="__room_general__"${sel==='__room_general__'?' selected':''}>🏢 Room / Facility General Work (No specific asset)</option>`;
   assets.forEach(a=>{
     const o=document.createElement('option');
     o.value=a.name;
     const code=a.assetCode||('ASS-'+String(a.id).padStart(3,'0'));
     const locParts=[a.roomNumber,a.roomName,a.location].filter(Boolean);
     const locLabel=locParts.length?' · '+locParts[0]:'';
-    const typLabel=a.assetClass?' ['+a.assetClass+']':'';
+    const typLabel=(!sec && a.section)?' ['+a.section+']':(a.assetClass?' ['+a.assetClass+']':'');
     o.textContent=code+' – '+a.name+typLabel+locLabel;
     o.dataset.location=a.location||a.roomName||a.roomNumber||'';
+    o.dataset.section=a.section||'';
     if(a.name===sel)o.selected=true;
     el.appendChild(o);
   });
@@ -4661,14 +4670,15 @@ function fillAssetDrop(sel=''){
 
   // ── Step 5: hint feedback ─────────────────────────────────
   if(hint){
+    const secName=sec||'registered';
     if(!assets.length&&loc.length>=1){
-      hint.innerHTML='<span style="color:#c0392b;">⚠ No registered '+escapeHTML(sec)+' assets found for "<strong>'+
-        escapeHTML(locRaw)+'</strong>". Check Asset Registry or clear location to see all '+escapeHTML(sec)+' assets.</span>';
+      hint.innerHTML='<span style="color:#c0392b;">⚠ No '+escapeHTML(secName)+' assets found for "<strong>'+
+        escapeHTML(locRaw)+'</strong>". Check Asset Registry or use General Room Work option above.</span>';
     }else if(assets.length&&loc.length>=1){
-      hint.innerHTML='<span style="color:#1f9452;">✔ '+assets.length+' '+escapeHTML(sec)+' asset'+(assets.length>1?'s':'')+
+      hint.innerHTML='<span style="color:#1f9452;">✔ '+assets.length+' '+escapeHTML(secName)+' asset'+(assets.length>1?'s':'')+
         ' in "<strong>'+escapeHTML(locRaw)+'</strong>"</span>';
     }else if(assets.length&&!loc){
-      hint.innerHTML='<span style="color:var(--muted);">'+assets.length+' '+sec+
+      hint.innerHTML='<span style="color:var(--muted);">'+assets.length+' '+secName+
         ' asset'+(assets.length>1?'s':'')+' registered — type a location to narrow down</span>';
     }else{
       hint.textContent='';
@@ -4678,10 +4688,16 @@ function fillAssetDrop(sel=''){
 function onWOAssetChange(){
   const el=document.getElementById('m-wo-asset');
   const locEl=document.getElementById('m-wo-loc');
+  const secEl=document.getElementById('m-wo-section');
   if(!el||!locEl)return;
   const opt=el.options[el.selectedIndex];
-  if(opt&&opt.dataset?.location&&!locEl.value.trim()){
+  if(!opt||opt.value==='__room_general__')return;
+  if(opt.dataset?.location){
     locEl.value=opt.dataset.location;
+  }
+  if(secEl&&opt.dataset?.section&&!secEl.value){
+    secEl.value=opt.dataset.section;
+    if(typeof updateWORemarksMeta==='function')updateWORemarksMeta();
   }
 }
 function addMaterialRow(){
@@ -4715,18 +4731,28 @@ function saveWO(){
   if(!desc){showFieldError('m-wo-desc','Description is required.');_hasErr=true;}
   if(_hasErr)return;
   const inv=DB.g('inventory').map(i=>({...i}));
+  const wos=DB.g('wo');
+
+  // PATCHED: Restore old deductions if editing BEFORE checking stock availability
+  if(_editWO){
+    const old=wos.find(x=>x.id===_editWO);
+    if(old?.materials){
+      old.materials.forEach(m=>{
+        const item=inv.find(i=>i.id===m.invId);
+        if(item){
+          item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));
+        }
+      });
+    }
+  }
+
   for(const m of _woMaterials){
     if(!m.invId){showToast('Please select an item for all material rows, or remove empty rows.','warning');return;}
     const item=inv.find(i=>i.id===m.invId);
     if(!item){showToast('Inventory item not found.','warning');return;}
     if(m.qty>item.qty){showToast(`Insufficient stock for "${item.description}". Available: ${item.qty} ${item.unit||''}`,'warning');return;}
   }
-  const wos=DB.g('wo');
-  // Restore old deductions if editing
-  if(_editWO){
-    const old=wos.find(x=>x.id===_editWO);
-    if(old?.materials){old.materials.forEach(m=>{const item=inv.find(i=>i.id===m.invId);if(item){item.qty=parseFloat((item.qty+(m.qty||0)).toFixed(4));stampRecord(item);}});}
-  }
+
   // FIX: get WO ID and issuance ID once to avoid double-generation
   const newWoId = _editWO || DB.nid('wo');
   let issuanceLog=DB.g('issuance');
@@ -4741,14 +4767,23 @@ function saveWO(){
     const item=inv.find(i=>i.id===m.invId);
     if(item){
       item.qty=parseFloat((item.qty-m.qty).toFixed(4));
-      stampRecord(item);
       issuanceLog.push({id:generateUniqueNumericId(_issUsed),code:generateModuleCode('issuance',[SEC_ABV[sec]||'GEN']),date:today(),invId:m.invId,description:item.description,category:item.category,unit:item.unit,qtyIssued:m.qty,issuedTo:m.issuedTo||'—',section:sec,woRef:newWoCode||('WO-'+String(newWoId).padStart(4,'0')),remarks:'Auto-deducted via Work Order'});
     }
   });
+
+  // Stamp any inventory items that changed qty
+  const origInv=DB.g('inventory');
+  inv.forEach(item=>{
+    const orig=origInv.find(i=>i.id===item.id);
+    if(!orig || orig.qty!==item.qty){
+      stampRecord(item);
+    }
+  });
+
   DB.s('inventory',inv);DB.s('issuance',issuanceLog);
   let woLoc=(document.getElementById('m-wo-loc').value||'').trim();
   const woAsset=document.getElementById('m-wo-asset').value;
-  if(!woLoc&&woAsset){
+  if(!woLoc&&woAsset&&woAsset!=='__room_general__'){
     const selAsset=DB.g('assets').find(a=>a.name===woAsset&&(!sec||a.section===sec));
     if(selAsset)woLoc=selAsset.location||selAsset.roomName||selAsset.roomNumber||'';
   }
@@ -4837,7 +4872,20 @@ function saveInvItem(){
   if(_editInv){const idx=inv.findIndex(x=>x.id===_editInv);if(idx<0){showToast('Record not found — it may have been deleted.','error');closeModal('mo-inv');return;}inv[idx]=item;}else inv.push(item);
   DB.s('inventory',inv);closeModal('mo-inv');renderInventory();updateInvAlerts();showToast('Inventory item saved.');
 }
-async function delInvItem(id){return delRecord('inventory',id,'inventory item',renderInventory,updateInvAlerts);}
+async function delInvItem(id){
+  const inv=DB.g('inventory');
+  const item=inv.find(i=>i.id===id);
+  if(!item)return;
+  const activeWOs=DB.g('wo').filter(w=>(w.status==='Open'||w.status==='In Progress')&&(w.materials||[]).some(m=>m.invId===id));
+  if(activeWOs.length){
+    showToast(`Cannot delete "${item.description}": Assigned to ${activeWOs.length} active work order(s). Remove from active work orders first.`,'warning');
+    return;
+  }
+  const stockMsg=item.qty>0?` WARNING: Still has ${item.qty} ${item.unit||'unit(s)'} on hand.`:'';
+  if(!await confirmDialog(`Delete "${item.description}" from inventory?${stockMsg} This action cannot be undone.`,{title:'Confirm Delete',confirmText:'Delete',confirmClass:'btn btn-danger'}))return;
+  DB.s('inventory',inv.filter(x=>x.id!==id));
+  renderInventory();updateInvAlerts();showToast(`Inventory item "${item.description}" deleted.`,'info');
+}
 
 // ── MANUAL ISSUE ──────────────────────
 function openIssueModal(){
@@ -5247,7 +5295,7 @@ function renderForecast(){
     const isOvr=overdue(w);
     const late=isOvr||(proj&&proj<today());
     const forecastFlag=isOvr?'<span class="bs bs-overdue">Overdue</span>':(late?'<span class="bs bs-overdue">Past Due</span>':'<span class="bs bs-inprog">On Track</span>');
-    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
+    return`<tr${isOvr?' style="background:#fff8f8;"':''}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${priSpan(w.priority)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td class="mono">${avg!==null?avg+' days':'No data'}</td><td style="font-weight:600;color:${late?'var(--red)':'var(--green)'};">${proj?fmt(proj):'—'}</td><td>${forecastFlag}</td></tr>`;
   }).join(''):'<tr><td colspan="9" class="empty">No open work orders to forecast.</td></tr>';
 }
 
@@ -6197,8 +6245,30 @@ function renderAssets(){
 // ═══════════════════════════════════════
 // NEW: ENHANCED renderDash
 // ═══════════════════════════════════════
-let _dashCache=null,_dashCacheKey='';
-function getDashCacheKey(){return[DB.g('wo').length,DB.g('assets').length,DB.g('waste').length,DB.g('inventory').length,DB.g('safety').length,DB.g('projects').length,JSON.stringify(DB.g('wo').slice(-1)),JSON.stringify(DB.g('assets').slice(-1))].join('|');}
+function getDashCacheKey(){
+  const wos=DB.g('wo');
+  const ast=DB.g('assets');
+  let astSig=0;
+  for(let i=0;i<ast.length;i++){
+    const a=ast[i];
+    astSig+=(a.id||0)+(a._v||0)+(a._updatedAt||0)+(parseFloat(a.ratedWatts)||0)+(parseFloat(a.opHoursDay)||0)+(parseFloat(a.opDaysMonth)||0)+(parseFloat(a.demandFactor)||0);
+  }
+  let woSig=0;
+  for(let i=0;i<wos.length;i++){
+    const w=wos[i];
+    woSig+=(w.id||0)+(w._v||0)+(w._updatedAt||0);
+  }
+  return [
+    wos.length,
+    ast.length,
+    DB.g('waste').length,
+    DB.g('inventory').length,
+    DB.g('safety').length,
+    DB.g('projects').length,
+    astSig,
+    woSig
+  ].join('|');
+}
 function renderDash(){
   const wos=DB.g('wo'),wastes=DB.g('waste'),inv=DB.g('inventory'),assets=DB.g('assets');
   const safety=DB.g('safety'),projects=DB.g('projects');
@@ -6266,7 +6336,7 @@ function renderDash(){
 
   // Original lower dashboard
   const recent=[...wos].sort((a,b)=>b.id-a.id).slice(0,8);
-  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
+  document.getElementById('dash-wo-body').innerHTML=recent.length?recent.map(w=>{const isOvr=overdue(w);const isLateCmp=lateCompleted(w);const s=isOvr?'Overdue':w.status;const badge=isLateCmp?`${stBadge(s)} <span style="font-size:10px;color:#b06000;font-weight:700;">Late</span>`:stBadge(s);return`<tr><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${badge}</td><td>${fmt(w.dateStart)}</td></tr>`;}).join(''):'<tr><td colspan="5" class="empty">No work orders yet.</td></tr>';
   const ws=getWeekStart(today());const ww=wastes.filter(w=>w.date>=ws);const bt={};ww.forEach(w=>{if(!bt[w.type])bt[w.type]={v:0,s:[]};bt[w.type].v+=w.volume;bt[w.type].s.push(w.emb);});
   document.getElementById('dash-waste-body').innerHTML=Object.keys(bt).length?Object.entries(bt).map(([t,d])=>{const worst=d.s.includes('Critical')?'Critical':d.s.includes('Warning')?'Warning':'OK';return`<tr><td>${escapeHTML(t)}</td><td class="mono">${d.v.toFixed(2)}</td><td>${emblBadge(worst)}</td></tr>`;}).join(''):'<tr><td colspan="3" class="empty">No waste this week.</td></tr>';
   const secs=['CMW','Electrical','Plumbing','Mechanical','Housekeeping','Biomedical'];
@@ -8698,7 +8768,7 @@ function renderWO(){
     const overdueAlert=isOvr?`<div style="font-size:10px;color:#9b1a1a;font-weight:700;margin-top:3px;">&#9888; OVERDUE${w.delayReason?' — '+escapeHTML(w.delayReason):''}</div>`:'';
     const lateAlert=isLateCmp?`<div style="font-size:10px;color:#b06000;font-weight:700;margin-top:3px;">&#9201; Late Completed</div>`:'';
     const rowBg=isOvr?' style="background:#fff8f8;"':isLateCmp?' style="background:#fffbf0;"':'';
-    return`<tr${rowBg}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${escapeHTML(w.asset)||'—'}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
+    return`<tr${rowBg}><td>${w.code?'<span class="mono">'+escapeHTML(w.code)+'</span>':woNum(w.id)}</td><td>${secTag(w.section)}</td><td>${w.asset==='__room_general__'?'🏢 Facility / Room':(escapeHTML(w.asset)||'—')}</td><td>${escapeHTML(w.location)||'—'}</td><td style="max-width:170px;white-space:normal;">${escapeHTML(w.description)}${overdueAlert}${lateAlert}</td><td>${priSpan(w.priority)}</td><td>${stBadge(s)}</td><td>${fmt(w.dateStart)}</td><td style="font-weight:600;color:${isOvr?'var(--red)':isLateCmp?'#b06000':'inherit'};">${w.targetCompletionDate?fmt(w.targetCompletionDate):'—'}</td><td>${fmt(w.dateEnd)}</td><td class="mono">${dur}</td><td>${escapeHTML(w.assigned)||'—'}</td><td style="max-width:130px;white-space:normal;font-size:12px;color:var(--muted);">${mats}</td><td>${rpt}</td><td style="white-space:nowrap;"><button type="button" class="btn btn-sm btn-ghost" onclick="openWOModal(${w.id})">Edit</button> <button type="button" class="btn btn-sm btn-danger" onclick="delWO(${w.id})">Del</button></td></tr>`;
   }).join(''):'<tr><td colspan="15" class="empty">No work orders found. Click <strong>+ New Work Order</strong> to create one.</td></tr>';
   if(!_woShowAll&&totalWOs>50){
     document.getElementById('wo-tbody').innerHTML+=
