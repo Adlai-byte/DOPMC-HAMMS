@@ -3522,9 +3522,11 @@ function scheduleUiRefresh(){ // PATCHED: coalesce listener-driven rerenders aft
       renderDash();
       updateInvAlerts();
       const activeEl=document.querySelector('.page.active');
+      const isModalOpen=!!document.querySelector('.modal-overlay.open');
+      const isInputActive=document.activeElement&&(document.activeElement.tagName==='INPUT'||document.activeElement.tagName==='TEXTAREA'||document.activeElement.tagName==='SELECT');
       if(activeEl){
         const pageId=activeEl.id?.replace('page-','');
-        if(pageId) navigate(pageId);
+        if(pageId) navigate(pageId, true, (isModalOpen||isInputActive));
       }
       if(!_fbWriteInProgress && _fbLoadedOnce && document.visibilityState==='visible' && Date.now()-_lastRefreshToast>10000){
         _lastRefreshToast=Date.now();
@@ -4171,7 +4173,7 @@ function closeSidebar(){
   document.body.style.overflow='';
 }
 
-function navigate(p, _noPush){
+function navigate(p, _noPush, _skipFocus){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   const _pgEl=document.getElementById('page-'+p); if(!_pgEl){showToast('Page not found.','error');return;} _pgEl.classList.add('active');
@@ -4179,8 +4181,10 @@ function navigate(p, _noPush){
   // Auto-close sidebar on mobile after navigation
   if(window.innerWidth <= 768) closeSidebar();
   document.getElementById('page-title').textContent=PAGE_TITLES[p];
-  // Focus management: move focus to page heading
-  const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
+  // Focus management: move focus to page heading only if not explicitly skipped
+  if(!_skipFocus){
+    const h=_pgEl.querySelector('h2,h3');if(h){h.setAttribute('tabindex','-1');h.focus();}
+  }
   // Browser history
   if(!_noPush) history.pushState({page:p},'','?page='+p);
   const r={dashboard:renderDash,workorders:()=>{populateDateFilters('wof',DB.g('wo'),'dateStart');renderWO();},assets:()=>{populateDateFilters('af',DB.g('assets'),'acquired');renderAssets();},forecast:renderForecast,inventory:renderInventory,issuance:()=>{populateDateFilters('isf',DB.g('issuance').filter(l=>l.qtyIssued>0),'date');renderIssuance();},waste:()=>{populateDateFilters('wastef',DB.g('waste'),'date');renderWaste();},wastefcast:renderWasteFcast,instructions:()=>{},safety:()=>{populateDateFilters('sf',DB.g('safety'),'date');renderSafety();},projects:()=>{populateDateFilters('pj',DB.g('projects').map(p=>({...p,_d:p.startDate||p.targetCompletion})),'_d');renderProjects();renderProjStats();},water:()=>{populateDateFilters('wl',DB.g('waterLogs'),'date');renderWaterLogs();renderWardStatus();},watertank:()=>{renderWaterTank();renderTankGauges();setTimeout(()=>{renderTankTrends();renderTankKPIs();},60);},effluent:()=>{renderEffluent();},wwprod:()=>{renderWWProd();},medwaste:()=>{populateDateFilters('mw',DB.g('medWasteProd'),'date');renderMedWaste();},energy:()=>{populateEnergyFilters();renderEnergy();},fuel:()=>{openFuelSystem();}}; // PATCH: added medwaste + energy conservation + fuel monitoring
@@ -5728,7 +5732,7 @@ function renderIssuance(){
   document.getElementById('issue-tbody').innerHTML=logs.length?logs.map(l=>{
     const fromWO=l.woRef&&l.woRef!=='—';
     const editBtn=!fromWO?`<button type="button" class="btn btn-sm btn-ghost" onclick="openIssueEditModal(${l.id})">Edit</button> `:'';
-    const delBtn=`<button onclick="deleteIssuanceLog(${l.id})" style="color:#cc3333;background:none;border:1px solid #f0c0c0;border-radius:4px;padding:2px 8px;cursor:pointer;font-size:11px;margin-left:2px;font-family:inherit;">Del</button>`;
+    const delBtn=`<button type="button" class="btn btn-sm btn-danger" onclick="deleteIssuanceLog(${l.id})">Del</button>`;
     const woDisplay=l.woRef&&l.woRef!=='—'?(woCodeMap[l.woRef]||l.woRef):l.woRef;
     return`<tr><td>${l.code?'<span class="mono">'+escapeHTML(l.code)+'</span>':issNum(l.id)}</td><td>${fmt(l.date)}</td><td style="font-weight:600;">${escapeHTML(l.description)}</td><td>${secTag(l.category)}</td><td>${escapeHTML(l.unit)||'—'}</td><td class="mono">${l.qtyIssued}</td><td style="font-weight:600;">${escapeHTML(l.issuedTo)||'—'}</td><td class="mono">${escapeHTML(woDisplay)||'—'}</td><td>${l.section?secTag(l.section):'—'}</td><td style="font-size:12px;color:var(--muted);">${escapeHTML(l.remarks)||'—'}</td><td style="white-space:nowrap;">${editBtn}${delBtn}</td></tr>`;
   }).join(''):'<tr><td colspan="11" class="empty">No issuance records found.</td></tr>';
@@ -6278,21 +6282,27 @@ function computeEnergy(){
 }
 
 function calcAssetKwh(a){
+  if(!a || typeof a !== 'object') return 0;
   const qty=parseInt(a.qty||1,10)||1;
   let w=parseFloat(a.ratedWatts||0);
-  if(!w&&a.hp)w=parseFloat(a.hp)*746;
+  if((!Number.isFinite(w) || !w) && a.hp) w=parseFloat(a.hp)*746;
+  if(!Number.isFinite(w) || w<0) w=0;
   let hrs=parseFloat(a.opHoursDay||0);
-  if(!hrs && a.name){
+  if((!Number.isFinite(hrs) || !hrs) && a.name){
     hrs=detectAssetType(a.name)?.hrs||0;
   }
-  const days=parseFloat(a.opDaysMonth||0);
+  if(!Number.isFinite(hrs) || hrs<0) hrs=0;
+  let days=parseFloat(a.opDaysMonth||0);
+  if(!Number.isFinite(days) || days<0) days=0;
   let df=(a.demandFactor!=null&&a.demandFactor!==''&&parseFloat(a.demandFactor)>0)?parseFloat(a.demandFactor):null;
   if(df==null && a.name){
     df=detectAssetType(a.name)?.df??0.80;
   } else if(df==null){
     df=0.80;
   }
-  return(w/1000)*hrs*days*df*qty;
+  if(!Number.isFinite(df) || df<=0) df=0.80;
+  const val=(w/1000)*hrs*days*df*qty;
+  return Number.isFinite(val) ? val : 0;
 }
 
 // ═══════════════════════════════════════
@@ -7212,7 +7222,7 @@ function renderProjects(){
     return`<tr>
       <td class="mono" style="font-size:11px;">${escapeHTML(p.code)}</td>
       <td style="max-width:180px;white-space:normal;font-weight:600;">${escapeHTML(p.title)}</td>
-      <td style="font-size:12px;">${p.category||'—'}</td>
+      <td style="font-size:12px;">${escapeHTML(p.category)||'—'}</td>
       <td style="font-size:12px;">${escapeHTML(p.location)||'—'}</td>
       <td class="mono" style="font-size:12px;">${bgt}</td>
       <td>${pjBadge(p.status)}</td>
