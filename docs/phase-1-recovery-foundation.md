@@ -4,6 +4,8 @@ Date: 14 October 2026 (Asia/Singapore).
 
 Branch: `codex/phase-1-recovery-foundation`, created from local `main` at `137bc38`.
 
+Status: **Local backup/emulator recovery milestone complete within the user-accepted scope.** The user selected “Keep emulator isolation for now; leave cloud setup pending.” Deferred cloud gates below remain unfulfilled; this is not full production disaster-recovery certification.
+
 ## Preservation and deployment constraints
 
 All existing production records, IDs, tags, classifications and links remain unchanged by this work. Proposed existing-data corrections must be previewed and verified by the user before execution. This requirement is recorded in `AGENTS.md` and the remediation plan.
@@ -80,7 +82,7 @@ The emulator shuts down after the drill. A failed drill must be investigated; do
 
 The read-only inventory found one default Firestore database in `nam5`, billing disabled, PITR disabled, and no configured scheduled backup entries. No billing plan was changed and no scheduled recovery feature was enabled.
 
-Phase 1's local backup/restore foundation is verified. Full cloud staging and managed disaster recovery remain pending the user's infrastructure selection/account setup. The proposed ≤24-hour recovery point objective is not achieved by one manual snapshot, and the ≤2-hour production recovery target cannot be certified from an emulator restore time.
+Phase 1's local backup/restore foundation is verified and accepted as the current scope. Full cloud staging and managed disaster recovery are deferred by the user's selection. The proposed ≤24-hour recovery point objective is not achieved by manual snapshots, and the ≤2-hour production recovery target cannot be certified from an emulator restore time.
 
 Also pending: isolated cloud Auth/Storage/backend equivalents, Storage binary backup/attachment completeness, real cloud restore drill and IAM verification, server-enforced maintenance controls, named operational/release owner and source-recovery reconciliation from Phase 0. No production maintenance lock was activated or operational metadata altered.
 
@@ -88,7 +90,7 @@ The backup protects inline attachment fields contained in Firestore. It does not
 
 ## Next steps
 
-1. Resolve cloud-isolation/billing choice and source compatibility before preparing a preview deployment.
-2. Implement protected staff permissions and maintenance/mutation infrastructure in isolated staging.
+1. Reconcile source compatibility before preparing a preview deployment; keep the main site and existing records unchanged.
+2. Implement and test protected staff permissions and maintenance/mutation infrastructure in the emulator when Phase 2 is authorized. Do not treat emulator code as deployed cloud protection.
 3. Present any concrete tag/classification/link correction proposal to the user for verification before applying it.
-4. Do not mark Phase 1 fully complete until its outstanding cloud/recovery gates are addressed or the user explicitly accepts the reduced emulator-only scope.
+4. Revisit deferred cloud/recovery gates only when the user elects to proceed with cloud setup. Keep their status visible in release evidence.

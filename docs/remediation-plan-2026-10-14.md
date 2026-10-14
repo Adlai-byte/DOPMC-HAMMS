@@ -21,6 +21,7 @@ This is an implementation plan, not a claim that any fix or migration has alread
 11. Administrators review and approve proposed corrections to ambiguous legacy asset links, duplicate issuances and questionable dates or bill values. Staff may flag issues and supply evidence; correction execution must validate the approval and the current record version server-side.
 12. Retain all existing operational data. Present a concrete preview and ask the user to verify before applying any existing-record tag/classification/link corrections, deduplication, deletion or replacement. Administrator review does not replace this explicit user requirement.
 13. Use the `normalized` preview channel at `https://demoapp-7864a--normalized-jagl9vut.web.app/`; do not deploy to the main site or push to `main`. This preview currently shares the production database, so perform write/recovery tests only in isolated storage.
+14. The user accepted emulator-only isolation for the current Phase 1 work. Cloud staging, billing setup and scheduled cloud recovery are explicitly deferred. This does not establish production disaster-recovery coverage or authorize enabling paid services.
 
 ### First implementation scope
 

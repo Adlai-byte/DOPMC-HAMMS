@@ -7,6 +7,7 @@ Single-file vanilla-JS PWA for Davao Oriental Provincial Medical Center. No buil
 - Retain all existing operational data. Do not delete, replace, deduplicate, retag, reclassify or relink existing records without presenting a concrete preview and receiving the user's verification/approval first.
 - Target preview hosting only: `https://demoapp-7864a--normalized-jagl9vut.web.app/` (channel `normalized`). Do not deploy to the main/live site or push to `main`.
 - Preview hosting currently shares the production default Firestore database. A preview URL does not authorize test writes to that database. Perform recovery/write drills in isolated emulator or separately configured staging storage.
+- The user selected emulator-only isolation for now. Leave cloud staging, billing changes and scheduled cloud recovery pending; do not enable them automatically.
 - Keep real backups outside `public/` and Git. Preserve Firestore document IDs and typed field payloads when backing up/restoring.
 
 ## Quick facts
