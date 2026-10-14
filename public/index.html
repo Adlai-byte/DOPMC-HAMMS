@@ -4475,9 +4475,6 @@ function isSameLocation(loc1, loc2){
   // Circulation discriminator: corridor/hallway/lobby/ramp/stairs cannot match a room
   if(isCirculationArea(s1) !== isCirculationArea(s2)) return false;
 
-  // Subroom boundary discriminator: specific subrooms (like RSA, cooking area) cannot match parent department
-  if(/\b(rsa|cooking)\b/i.test(s1) !== /\b(rsa|cooking)\b/i.test(s2)) return false;
-
   // Extract room number token if present (e.g. "316", "316a", "306", "101")
   const numRegex = /\b\d+[a-z]?\b/i;
   const m1 = s1.match(numRegex);

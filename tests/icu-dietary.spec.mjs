@@ -69,10 +69,7 @@ test.describe('ICU and DIETARY Audit', () => {
         dietaryVsDietaryKitchen: isSameLocation('DIETARY', 'DIETARY KITCHEN'),
         dietaryVsDietaryUnderscore: isSameLocation('DIETARY', 'DIETARY_'),
         dietVsDietaryUnderscore: isSameLocation('DIET', 'DIETARY_'),
-        dietaryVsDietaryCorridor: isSameLocation('DIETARY', 'Dietary Corridor'),
-        dietaryVsDietaryRsa: isSameLocation('DIETARY', 'DIETARY RSA'),
-        dietaryRsaVsCooking: isSameLocation('DIETARY RSA', 'DIETARY COOKING AREA'),
-        dietaryRsaVsDietaryRsa: isSameLocation('DIETARY RSA', 'DIETARY RSA')
+        dietaryVsDietaryCorridor: isSameLocation('DIETARY', 'Dietary Corridor')
       };
     });
 
@@ -89,9 +86,6 @@ test.describe('ICU and DIETARY Audit', () => {
     expect(results.dietaryVsDietaryUnderscore).toBe(true);
     expect(results.dietVsDietaryUnderscore).toBe(true);
     expect(results.dietaryVsDietaryCorridor).toBe(false);
-    expect(results.dietaryVsDietaryRsa).toBe(false);
-    expect(results.dietaryRsaVsCooking).toBe(false);
-    expect(results.dietaryRsaVsDietaryRsa).toBe(true);
   });
 
   test('Check 3: Asset Registry search for "ICU" and "ICU_" does not leak into NICU or PICU', async ({ page }) => {
