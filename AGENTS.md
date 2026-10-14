@@ -2,6 +2,13 @@
 
 Single-file vanilla-JS PWA for Davao Oriental Provincial Medical Center. No build step, no framework, no bundler. The whole app is `public/index.html` (~11,200 lines, 11,212). See `CLAUDE.md` for the full architecture map (data layer, sync, page structure, file layout).
 
+## User constraints — 14 October 2026
+
+- Retain all existing operational data. Do not delete, replace, deduplicate, retag, reclassify or relink existing records without presenting a concrete preview and receiving the user's verification/approval first.
+- Target preview hosting only: `https://demoapp-7864a--normalized-jagl9vut.web.app/` (channel `normalized`). Do not deploy to the main/live site or push to `main`.
+- Preview hosting currently shares the production default Firestore database. A preview URL does not authorize test writes to that database. Perform recovery/write drills in isolated emulator or separately configured staging storage.
+- Keep real backups outside `public/` and Git. Preserve Firestore document IDs and typed field payloads when backing up/restoring.
+
 ## Quick facts
 
 - **App entry:** `public/index.html` (all HTML, CSS, JS in one file)

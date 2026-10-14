@@ -4,4 +4,7 @@ node_modules/
 test-results/
 package-lock.json
 *.docx
+recovery-private/
+firestore-debug.log
+firebase-debug.log
 
