@@ -63,7 +63,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   import { getFirestore,
            doc, getDoc, getDocs, getDocFromServer, getDocsFromServer, setDoc, updateDoc, deleteField,
            collection, writeBatch, serverTimestamp, onSnapshot } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js"; // PATCHED: use server-first reads, live listeners, and disable persistent multi-tab cache to prevent stale snapshot reversion
-  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+  import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+           setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
   // Only initialise if user has filled in config
   const configured = FIREBASE_CONFIG.apiKey !== "" && FIREBASE_CONFIG.projectId !== "";
@@ -83,6 +84,13 @@ document.addEventListener('DOMContentLoaded',()=>{
     // PATCH START: signal login overlay that Firebase is ready
     window._FB.signIn  = (email, pw) => signInWithEmailAndPassword(auth, email, pw);
     window._FB.signOut = () => signOut(auth);
+    window._FB.setPersistence = async (remember) => {
+      try {
+        await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
+      } catch(e) {
+        console.warn('HAMMS: setPersistence error:', e);
+      }
+    };
     const fbStatus = document.getElementById('fb-load-status');
     if(fbStatus) fbStatus.style.opacity = '0';
     // PATCH END
@@ -110,12 +118,13 @@ document.addEventListener('DOMContentLoaded',()=>{
         {const ov=document.getElementById('app-loading-overlay');if(ov){ov.classList.add('hidden');setTimeout(()=>ov.remove(),500);}} // FIX: hide loading spinner when login form appears
         const userEl = document.getElementById('sb-user-email');
         if (userEl) userEl.textContent = '';
+        if (typeof initLoginRemember === 'function') initLoginRemember();
       }
     });
 
   } else {
     // PATCHED: Firebase-disabled fallback must still reveal the app and render locally
-    window._FB = { enabled: false, auth: null, email: '' };
+    window._FB = { enabled: false, auth: null, email: '', setPersistence: async () => {} };
     console.info('HAMMS: Running without Firebase live sync.');
     window.addEventListener('load', () => {
       const overlay = document.getElementById('hamms-login-overlay');
@@ -765,21 +774,31 @@ tr.row-warn td{background:#fffdf0;}
 
       <!-- Email -->
       <div style="margin-bottom:14px;">
-        <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Email Address</label>
+        <label for="login-email" style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Email Address</label>
         <input id="login-email" type="email" placeholder="you@dopmc.gov.ph" autocomplete="username"
           style="width:100%;padding:11px 13px;border:1.5px solid #dde3ec;border-radius:6px;font-size:14px;font-family:inherit;color:#1e3a5f;background:#f4f6f9;outline:none;box-sizing:border-box;"
           onfocus="this.style.borderColor='#0f8c6e';this.style.background='#fff'"
-          onblur="this.style.borderColor='#dde3ec';this.style.background='#f4f6f9'">
+          onblur="this.style.borderColor='#dde3ec';this.style.background='#f4f6f9'"
+          onkeydown="if(event.key==='Enter'){const p=document.getElementById('login-password');if(p&&p.value){hammsLogin();}else if(p){p.focus();}}">
       </div>
 
       <!-- Password -->
-      <div style="margin-bottom:18px;">
-        <label style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Password</label>
+      <div style="margin-bottom:14px;">
+        <label for="login-password" style="display:block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;color:#1e3a5f;margin-bottom:5px;">Password</label>
         <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password"
           style="width:100%;padding:11px 13px;border:1.5px solid #dde3ec;border-radius:6px;font-size:14px;font-family:inherit;color:#1e3a5f;background:#f4f6f9;outline:none;box-sizing:border-box;"
           onfocus="this.style.borderColor='#0f8c6e';this.style.background='#fff'"
           onblur="this.style.borderColor='#dde3ec';this.style.background='#f4f6f9'"
           onkeydown="if(event.key==='Enter')hammsLogin()">
+      </div>
+
+      <!-- Remember Me -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+        <label for="login-remember" style="display:inline-flex;align-items:center;gap:8px;font-size:13px;color:#1e3a5f;cursor:pointer;user-select:none;font-weight:500;">
+          <input id="login-remember" type="checkbox"
+            style="width:16px;height:16px;accent-color:#0f8c6e;cursor:pointer;border-radius:4px;border:1.5px solid #dde3ec;">
+          <span>Remember me</span>
+        </label>
       </div>
 
       <!-- Button -->
@@ -808,9 +827,50 @@ tr.row-warn td{background:#fffdf0;}
 </div>
 
 <script>
+function initLoginRemember(){
+  try {
+    const isRemembered = localStorage.getItem('hamms_remember_me') === 'true';
+    const savedEmail = localStorage.getItem('hamms_remembered_email') || '';
+    const emailInput = document.getElementById('login-email');
+    const remEl = document.getElementById('login-remember');
+    const passInput = document.getElementById('login-password');
+    if(remEl) remEl.checked = isRemembered;
+    if(isRemembered && savedEmail && emailInput){
+      emailInput.value = savedEmail;
+      if(passInput){
+        setTimeout(()=>{
+          const overlay = document.getElementById('hamms-login-overlay');
+          if(overlay && overlay.style.display !== 'none' && (document.activeElement === document.body || document.activeElement === emailInput)){
+            passInput.focus();
+          }
+        }, 120);
+      }
+    }
+  } catch(e) {
+    console.warn('initLoginRemember error:', e);
+  }
+}
+
+if(document.readyState === 'loading'){
+  document.addEventListener('DOMContentLoaded', initLoginRemember);
+} else {
+  initLoginRemember();
+}
+
+document.getElementById('login-remember')?.addEventListener('change', function(){
+  if(!this.checked){
+    try {
+      localStorage.removeItem('hamms_remember_me');
+      localStorage.removeItem('hamms_remembered_email');
+    } catch(e){}
+  }
+});
+
 async function hammsLogin(){
   const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-password').value;
+  const remEl = document.getElementById('login-remember');
+  const remember = remEl ? remEl.checked : false;
   const btn   = document.getElementById('login-btn');
   const errEl = document.getElementById('login-error');
   const txt   = document.getElementById('login-btn-text');
@@ -836,7 +896,23 @@ async function hammsLogin(){
   }
   // PATCH END
   try {
+    if (typeof window._FB.setPersistence === 'function') {
+      await window._FB.setPersistence(remember);
+    }
     await window._FB.signIn(email, pass);
+
+    // Save or clear remembered credentials in localStorage upon successful authentication
+    try {
+      if(remember){
+        localStorage.setItem('hamms_remember_me', 'true');
+        localStorage.setItem('hamms_remembered_email', email);
+      } else {
+        localStorage.removeItem('hamms_remember_me');
+        localStorage.removeItem('hamms_remembered_email');
+      }
+    } catch(e) {
+      console.warn('localStorage error for remember me:', e);
+    }
     // onAuthStateChanged will hide overlay automatically
   } catch(err) {
     btn.disabled = false; txt.style.display = 'block'; spin.style.display = 'none';
@@ -859,6 +935,8 @@ async function hammsLogin(){
 async function hammsLogout(){
   if(!window._FB?.signOut) return;
   try { await window._FB.signOut(); } catch(e) { console.warn('Logout error:', e); }
+  document.getElementById('login-password').value = '';
+  if (typeof initLoginRemember === 'function') initLoginRemember();
   showToast('Signed out.','info');
 }
 // FIX: auto-logout after 30 minutes of inactivity (shared hospital workstations)
