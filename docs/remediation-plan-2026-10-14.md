@@ -4,6 +4,8 @@ Prepared: 14 October 2026, Asia/Singapore. Target: `demoapp-7864a`.
 
 This is an implementation plan, not a claim that any fix or migration has already happened. Findings come from [the live deployment analysis](live-deployment-analysis-2026-10-14.md). Performance, recovery and reliability numbers below are proposed acceptance targets; they have not yet been measured or achieved.
 
+Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation.md) is verified within the user-accepted emulator scope. [Phase 2 access and validation](phase-2-access-validation.md) has a tested emulator-only rules/service foundation (319 targeted tests passed, 15 October 2026). Neither checkpoint means security changes were deployed; staff provisioning, compatibility review, Phase 3 browser integration and later phase gates remain prerequisites for rollout.
+
 ## 1. Decisions and baseline
 
 ### Confirmed decisions
