@@ -9,4 +9,5 @@ firestore-debug.log
 firebase-debug.log
 auth-debug.log
 phase2-*.log
+phase3-*.log
 

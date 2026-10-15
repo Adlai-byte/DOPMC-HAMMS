@@ -6,6 +6,8 @@ This is an implementation plan, not a claim that any fix or migration has alread
 
 Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation.md) is verified within the user-accepted emulator scope. [Phase 2 access and validation](phase-2-access-validation.md) has a tested emulator-only rules/service foundation (319 targeted tests passed, 15 October 2026). Neither checkpoint means security changes were deployed; staff provisioning, compatibility review, Phase 3 browser integration and later phase gates remain prerequisites for rollout.
 
+[Phase 3 confirmed saves](phase-3-confirmed-saves.md) adds a local generated browser view and emulator command integration (16 October 2026): 376 distinct targeted tests plus 35 existing CRUD/login regression tests passed, including 100 paired conflict races and 100 duplicate-operation races. This does not modify the preview or main application; newer preview source reconciliation, stock commands and production-capable backend integration remain rollout gates.
+
 ## 1. Decisions and baseline
 
 ### Confirmed decisions

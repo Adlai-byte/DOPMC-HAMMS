@@ -19,6 +19,39 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
   const db=getFirestore(app),auth=getAuth(app);
+  const resourceQueues=new Map();
+  async function serial(key,fn) {
+    const previous=resourceQueues.get(key)||Promise.resolve();
+    let release;const held=new Promise(resolve=>{release=resolve;});const tail=previous.catch(()=>{}).then(()=>held);resourceQueues.set(key,tail);
+    await previous.catch(()=>{});
+    try{return await fn();}finally{release();if(resourceQueues.get(key)===tail)resourceQueues.delete(key);}
+  }
+  async function inspect(token,body) {
+    let actor;
+    try {actor=await auth.verifyIdToken(token,true);const user=await auth.getUser(actor.uid);check(!user.disabled&&actor.email===user.email,'unauthenticated','Account unavailable');}
+    catch {throw new CommandError('unauthenticated','Active named Firebase account required');}
+    exactKeys(body,['operationId','store','docId','load']);
+    if(body.operationId)identifier(body.operationId);
+    if(body.store)check(STORES.includes(body.store),'invalid-argument','Unknown store');
+    if(body.docId)identifier(body.docId);
+    return db.runTransaction(async tx=>{
+      const member=(await tx.get(db.doc('staff/'+actor.uid))).data();check(active(member),'permission-denied','Active membership required');
+      const policy=(await tx.get(db.doc('system/writePolicy'))).data();check(policy&&typeof policy.maintenance==='boolean','failed-precondition','Write policy not provisioned');
+      const response={uid:actor.uid,email:actor.email,role:member.role,maintenance:policy.maintenance,verifiedAt:Date.now()};
+      if(body.operationId) {
+        const outcome=await tx.get(db.doc('operationResults/'+sha({uid:actor.uid,operationId:body.operationId})));
+        response.outcome=outcome.exists?outcome.data().result:null;
+      }
+      if(body.store&&body.docId) {
+        const record=await tx.get(db.doc(`hammsStores/${body.store}/records/${body.docId}`));response.record=record.exists?record.data():null;
+      }
+      if(body.load===true) {
+        response.stores={};for(const store of STORES)response.stores[store]=(await tx.get(db.collection(`hammsStores/${store}/records`))).docs.map(d=>d.data());
+        response.locations=(await tx.get(db.collection('locations'))).docs.map(d=>({docId:d.id,...d.data()}));
+      }
+      return response;
+    },{readOnly:true});
+  }
   async function execute(token,body) {
     let actor;
     try {
@@ -42,7 +75,10 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     }
     const opKey=sha({uid:actor.uid,operationId:body.operationId}),requestHash=sha(body);
     const outcomeRef=db.doc('operationResults/'+opKey),auditRef=db.doc('auditEvents/'+opKey);
-    return await db.runTransaction(async tx=>{
+    // Bound contention within one service instance. Transactions still enforce correctness
+    // against other instances; this queue is not a substitute for expected-version checks.
+    const resourceKey=recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
+    return await serial(resourceKey,()=>db.runTransaction(async tx=>{
       const member=(await tx.get(db.doc('staff/'+actor.uid))).data();
       check(active(member),'permission-denied','Active facility membership required');
       check(!adminOnly||member.role==='admin','permission-denied','Administrator required');
@@ -130,23 +166,23 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
       tx.create(auditRef,{actorUid:actor.uid,actorEmail:actor.email,command,target,reason:body.reason,beforeVersion,afterVersion,operationId:body.operationId,committedAt:FieldValue.serverTimestamp()});
       tx.create(outcomeRef,{actorUid:actor.uid,requestHash,result,committedAt:FieldValue.serverTimestamp()});
       return result;
-    });
+    }));
   }
   const codes={'unauthenticated':401,'permission-denied':403,'invalid-argument':400,'not-found':404,'already-exists':409,'aborted':409,'failed-precondition':412,'unavailable':503};
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
     try {
-      check(req.method==='POST'&&req.url==='/commands','invalid-argument','POST /commands required');
+      check(req.method==='POST'&&['/commands','/inspect'].includes(req.url),'invalid-argument','POST /commands or /inspect required');
       check(req.headers['content-type']?.split(';')[0]==='application/json','invalid-argument','JSON content type required');
       const match=req.headers.authorization?.match(/^Bearer ([^\s]+)$/);check(match,'unauthenticated','Firebase ID token required');
       const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;check(size<=800000,'invalid-argument','Request too large');chunks.push(chunk);}
       let body;try{body=JSON.parse(Buffer.concat(chunks).toString());}catch{throw new CommandError('invalid-argument','Invalid JSON');}
-      const result=await execute(match[1],body);res.statusCode=200;res.end(JSON.stringify(result));
+      const result=await(req.url==='/inspect'?inspect(match[1],body):execute(match[1],body));res.statusCode=200;res.end(JSON.stringify(result));
     } catch(e) {
       const code=e instanceof CommandError?e.code:'internal';res.statusCode=codes[code]||500;
       res.end(JSON.stringify({error:{code,message:e instanceof CommandError?e.message:'Command failed'}}));
     }
   });
   // The caller can start the test service only on a loopback listener.
-  return {execute,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
+  return {execute,inspect,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
 }
