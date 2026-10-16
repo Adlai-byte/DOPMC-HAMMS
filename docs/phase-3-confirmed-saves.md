@@ -121,4 +121,4 @@ The harness is not exposed as a hosted preview and creates no paid infrastructur
 
 ## Remaining rollout gates
 
-Reconcile the newer preview source, review real user memberships and record/schema compatibility, implement Phase 4 stock commands, complete stable asset/location workflows and reviewed migrations, then integrate a production-capable backend only after the deferred cloud choice is revisited. All proposed changes to existing operational classifications, tags, links or records require the user's concrete-preview approval before execution.
+Reconcile the newer preview source, review real user memberships and record/schema compatibility, integrate the [Phase 4 emulator-tested stock commands](phase-4-stock-integrity.md), complete stable asset/location workflows and reviewed migrations, then integrate a production-capable backend only after the deferred cloud choice is revisited. All proposed changes to existing operational classifications, tags, links or records require the user's concrete-preview approval before execution.

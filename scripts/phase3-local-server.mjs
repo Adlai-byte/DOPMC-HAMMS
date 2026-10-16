@@ -26,6 +26,7 @@ export async function createLocalHarness() {
       const assets={
         '/confirmed-saves.mjs':'security/client/confirmed-saves.mjs',
         '/app-bridge.mjs':'security/client/app-bridge.mjs'
+        ,'/stock-ui.mjs':'security/client/stock-ui.mjs'
       };
       if(assets[url.pathname]) {res.setHeader('Content-Type','text/javascript');res.end(await fs.readFile(path.join(root,assets[url.pathname]),'utf8'));return;}
       if(url.pathname==='/'||url.pathname==='/index.html') {
@@ -33,6 +34,10 @@ export async function createLocalHarness() {
         // Generated local view only. No production Firebase SDK/init or cached shell can run here.
         html=html.replace(/<script type="module">[\s\S]*?<\/script>/,'<script>window._FB={enabled:false};</script>');
         html=html.replace('const FIREBASE_ENABLED = true;','const FIREBASE_ENABLED = false;');
+        // Local stock workflow projections; original hosted source stays untouched.
+        html=html.replace("(w.status!=='Closed'&&w.status!=='Completed')", "(w.status!=='Closed'&&w.status!=='Completed'&&w.status!=='Cancelled')");
+        html=html.replace("const fromWO=l.woRef&&l.woRef!=='—';", "const fromWO=l.source?l.source!=='manual':l.woRef&&l.woRef!=='—';");
+        html=html.replace('${l.qtyIssued}</td>', '${l.qtyIssued}<small style="display:block">Returned: ${l.qtyReturned||0} · Net: ${Number((l.qtyIssued-(l.qtyReturned||0)).toFixed(4))}</small></td>');
         html=html.replace('</body>','<script type="module" src="/app-bridge.mjs"></script></body>');
         res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;
       }

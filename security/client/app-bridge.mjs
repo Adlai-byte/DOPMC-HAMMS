@@ -1,4 +1,5 @@
 import {createConfirmedSaves,SaveError} from './confirmed-saves.mjs';
+import {installStockUI} from './stock-ui.mjs';
 
 if(location.hostname!=='127.0.0.1')throw Error('Emulator UI must run on loopback');
 document.getElementById('app-loading-overlay')?.remove();
@@ -50,13 +51,25 @@ async function applyCompleted(done){
   const record=await controller.latest(done.command.store,done.result.docId);
   if(identity?.uid!==epoch)return;
   if(!record)throw new SaveError('unavailable','Save committed but record is unavailable; refresh needed');
+  if(done.result.relatedStores){
+    const refreshed=await request('/inspect',{load:true,stock:true});
+    if(identity?.uid!==epoch)return;
+    for(const store of done.result.relatedStores){_memDB[store]=refreshed.stores[store].filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
+    window._phase4AllWO=refreshed.stores.wo;window._phase4Movements=refreshed.movements;
+  }
   const list=DB.g(done.command.store).filter(r=>r._docId!==record._docId&&r.id!==record.id);
   if(!record._archived)list.push(record);
   _memDB[done.command.store]=list;_cleanStoreState[done.command.store]=clone(list);
   const draftUnchanged=review&&JSON.stringify(review.draft)===JSON.stringify(visibleDraft());
   if(!draftUnchanged&&review){
     const setters={assets:id=>{_editAsset=id;},wo:id=>{_editWO=id;},inventory:id=>{_editInv=id;},safety:id=>{_editSafety=id;},projects:id=>{_editProject=id;},waterLogs:id=>{_editWaterLog=id;},waterTank:id=>{_editTank=id;},effluent:id=>{_editEffluent=id;},medWasteProd:id=>{_editMedWaste=id;},wwProd:id=>{_editWWProd=id;},energyBills:id=>{_editEnergyBill=id;}};
-    setters[done.command.store]?.(record.id);_editSnapshots.set(done.command.store,{store:done.command.store,id:record.id,_v:record._v});
+    setters[done.command.store]?.(record.id);
+    if(done.command.store==='issuance'&&record.source==='manual'){
+      _editIssuance=record.id;
+      document.getElementById('btn-iss-save').textContent='Save Changes';
+      document.getElementById('btn-iss-save').onclick=window.saveIssuanceEdit;
+    }
+    _editSnapshots.set(done.command.store,{store:done.command.store,id:record.id,_v:record._v});
   }
   if(draftUnchanged)for(const id of review.closed)window.closeModal(id);
   completion=null;
@@ -149,6 +162,7 @@ async function signIn(email,password){
   identity={uid:data.localId,token:data.idToken};controller.account(identity.uid);
   const loaded=await request('/inspect',{load:true});
   window._phase3Locations=loaded.locations;
+  window._phase4AllWO=loaded.stores.wo;
   for(const [store,rows]of Object.entries(loaded.stores)){_memDB[store]=rows.filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
   window._FB={enabled:false,email,uid:identity.uid,signOut};
   document.getElementById('hamms-login-overlay').style.cssText='display:none!important';document.getElementById('app').style.visibility='visible';
@@ -162,7 +176,8 @@ function signOut(){
   if(typeof _woMaterials!=='undefined')_woMaterials=[];
   if(typeof _assetImageData!=='undefined')_assetImageData=null;
   if(typeof _dashCache!=='undefined')_dashCache=null;
-  for(const key of ['_alerts','_effCustomParams','_phase3Locations'])window[key]=[];
+  for(const key of ['_alerts','_effCustomParams','_phase3Locations','_phase4AllWO','_phase4Movements'])window[key]=[];
+  window.dispatchEvent(new Event('hamms-session-ended'));
   document.querySelectorAll('.modal-overlay input,.modal-overlay textarea,.modal-overlay select').forEach(e=>{if(e.type==='checkbox')e.checked=false;else e.value='';});
   document.querySelectorAll('.modal-overlay').forEach(e=>e.classList.remove('open'));
   document._woReport=null;document._wPhoto=null;document._wlResultImg=null;window._phase3Locations=[];
@@ -177,5 +192,12 @@ window.addEventListener('online',()=>controller.probe()); // A status read only;
 const heartbeat=setInterval(async()=>{if(!identity||heartbeatBusy||controller.snapshot.busy)return;heartbeatBusy=true;try{await controller.probe();}finally{heartbeatBusy=false;}},10000);
 window.addEventListener('pagehide',()=>{clearInterval(heartbeat);modalObserver.disconnect();});
 window.HAMMS_PHASE3={signIn,signOut,controller,reconcile,ready:true};
+installStockUI({
+  async submit(command,closed=[]){
+    if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save first');
+    review={command,closed,draft:visibleDraft()};
+    await applyCompleted(await controller.submit(command));
+  },request,notify,toast,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']})
+});
 // Always require explicit local sign-in, regardless of the legacy Firebase-disabled fallback.
 document.getElementById('hamms-login-overlay').style.cssText='display:flex!important';document.getElementById('app').style.visibility='hidden';

@@ -8,6 +8,8 @@ Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation
 
 [Phase 3 confirmed saves](phase-3-confirmed-saves.md) adds a local generated browser view and emulator command integration (16 October 2026): 376 distinct targeted tests plus 35 existing CRUD/login regression tests passed, including 100 paired conflict races and 100 duplicate-operation races. This does not modify the preview or main application; newer preview source reconciliation, stock commands and production-capable backend integration remain rollout gates.
 
+[Phase 4 stock integrity](phase-4-stock-integrity.md) implements atomic stock/issuance commands and local browser workflows in isolated emulators. The user's confirmed policy is explicit physical return with a reason; cancellation, archival, restoration and reopening never automatically replenish or reissue stock. Legacy review output proposes no writes. See the report for final verification results and remaining rollout gates.
+
 ## 1. Decisions and baseline
 
 ### Confirmed decisions
@@ -161,8 +163,8 @@ Protect old cached clients through rules/backend policy. A service-worker versio
 1. Give each material line a stable line ID. Aggregate duplicate inventory selections before checking availability so two rows cannot independently pass against the same starting stock.
 2. Use stable `woDocId`, `invDocId`, line ID and operation ID references. Keep display codes as snapshots, not relationship keys.
 3. In one trusted transaction, validate expected WO/inventory state, apply net material deltas, update or supersede automatic issuance lines, append inventory movement/audit records and write the command result.
-4. An unchanged-material edit produces zero net stock change and no duplicate current issuance lines. Increasing use deducts only the difference; decreasing use returns only the difference.
-5. Keep manual issuance separate. Explicitly define WO cancellation, deletion and reinstatement effects using compensating movements; do not erase the stock ledger.
+4. An unchanged-material edit produces zero net stock change and no duplicate current issuance lines. Increasing use deducts only the difference; decreasing use credits stock only after staff explicitly confirm unused material was physically returned and provide a reason. Without that confirmation, retain the consumed allocation.
+5. Keep manual issuance separate. Cancellation and archival do not automatically return stock. Restoration and reopening do not automatically reissue it. Explicit confirmed returns use compensating movements; do not erase the stock ledger.
 6. Review legacy automatic issuances using both historical numeric `WO-{id}` and human-readable codes. Produce a preview showing proven duplicates, uncertain cases and proposed effects. Repeated rows alone are not proof of duplicate consumption.
 7. Establish opening balances before introducing a ledger. Historic receipts/adjustments may be incomplete, so do not infer the entire present stock from all legacy issuance rows.
 8. Archive superseded issuance entries with a correction reason. Never automatically delete all similar legacy rows or adjust production stock based only on similarity.

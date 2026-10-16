@@ -4,6 +4,8 @@ import {getAuth} from 'firebase-admin/auth';
 import {getFirestore,FieldValue} from 'firebase-admin/firestore';
 import {canonical,sha,STORES} from '../scripts/recovery-core.mjs';
 import {CommandError,requireCondition as check,exactKeys,identifier,plain,validateRecord,validateMembership,validateEnergySettings,SCHEMAS} from './validation.mjs';
+import {STOCK_COMMANDS,ADMIN_STOCK_COMMANDS,stockBody} from './stock-domain.mjs';
+import {prepareStock} from './stock-transaction.mjs';
 
 export const SECURITY_PROJECT='demo-hamms-security';
 export function requireEmulators(project,env=process.env) {
@@ -13,8 +15,8 @@ function active(member) {return member?.active===true&&['staff','admin'].include
 function stampRecord(record,docId,actor,version) {
   return {...record,_docId:docId,_v:version,_updatedBy:actor.email,_updatedAt:Date.now(),_committedAt:FieldValue.serverTimestamp()};
 }
-const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge'];
-const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge']);
+const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS];
+const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS]);
 export async function createSecurityService(project=SECURITY_PROJECT) {
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
@@ -30,7 +32,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     let actor;
     try {actor=await auth.verifyIdToken(token,true);const user=await auth.getUser(actor.uid);check(!user.disabled&&actor.email===user.email,'unauthenticated','Account unavailable');}
     catch {throw new CommandError('unauthenticated','Active named Firebase account required');}
-    exactKeys(body,['operationId','store','docId','load']);
+    exactKeys(body,['operationId','store','docId','load','stock']);
     if(body.operationId)identifier(body.operationId);
     if(body.store)check(STORES.includes(body.store),'invalid-argument','Unknown store');
     if(body.docId)identifier(body.docId);
@@ -49,6 +51,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         response.stores={};for(const store of STORES)response.stores[store]=(await tx.get(db.collection(`hammsStores/${store}/records`))).docs.map(d=>d.data());
         response.locations=(await tx.get(db.collection('locations'))).docs.map(d=>({docId:d.id,...d.data()}));
       }
+      if(body.stock===true){response.movements=(await tx.get(db.collection('inventoryMovements'))).docs.map(d=>({docId:d.id,...d.data()}));response.ledgers=(await tx.get(db.collection('inventoryLedgers'))).docs.map(d=>({docId:d.id,...d.data()}));}
       return response;
     },{readOnly:true});
   }
@@ -64,6 +67,8 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     identifier(body.operationId,'Operation ID');
     check(typeof body.reason==='string'&&body.reason.trim().length>0&&body.reason.length<=1000,'invalid-argument','A reason is required');
     const command=body.command, adminOnly=administratorCommands.has(command);
+    const stockCommand=STOCK_COMMANDS.includes(command);
+    if(stockCommand)stockBody(body);
     const recordCommand=['createRecord','updateRecord','archiveRecord','restoreRecord'].includes(command);
     if(recordCommand) {
       check(STORES.includes(body.store),'invalid-argument','Unknown store');
@@ -77,7 +82,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     const outcomeRef=db.doc('operationResults/'+opKey),auditRef=db.doc('auditEvents/'+opKey);
     // Bound contention within one service instance. Transactions still enforce correctness
     // against other instances; this queue is not a substitute for expected-version checks.
-    const resourceKey=recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
+    const resourceKey=stockCommand||recordCommand&&['inventory','wo','issuance'].includes(body.store)?'stock':recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
     return await serial(resourceKey,()=>db.runTransaction(async tx=>{
       const member=(await tx.get(db.doc('staff/'+actor.uid))).data();
       check(active(member),'permission-denied','Active facility membership required');
@@ -90,8 +95,11 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         check(existingOutcome.data().requestHash===requestHash,'already-exists','Operation ID reused with a different request');
         return existingOutcome.data().result;
       }
-      let result,target,beforeVersion=null,afterVersion=null,write;
-      if(recordCommand) {
+      let result,target,beforeVersion=null,afterVersion=null,write,auditDetail=null;
+      if(stockCommand){
+        const prepared=await prepareStock({db,tx,body,actor,opKey,stampRecord});
+        ({result,target,beforeVersion,afterVersion,write,auditDetail}=prepared);
+      }else if(recordCommand) {
         const docId=command==='createRecord'?body.store+'_'+opKey.slice(0,32):body.docId;
         const ref=db.doc(`hammsStores/${body.store}/records/${docId}`),snap=await tx.get(ref),old=snap.data();target=ref.path;
         if(command==='createRecord')check(!snap.exists,'already-exists','Record exists');
@@ -163,7 +171,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         result={status:'awaiting-implementation-and-review',jobId:opKey};
       }
       write();
-      tx.create(auditRef,{actorUid:actor.uid,actorEmail:actor.email,command,target,reason:body.reason,beforeVersion,afterVersion,operationId:body.operationId,committedAt:FieldValue.serverTimestamp()});
+      tx.create(auditRef,{actorUid:actor.uid,actorEmail:actor.email,command,target,reason:body.reason,beforeVersion,afterVersion,operationId:body.operationId,detail:auditDetail,committedAt:FieldValue.serverTimestamp()});
       tx.create(outcomeRef,{actorUid:actor.uid,requestHash,result,committedAt:FieldValue.serverTimestamp()});
       return result;
     }));

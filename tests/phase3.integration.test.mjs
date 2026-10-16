@@ -5,6 +5,7 @@ import {chromium} from 'playwright';
 import {createLocalHarness} from '../scripts/phase3-local-server.mjs';
 import {STORES} from '../scripts/recovery-core.mjs';
 import {fixtures} from './phase2-fixtures.mjs';
+import {bootstrapApp as bootstrapEmulator} from './helpers/emulator-bootstrap.mjs';
 
 let harness,base,browser;
 const tokens={};
@@ -22,17 +23,7 @@ after(async()=>{await browser?.close();await harness?.close();});
 
 // Reuse the existing CRUD bootstrap sequence, with explicit emulator sign-in instead of a fake cloud session.
 async function bootstrapApp(page){
-  await page.goto(base+'/?nocache='+Date.now());
-  await page.evaluate(async()=>{if(navigator.serviceWorker)for(const r of await navigator.serviceWorker.getRegistrations())await r.unregister();for(const k of await caches.keys())await caches.delete(k);});
-  await page.goto(base+'/?nocache='+Date.now());await page.waitForLoadState('networkidle');
-  await page.waitForFunction(()=>window.HAMMS_PHASE3?.ready);
-  await page.evaluate(()=>{
-    document.getElementById('hamms-login-overlay').style.cssText='display:none!important';document.getElementById('app').style.visibility='visible';
-    const stores=['wo','assets','inventory','issuance','waste','waterLogs','waterTank','effluent','safety','projects','medWasteProd','wwProd','censusLog','waterSettings','energyBills'];
-    stores.forEach(s=>{if(!_memDB[s])_memDB[s]=[];});
-    Object.keys(_fbPendingStoreOps).forEach(k=>delete _fbPendingStoreOps[k]);window._FB={enabled:false};window.confirmDialog=async()=>true;
-  });
-  await page.evaluate(()=>HAMMS_PHASE3.signIn('staff@example.test','Synthetic-Only-123!'));
+  await bootstrapEmulator(page,base);
 }
 async function newPage(){const p=await browser.newPage();await p.route(/https:\/\/(firestore|identitytoolkit|securetoken)\.googleapis\.com\//,r=>{throw Error('Cloud access forbidden: '+r.request().url());});await bootstrapApp(p);return p;}
 async function fillSafety(p,text){await p.evaluate(()=>{navigate('safety');openSafetyModal();});await p.locator('#m-sf-desc').fill(text);await p.locator('#m-sf-sev').selectOption('Low');}
