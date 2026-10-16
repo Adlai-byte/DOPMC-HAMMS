@@ -47,7 +47,7 @@ export const SCHEMAS={
   wwProd:schema(['date','shift','status'],{date,shift:nonempty(80),status:one(['Normal','Downtime','Maintenance']),inflow:n,treated:n,outflow:n,opHours:nullable(number(0,24)),downtime:nullable(number(0,24)),utilizationPct:nullable(number(0,100))}),
   censusLog:schema(['date','count'],{date,count:integer(0,100000)}),
   waterSettings:schema([],{}),
-  energyBills:schema(['period','actualKwh','billAmount'],{period:v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v),periodLabel:text(80),actualKwh:number(0.0001),billAmount:number(0.01),demandKw:n,accountNo:text(120),meterNo:text(120),theoreticalKwh:n})
+  energyBills:schema(['period','actualKwh','billAmount'],{period:v=>typeof v==='string'&&/^\d{4}-(0[1-9]|1[0-2])$/.test(v),periodLabel:text(80),actualKwh:number(),billAmount:number(),demandKw:n,accountNo:text(120),meterNo:text(120),theoreticalKwh:n})
 };
 const waterNumbers='pumpLph pumpRuntimeHrDay reservoirCapL threshSecure threshWatch threshLow threshCritical pumpSafe pumpNearLimit varWithin varAbove varHigh defInpatients defOutpatients defER defWatchers defVisitors totalStaff staffPresenceFactor refInpatient refOutpatient refER refWatcher refVisitor refStaff addLaundryHeavy addLaundryNormal addKitchenHeavy addKitchenNormal addCleaningHeavy addCleaningNormal addGardening addFlushing occupiedBeds totalFaucets totalToilets totalUrinals totalWashAreas totalWashingMachines totalKitchenSinks totalJanitorial totalHoseBibbs wwtpReturnFactor flushVolL faucetFlowLpm avgFaucetUseMin';
 // Accept existing form values without silently renaming classifications or optional observations.

@@ -7,6 +7,7 @@ import {CommandError,requireCondition as check,exactKeys,identifier,plain,valida
 import {STOCK_COMMANDS,ADMIN_STOCK_COMMANDS,stockBody} from './stock-domain.mjs';
 import {prepareStock} from './stock-transaction.mjs';
 import {RELATIONSHIP_COMMANDS,prepareRelationship,validateWORelationship,validateAssetRelationship} from './relationship-authority.mjs';
+import {ENERGY_COMMANDS,prepareEnergyCommand,prepareBill} from './energy-authority.mjs';
 
 export const SECURITY_PROJECT='demo-hamms-security';
 export function requireEmulators(project,env=process.env) {
@@ -16,8 +17,8 @@ function active(member) {return member?.active===true&&['staff','admin'].include
 function stampRecord(record,docId,actor,version) {
   return {...record,_docId:docId,_v:version,_updatedBy:actor.email,_updatedAt:Date.now(),_committedAt:FieldValue.serverTimestamp()};
 }
-const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS,...RELATIONSHIP_COMMANDS];
-const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS,...RELATIONSHIP_COMMANDS]);
+const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS,...RELATIONSHIP_COMMANDS,...ENERGY_COMMANDS];
+const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS,...RELATIONSHIP_COMMANDS,...ENERGY_COMMANDS]);
 export async function createSecurityService(project=SECURITY_PROJECT) {
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
@@ -33,7 +34,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     let actor;
     try {actor=await auth.verifyIdToken(token,true);const user=await auth.getUser(actor.uid);check(!user.disabled&&actor.email===user.email,'unauthenticated','Account unavailable');}
     catch {throw new CommandError('unauthenticated','Active named Firebase account required');}
-    exactKeys(body,['operationId','store','docId','load','stock']);
+    exactKeys(body,['operationId','store','docId','load','stock','energy']);
     if(body.operationId)identifier(body.operationId);
     if(body.store)check(STORES.includes(body.store),'invalid-argument','Unknown store');
     if(body.docId)identifier(body.docId);
@@ -54,6 +55,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         if(member.role==='admin')response.relationshipProposals=(await tx.get(db.collection('relationshipProposals'))).docs.map(d=>({docId:d.id,...d.data()}));
       }
       if(body.stock===true){response.movements=(await tx.get(db.collection('inventoryMovements'))).docs.map(d=>({docId:d.id,...d.data()}));response.ledgers=(await tx.get(db.collection('inventoryLedgers'))).docs.map(d=>({docId:d.id,...d.data()}));}
+      if(body.load===true||body.energy===true){response.energySettings=(await tx.get(db.doc('energySettings/current'))).data()||null;response.energyFactors=(await tx.get(db.collection('energyFactors'))).docs.map(d=>({docId:d.id,...d.data()}));}
       return response;
     },{readOnly:true});
   }
@@ -73,6 +75,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     if(stockCommand)stockBody(body);
     const relationshipCommand=RELATIONSHIP_COMMANDS.includes(command);
     if(relationshipCommand)check(plain(body.payload),'invalid-argument','Relationship payload required');
+    const energyCommand=ENERGY_COMMANDS.includes(command);if(energyCommand)check(plain(body.payload),'invalid-argument','Energy payload required');
     const recordCommand=['createRecord','updateRecord','archiveRecord','restoreRecord'].includes(command);
     if(recordCommand) {
       check(STORES.includes(body.store),'invalid-argument','Unknown store');
@@ -86,7 +89,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     const outcomeRef=db.doc('operationResults/'+opKey),auditRef=db.doc('auditEvents/'+opKey);
     // Bound contention within one service instance. Transactions still enforce correctness
     // against other instances; this queue is not a substitute for expected-version checks.
-    const resourceKey=stockCommand||relationshipCommand||recordCommand&&['inventory','wo','issuance','assets'].includes(body.store)?'stock':recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
+    const resourceKey=energyCommand||command==='setEnergySettings'||recordCommand&&body.store==='energyBills'?'energy':stockCommand||relationshipCommand||recordCommand&&['inventory','wo','issuance','assets'].includes(body.store)?'stock':recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
     return await serial(resourceKey,()=>db.runTransaction(async tx=>{
       const member=(await tx.get(db.doc('staff/'+actor.uid))).data();
       check(active(member),'permission-denied','Active facility membership required');
@@ -100,7 +103,9 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         return existingOutcome.data().result;
       }
       let result,target,beforeVersion=null,afterVersion=null,write,auditDetail=null;
-      if(relationshipCommand){
+      if(energyCommand){
+        ({result,target,beforeVersion,afterVersion,write,auditDetail}=await prepareEnergyCommand({db,tx,body,actor,opKey}));
+      }else if(relationshipCommand){
         ({result,target,beforeVersion,afterVersion,write,auditDetail}=await prepareRelationship({db,tx,body,actor,opKey,stampRecord}));
       }else if(stockCommand){
         const prepared=await prepareStock({db,tx,body,actor,opKey,stampRecord});
@@ -117,7 +122,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         }
         check(body.store!=='issuance','failed-precondition','Use the stock transaction command planned for Phase 4');
         check(!(body.store==='inventory'&&['archiveRecord','restoreRecord'].includes(command)),'failed-precondition','Inventory lifecycle requires the stock ledger workflow');
-        let record,writeCode=()=>{};
+        let record,writeCode=()=>{},billFields={};
         if(['createRecord','updateRecord'].includes(command)) {
           check(!old?._archived,'failed-precondition','Archived record must be restored first');
           const allowed=Object.keys(SCHEMAS[body.store].fields);exactKeys(body.payload,allowed);
@@ -131,16 +136,17 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
             await validateWORelationship({db,tx,record:validated,old});
           }
           if(body.store==='assets')writeCode=await validateAssetRelationship({db,tx,record:{...old,...validated},old,docId});
+          if(body.store==='energyBills'){const bill=await prepareBill({db,tx,record:validated,old,docId});writeCode=bill.write;billFields=bill.fields;}
           if(command==='createRecord') {
             const numericId=parseInt(opKey.slice(0,12),16)+1;
             const identity=db.doc('numericIdentities/'+numericId);
             check(!(await tx.get(identity)).exists,'already-exists','Numeric identity collision; resubmit with a new operation ID');
-            record={...validated,id:numericId,_createdAt:FieldValue.serverTimestamp(),_createdBy:actor.uid};
+            record={...validated,...billFields,id:numericId,_createdAt:FieldValue.serverTimestamp(),_createdBy:actor.uid};
             write=()=>{writeCode();tx.create(identity,{recordPath:ref.path});tx.create(ref,stampRecord(record,docId,actor,1));};
             afterVersion=1;
           } else {
             // Preserve all untouched legacy fields, including those not yet in the candidate schema.
-            record={...old,...body.payload};afterVersion=old._v+1;
+            record={...old,...body.payload,...billFields};afterVersion=old._v+1;
             write=()=>{writeCode();tx.update(ref,stampRecord(record,docId,actor,afterVersion));};
           }
         } else {
@@ -164,7 +170,8 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         target='system/writePolicy';write=()=>tx.set(db.doc(target),{maintenance:body.payload.maintenance,updatedBy:actor.uid,updatedAt:FieldValue.serverTimestamp()},{merge:true});result={status:'committed',maintenance:body.payload.maintenance};
       } else if(command==='setEnergySettings') {
         validateEnergySettings(body.payload);target='energySettings/current';
-        write=()=>tx.set(db.doc(target),{...body.payload,updatedBy:actor.uid,updatedAt:FieldValue.serverTimestamp()});result={status:'committed'};
+        const old=(await tx.get(db.doc(target))).data();check(!old,'failed-precondition','Existing shared settings require the versioned configureEnergy command');beforeVersion=0;afterVersion=1;
+        write=()=>tx.set(db.doc(target),{...body.payload,factorId:null,_v:afterVersion,updatedBy:actor.uid,updatedAt:FieldValue.serverTimestamp()});result={status:'committed',resource:'energySettings',docId:'current',version:afterVersion};
       } else {
         // Phase 2 authorizes request submission only. It never executes a restore/reset/purge.
         check(body.payload===undefined,'invalid-argument','Jobs cannot accept replacement record payloads');

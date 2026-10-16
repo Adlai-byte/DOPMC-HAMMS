@@ -1,6 +1,7 @@
 import {createConfirmedSaves,SaveError} from './confirmed-saves.mjs';
 import {installStockUI} from './stock-ui.mjs';
 import {installRelationshipUI} from './relationship-ui.mjs';
+import {installAnalysisUI} from './analysis-ui.mjs';
 
 if(location.hostname!=='127.0.0.1')throw Error('Emulator UI must run on loopback');
 document.getElementById('app-loading-overlay')?.remove();
@@ -49,6 +50,12 @@ function visibleDraft(){return [...document.querySelectorAll('.modal-overlay.ope
 async function applyCompleted(done){
   completion=done;
   const epoch=identity?.uid;
+  if(['energySettings','energyFactor'].includes(done.result.resource)){
+    const loaded=await request('/inspect',{energy:true});if(identity?.uid!==epoch)return;window.HAMMS_PHASE6.acceptShared(loaded);
+    if(done.result.resource==='energySettings'&&(!loaded.energySettings||loaded.energySettings._v<done.result.version)||done.result.resource==='energyFactor'&&!loaded.energyFactors.some(f=>f.docId===done.result.docId))throw new SaveError('unavailable','Committed energy configuration unavailable; check status');
+    if(review&&JSON.stringify(review.draft)===JSON.stringify(visibleDraft()))for(const id of review.closed)window.closeModal(id);
+    completion=null;review=null;renderEnergy();toast('Shared energy configuration confirmed.','success');return;
+  }
   if(done.result.resource==='location'){
     const loaded=await request('/inspect',{load:true});if(identity?.uid!==epoch)return;
     window._phase3Locations=loaded.locations;
@@ -155,6 +162,7 @@ for(const name of saveNames)if(typeof window[name]==='function'){
     if(store==='assets'&&!old&&window.HAMMS_PHASE5){
       try{Object.assign(payload,window.HAMMS_PHASE5.assetLocation(payload.location));}catch(e){notify(e);return;}
     }
+    if(store==='assets'&&window.HAMMS_PHASE6){try{Object.assign(payload,window.HAMMS_PHASE6.assetInputs());}catch(e){notify(e);return;}}
     if(store==='wo'&&!old){
       const asset=_memDB.assets.filter(a=>a.name===record.asset&&a.section===record.section);
       const loc=(window._phase3Locations||[]).filter(l=>l.name===record.location);
@@ -182,6 +190,7 @@ async function signIn(email,password){
   window._phase3Locations=loaded.locations;
   window._phase4AllWO=loaded.stores.wo;
   window._phase5AllAssets=loaded.stores.assets;window._phase5Proposals=loaded.relationshipProposals||[];
+  window.HAMMS_PHASE6?.acceptShared(loaded);
   for(const [store,rows]of Object.entries(loaded.stores)){_memDB[store]=rows.filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
   window._FB={enabled:false,email,uid:identity.uid,signOut};
   document.getElementById('hamms-login-overlay').style.cssText='display:none!important';document.getElementById('app').style.visibility='visible';
@@ -223,6 +232,9 @@ installRelationshipUI({request,notify,toast,watchModal:modal=>modalObserver.obse
     if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save first');
     review={command,closed,draft:visibleDraft()};await applyCompleted(await controller.submit(command));
   }
+});
+installAnalysisUI({request,notify,toast,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']}),
+  async submit(command,closed=[]){if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save first');review={command,closed,draft:visibleDraft()};await applyCompleted(await controller.submit(command));}
 });
 // Always require explicit local sign-in, regardless of the legacy Firebase-disabled fallback.
 document.getElementById('hamms-login-overlay').style.cssText='display:flex!important';document.getElementById('app').style.visibility='hidden';

@@ -29,6 +29,8 @@ export async function createLocalHarness() {
         ,'/stock-ui.mjs':'security/client/stock-ui.mjs'
         ,'/relationship-ui.mjs':'security/client/relationship-ui.mjs'
         ,'/relationship-domain.mjs':'security/relationship-domain.mjs'
+        ,'/analysis-ui.mjs':'security/client/analysis-ui.mjs'
+        ,'/analysis-domain.mjs':'security/analysis-domain.mjs'
       };
       if(assets[url.pathname]) {res.setHeader('Content-Type','text/javascript');res.end(await fs.readFile(path.join(root,assets[url.pathname]),'utf8'));return;}
       if(url.pathname==='/'||url.pathname==='/index.html') {
@@ -40,6 +42,8 @@ export async function createLocalHarness() {
         html=html.replace("(w.status!=='Closed'&&w.status!=='Completed')", "(w.status!=='Closed'&&w.status!=='Completed'&&w.status!=='Cancelled')");
         html=html.replace("const fromWO=l.woRef&&l.woRef!=='—';", "const fromWO=l.source?l.source!=='manual':l.woRef&&l.woRef!=='—';");
         html=html.replace('${l.qtyIssued}</td>', '${l.qtyIssued}<small style="display:block">Returned: ${l.qtyReturned||0} · Net: ${Number((l.qtyIssued-(l.qtyReturned||0)).toFixed(4))}</small></td>');
+        html=html.replaceAll("s.status!=='Closed'&&s.status!=='Resolved'", "!['Closed','Resolved','Verified'].includes(s.status)");
+        html=html.replaceAll("s.status==='Closed'||s.status==='Resolved'", "['Closed','Resolved','Verified'].includes(s.status)");
         html=html.replace('</body>','<script type="module" src="/app-bridge.mjs"></script></body>');
         res.setHeader('Content-Type','text/html; charset=utf-8');res.end(html);return;
       }

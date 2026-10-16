@@ -81,7 +81,8 @@ for(const store of STORES) {
     assert.equal(r.status,store==='issuance'?412:400);
   });
   if(store!=='issuance')test(`backend: staff can create valid ${store}`,async()=>{
-    const body=op('createRecord',{store,expectedVersion:0,payload:fixtures[store]});const r=await command('staff',body);assert.equal(r.status,200,JSON.stringify(r));
+    const payload=store==='energyBills'?{...fixtures[store],period:'2026-11'}:fixtures[store]; // October is already seeded; facility-period duplicates are now rejected.
+    const body=op('createRecord',{store,expectedVersion:0,payload});const r=await command('staff',body);assert.equal(r.status,200,JSON.stringify(r));
     const saved=(await service.db.doc(`hammsStores/${store}/records/${r.docId}`).get()).data();
     assert.equal(saved._docId,r.docId);assert.equal(saved._v,1);assert.equal(saved._updatedBy,'staff@example.test');assert.ok(saved._committedAt.toMillis()>0);
     const key=sha({uid:'staff',operationId:body.operationId});assert.ok((await service.db.doc('auditEvents/'+key).get()).exists);

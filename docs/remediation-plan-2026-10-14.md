@@ -12,6 +12,8 @@ Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation
 
 [Phase 5 asset/history integrity](phase-5-asset-history.md) adds exact asset/location selection, separate room/equipment histories and administrator review proposals in the isolated candidate. The user requires matching WO/asset sections. All 36 snapshot WOs are classified for review (23 unique exact candidates, 13 unresolved); no operational migration or hosted deployment has occurred.
 
+[Phase 6 calculations/forecasts](phase-6-calculations-forecasts.md) adds zero-safe energy calculations, shared sourced factor versions, atomic bill-period uniqueness and explicit forecast/coverage states in the emulator candidate. The user approved 12 completed observed waste weeks with a labelled +5% heuristic and positive-budget project weighting with disclosed exclusions. Existing dates, bills, factors and classifications have not been migrated or corrected.
+
 ## 1. Decisions and baseline
 
 ### Confirmed decisions

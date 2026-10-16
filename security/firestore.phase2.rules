@@ -33,6 +33,9 @@ service cloud.firestore {
     match /locations/{id} { allow read: if active(); allow write: if false; }
     match /relationshipProposals/{id} { allow read: if admin(); allow write: if false; }
     match /assetCodes/{id} { allow read, write: if false; }
+    match /energyFactors/{id} { allow read: if active(); allow write: if false; }
+    match /energyFactorVersions/{id} { allow read, write: if false; }
+    match /energyBillPeriods/{id} { allow read: if active(); allow write: if false; }
     match /{document=**} { allow read, write: if false; }
   }
 }
