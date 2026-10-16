@@ -2,6 +2,7 @@ import {FieldValue} from 'firebase-admin/firestore';
 import {sha} from '../scripts/recovery-core.mjs';
 import {requireCondition as check,exactKeys,validateRecord,SCHEMAS,date} from './validation.mjs';
 import {units,quantity,materialLines,stockPlan,versions} from './stock-domain.mjs';
+import {validateWORelationship} from './relationship-authority.mjs';
 
 // Build all reads/checks before returning a write closure. Caller couples writes to audit/outcome.
 export async function prepareStock({db,tx,body,actor,opKey,stampRecord}){
@@ -88,9 +89,7 @@ export async function prepareStock({db,tx,body,actor,opKey,stampRecord}){
         after=materialLines(p.materials);exactKeys(p.record,Object.keys(SCHEMAS.wo.fields).filter(k=>k!=='materials'));
         const business=Object.fromEntries(Object.entries(old||{}).filter(([k])=>Object.keys(SCHEMAS.wo.fields).includes(k)&&k!=='materials'));
         const validated=validateRecord('wo',{...business,...p.record,materials:[]});check(validated.status!=='Cancelled','invalid-argument','Use cancellation command with explicit returns');
-        if(!old)check(['room','asset'].includes(validated.workScope),'invalid-argument','Explicit work scope required');
-        if(validated.assetDocId){const a=await tx.get(db.doc('hammsStores/assets/records/'+validated.assetDocId));check(a.exists&&!a.data()._archived,'invalid-argument','Asset unavailable');}
-        if(validated.locationId)check((await tx.get(db.doc('locations/'+validated.locationId))).exists,'invalid-argument','Location unavailable');
+        await validateWORelationship({db,tx,record:validated,old});
         record={...old,...validated};
       }
       const plan=stockPlan(before,after);

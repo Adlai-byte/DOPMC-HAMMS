@@ -10,6 +10,8 @@ Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation
 
 [Phase 4 stock integrity](phase-4-stock-integrity.md) implements atomic stock/issuance commands and local browser workflows in isolated emulators. The user's confirmed policy is explicit physical return with a reason; cancellation, archival, restoration and reopening never automatically replenish or reissue stock. Legacy review output proposes no writes. See the report for final verification results and remaining rollout gates.
 
+[Phase 5 asset/history integrity](phase-5-asset-history.md) adds exact asset/location selection, separate room/equipment histories and administrator review proposals in the isolated candidate. The user requires matching WO/asset sections. All 36 snapshot WOs are classified for review (23 unique exact candidates, 13 unresolved); no operational migration or hosted deployment has occurred.
+
 ## 1. Decisions and baseline
 
 ### Confirmed decisions

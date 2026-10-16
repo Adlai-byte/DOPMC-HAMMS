@@ -27,6 +27,8 @@ export async function createLocalHarness() {
         '/confirmed-saves.mjs':'security/client/confirmed-saves.mjs',
         '/app-bridge.mjs':'security/client/app-bridge.mjs'
         ,'/stock-ui.mjs':'security/client/stock-ui.mjs'
+        ,'/relationship-ui.mjs':'security/client/relationship-ui.mjs'
+        ,'/relationship-domain.mjs':'security/relationship-domain.mjs'
       };
       if(assets[url.pathname]) {res.setHeader('Content-Type','text/javascript');res.end(await fs.readFile(path.join(root,assets[url.pathname]),'utf8'));return;}
       if(url.pathname==='/'||url.pathname==='/index.html') {

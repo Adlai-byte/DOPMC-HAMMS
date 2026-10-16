@@ -1,5 +1,6 @@
 import {createConfirmedSaves,SaveError} from './confirmed-saves.mjs';
 import {installStockUI} from './stock-ui.mjs';
+import {installRelationshipUI} from './relationship-ui.mjs';
 
 if(location.hostname!=='127.0.0.1')throw Error('Emulator UI must run on loopback');
 document.getElementById('app-loading-overlay')?.remove();
@@ -48,6 +49,13 @@ function visibleDraft(){return [...document.querySelectorAll('.modal-overlay.ope
 async function applyCompleted(done){
   completion=done;
   const epoch=identity?.uid;
+  if(done.result.resource==='location'){
+    const loaded=await request('/inspect',{load:true});if(identity?.uid!==epoch)return;
+    window._phase3Locations=loaded.locations;
+    if(!loaded.locations.some(l=>l.docId===done.result.docId))throw new SaveError('unavailable','Committed location unavailable; check save status');
+    if(review&&JSON.stringify(review.draft)===JSON.stringify(visibleDraft()))for(const id of review.closed)window.closeModal(id);
+    completion=null;review=null;toast('Location confirmed in the emulator.','success');return;
+  }
   const record=await controller.latest(done.command.store,done.result.docId);
   if(identity?.uid!==epoch)return;
   if(!record)throw new SaveError('unavailable','Save committed but record is unavailable; refresh needed');
@@ -56,10 +64,12 @@ async function applyCompleted(done){
     if(identity?.uid!==epoch)return;
     for(const store of done.result.relatedStores){_memDB[store]=refreshed.stores[store].filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
     window._phase4AllWO=refreshed.stores.wo;window._phase4Movements=refreshed.movements;
+    window._phase5AllAssets=refreshed.stores.assets;window._phase3Locations=refreshed.locations;window._phase5Proposals=refreshed.relationshipProposals||[];
   }
   const list=DB.g(done.command.store).filter(r=>r._docId!==record._docId&&r.id!==record.id);
   if(!record._archived)list.push(record);
   _memDB[done.command.store]=list;_cleanStoreState[done.command.store]=clone(list);
+  if(done.command.store==='assets')window._phase5AllAssets=[...(window._phase5AllAssets||[]).filter(a=>a._docId!==record._docId),record];
   const draftUnchanged=review&&JSON.stringify(review.draft)===JSON.stringify(visibleDraft());
   if(!draftUnchanged&&review){
     const setters={assets:id=>{_editAsset=id;},wo:id=>{_editWO=id;},inventory:id=>{_editInv=id;},safety:id=>{_editSafety=id;},projects:id=>{_editProject=id;},waterLogs:id=>{_editWaterLog=id;},waterTank:id=>{_editTank=id;},effluent:id=>{_editEffluent=id;},medWasteProd:id=>{_editMedWaste=id;},wwProd:id=>{_editWWProd=id;},energyBills:id=>{_editEnergyBill=id;}};
@@ -137,6 +147,14 @@ for(const name of saveNames)if(typeof window[name]==='function'){
     if(changes.length!==1){notify(new SaveError('failed-precondition','Related stock/bulk changes require the atomic Phase 4 command. Draft retained.'));return;}
     const {store,record,old}=changes[0];
     const payload=Object.fromEntries(Object.entries(record).filter(([k])=>schemas[store].includes(k)));
+    // Legacy saveAsset derives roomName/code and fills missing classifications on every edit.
+    // These fields are read-only in this candidate; retain their exact prior presence/value.
+    if(store==='assets'&&old)for(const k of ['locationId','location','section','roomNumber','roomName','building','floor','department','roomType','assetCode','mainCategory','assetClass','assetType']){
+      if(Object.hasOwn(old,k))payload[k]=old[k];else delete payload[k];
+    }
+    if(store==='assets'&&!old&&window.HAMMS_PHASE5){
+      try{Object.assign(payload,window.HAMMS_PHASE5.assetLocation(payload.location));}catch(e){notify(e);return;}
+    }
     if(store==='wo'&&!old){
       const asset=_memDB.assets.filter(a=>a.name===record.asset&&a.section===record.section);
       const loc=(window._phase3Locations||[]).filter(l=>l.name===record.location);
@@ -163,6 +181,7 @@ async function signIn(email,password){
   const loaded=await request('/inspect',{load:true});
   window._phase3Locations=loaded.locations;
   window._phase4AllWO=loaded.stores.wo;
+  window._phase5AllAssets=loaded.stores.assets;window._phase5Proposals=loaded.relationshipProposals||[];
   for(const [store,rows]of Object.entries(loaded.stores)){_memDB[store]=rows.filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
   window._FB={enabled:false,email,uid:identity.uid,signOut};
   document.getElementById('hamms-login-overlay').style.cssText='display:none!important';document.getElementById('app').style.visibility='visible';
@@ -176,7 +195,7 @@ function signOut(){
   if(typeof _woMaterials!=='undefined')_woMaterials=[];
   if(typeof _assetImageData!=='undefined')_assetImageData=null;
   if(typeof _dashCache!=='undefined')_dashCache=null;
-  for(const key of ['_alerts','_effCustomParams','_phase3Locations','_phase4AllWO','_phase4Movements'])window[key]=[];
+  for(const key of ['_alerts','_effCustomParams','_phase3Locations','_phase4AllWO','_phase4Movements','_phase5AllAssets','_phase5Proposals'])window[key]=[];
   window.dispatchEvent(new Event('hamms-session-ended'));
   document.querySelectorAll('.modal-overlay input,.modal-overlay textarea,.modal-overlay select').forEach(e=>{if(e.type==='checkbox')e.checked=false;else e.value='';});
   document.querySelectorAll('.modal-overlay').forEach(e=>e.classList.remove('open'));
@@ -198,6 +217,12 @@ installStockUI({
     review={command,closed,draft:visibleDraft()};
     await applyCompleted(await controller.submit(command));
   },request,notify,toast,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']})
+});
+installRelationshipUI({request,notify,toast,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']}),
+  async submit(command,closed=[]){
+    if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save first');
+    review={command,closed,draft:visibleDraft()};await applyCompleted(await controller.submit(command));
+  }
 });
 // Always require explicit local sign-in, regardless of the legacy Firebase-disabled fallback.
 document.getElementById('hamms-login-overlay').style.cssText='display:flex!important';document.getElementById('app').style.visibility='hidden';

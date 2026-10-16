@@ -3,6 +3,7 @@ export function installStockUI({submit,request,notify,toast,watchModal}){
   const inventory=id=>DB.g('inventory').find(i=>i._docId===id||String(i.id)===String(id));
   const itemVersions=ids=>Object.fromEntries([...new Set(ids)].map(id=>{const item=inventory(id);if(!item)throw Error('Inventory item unavailable');return[id,item._v];}));
   function scope(record,old){
+    if(window.HAMMS_PHASE5){Object.assign(record,window.HAMMS_PHASE5.formScope(old));return;}
     if(old){if(old.workScope)record.workScope=old.workScope;if(old.assetDocId)record.assetDocId=old.assetDocId;if(old.locationId)record.locationId=old.locationId;return;}
     const matches=DB.g('assets').filter(a=>a.name===record.asset&&a.section===record.section);
     const locations=(window._phase3Locations||[]).filter(l=>l.name===record.location);

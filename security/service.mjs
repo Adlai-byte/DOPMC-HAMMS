@@ -6,6 +6,7 @@ import {canonical,sha,STORES} from '../scripts/recovery-core.mjs';
 import {CommandError,requireCondition as check,exactKeys,identifier,plain,validateRecord,validateMembership,validateEnergySettings,SCHEMAS} from './validation.mjs';
 import {STOCK_COMMANDS,ADMIN_STOCK_COMMANDS,stockBody} from './stock-domain.mjs';
 import {prepareStock} from './stock-transaction.mjs';
+import {RELATIONSHIP_COMMANDS,prepareRelationship,validateWORelationship,validateAssetRelationship} from './relationship-authority.mjs';
 
 export const SECURITY_PROJECT='demo-hamms-security';
 export function requireEmulators(project,env=process.env) {
@@ -15,8 +16,8 @@ function active(member) {return member?.active===true&&['staff','admin'].include
 function stampRecord(record,docId,actor,version) {
   return {...record,_docId:docId,_v:version,_updatedBy:actor.email,_updatedAt:Date.now(),_committedAt:FieldValue.serverTimestamp()};
 }
-const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS];
-const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS]);
+const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS,...RELATIONSHIP_COMMANDS];
+const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS,...RELATIONSHIP_COMMANDS]);
 export async function createSecurityService(project=SECURITY_PROJECT) {
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
@@ -50,6 +51,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
       if(body.load===true) {
         response.stores={};for(const store of STORES)response.stores[store]=(await tx.get(db.collection(`hammsStores/${store}/records`))).docs.map(d=>d.data());
         response.locations=(await tx.get(db.collection('locations'))).docs.map(d=>({docId:d.id,...d.data()}));
+        if(member.role==='admin')response.relationshipProposals=(await tx.get(db.collection('relationshipProposals'))).docs.map(d=>({docId:d.id,...d.data()}));
       }
       if(body.stock===true){response.movements=(await tx.get(db.collection('inventoryMovements'))).docs.map(d=>({docId:d.id,...d.data()}));response.ledgers=(await tx.get(db.collection('inventoryLedgers'))).docs.map(d=>({docId:d.id,...d.data()}));}
       return response;
@@ -69,6 +71,8 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     const command=body.command, adminOnly=administratorCommands.has(command);
     const stockCommand=STOCK_COMMANDS.includes(command);
     if(stockCommand)stockBody(body);
+    const relationshipCommand=RELATIONSHIP_COMMANDS.includes(command);
+    if(relationshipCommand)check(plain(body.payload),'invalid-argument','Relationship payload required');
     const recordCommand=['createRecord','updateRecord','archiveRecord','restoreRecord'].includes(command);
     if(recordCommand) {
       check(STORES.includes(body.store),'invalid-argument','Unknown store');
@@ -82,7 +86,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
     const outcomeRef=db.doc('operationResults/'+opKey),auditRef=db.doc('auditEvents/'+opKey);
     // Bound contention within one service instance. Transactions still enforce correctness
     // against other instances; this queue is not a substitute for expected-version checks.
-    const resourceKey=stockCommand||recordCommand&&['inventory','wo','issuance'].includes(body.store)?'stock':recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
+    const resourceKey=stockCommand||relationshipCommand||recordCommand&&['inventory','wo','issuance','assets'].includes(body.store)?'stock':recordCommand&&body.docId?`${body.store}/${body.docId}`:opKey;
     return await serial(resourceKey,()=>db.runTransaction(async tx=>{
       const member=(await tx.get(db.doc('staff/'+actor.uid))).data();
       check(active(member),'permission-denied','Active facility membership required');
@@ -96,7 +100,9 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         return existingOutcome.data().result;
       }
       let result,target,beforeVersion=null,afterVersion=null,write,auditDetail=null;
-      if(stockCommand){
+      if(relationshipCommand){
+        ({result,target,beforeVersion,afterVersion,write,auditDetail}=await prepareRelationship({db,tx,body,actor,opKey,stampRecord}));
+      }else if(stockCommand){
         const prepared=await prepareStock({db,tx,body,actor,opKey,stampRecord});
         ({result,target,beforeVersion,afterVersion,write,auditDetail}=prepared);
       }else if(recordCommand) {
@@ -111,7 +117,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         }
         check(body.store!=='issuance','failed-precondition','Use the stock transaction command planned for Phase 4');
         check(!(body.store==='inventory'&&['archiveRecord','restoreRecord'].includes(command)),'failed-precondition','Inventory lifecycle requires the stock ledger workflow');
-        let record;
+        let record,writeCode=()=>{};
         if(['createRecord','updateRecord'].includes(command)) {
           check(!old?._archived,'failed-precondition','Archived record must be restored first');
           const allowed=Object.keys(SCHEMAS[body.store].fields);exactKeys(body.payload,allowed);
@@ -122,24 +128,20 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
           }
           if(body.store==='wo') {
             check(!(validated.materials?.length||old?.materials?.length),'failed-precondition','Material changes require the Phase 4 stock transaction');
-            if(command==='createRecord')check(['room','asset'].includes(validated.workScope),'invalid-argument','Explicit work scope required');
-            if(validated.assetDocId) {
-              const asset=await tx.get(db.doc('hammsStores/assets/records/'+validated.assetDocId));
-              check(asset.exists&&!asset.data()._archived,'invalid-argument','Selected asset is unavailable');
-            }
-            if(validated.locationId)check((await tx.get(db.doc('locations/'+validated.locationId))).exists,'invalid-argument','Unknown location');
+            await validateWORelationship({db,tx,record:validated,old});
           }
+          if(body.store==='assets')writeCode=await validateAssetRelationship({db,tx,record:{...old,...validated},old,docId});
           if(command==='createRecord') {
             const numericId=parseInt(opKey.slice(0,12),16)+1;
             const identity=db.doc('numericIdentities/'+numericId);
             check(!(await tx.get(identity)).exists,'already-exists','Numeric identity collision; resubmit with a new operation ID');
             record={...validated,id:numericId,_createdAt:FieldValue.serverTimestamp(),_createdBy:actor.uid};
-            write=()=>{tx.create(identity,{recordPath:ref.path});tx.create(ref,stampRecord(record,docId,actor,1));};
+            write=()=>{writeCode();tx.create(identity,{recordPath:ref.path});tx.create(ref,stampRecord(record,docId,actor,1));};
             afterVersion=1;
           } else {
             // Preserve all untouched legacy fields, including those not yet in the candidate schema.
             record={...old,...body.payload};afterVersion=old._v+1;
-            write=()=>tx.update(ref,stampRecord(record,docId,actor,afterVersion));
+            write=()=>{writeCode();tx.update(ref,stampRecord(record,docId,actor,afterVersion));};
           }
         } else {
           check(!(body.store==='wo'&&old.materials?.length),'failed-precondition','Work-order lifecycle requires material reconciliation');

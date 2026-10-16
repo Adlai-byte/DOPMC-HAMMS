@@ -1,6 +1,6 @@
 export const fixtures={
   wo:{section:'Electrical',description:'Synthetic room inspection',status:'Open',priority:'High',workScope:'room',locationId:'test-room'},
-  assets:{name:'Synthetic asset',section:'Electrical',location:'Test room',qty:0},
+  assets:{name:'Synthetic asset',section:'Electrical',location:'Test room',locationId:'test-room',qty:0},
   inventory:{description:'Synthetic inventory',category:'Electrical',unit:'piece',qty:0,minLevel:0},
   issuance:{date:'2026-10-15',description:'Synthetic issuance',qtyIssued:1,issuedTo:'Test staff',invDocId:'test-inventory'},
   waste:{date:'2026-10-15',type:'Sharps',volume:0},

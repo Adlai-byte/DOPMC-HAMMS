@@ -30,6 +30,9 @@ service cloud.firestore {
     match /inventoryMovements/{id} { allow read: if active(); allow write: if false; }
     match /inventoryLedgers/{id} { allow read: if active(); allow write: if false; }
     match /correctionProposals/{id} { allow read: if admin(); allow write: if false; }
+    match /locations/{id} { allow read: if active(); allow write: if false; }
+    match /relationshipProposals/{id} { allow read: if admin(); allow write: if false; }
+    match /assetCodes/{id} { allow read, write: if false; }
     match /{document=**} { allow read, write: if false; }
   }
 }
