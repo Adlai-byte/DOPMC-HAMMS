@@ -9,6 +9,10 @@ document.getElementById('app-loading-overlay')?.remove();
 const schemas=await(await fetch('/schema.json')).json();
 let identity=null,stage=null,completion=null,heartbeatBusy=false,review=null;
 const toast=window.showToast;
+// Active in-memory rows are a useful transfer export, never a complete recovery
+// snapshot: retained archives, protected metadata and Storage binaries live elsewhere.
+window.exportJSON=()=>{const data={..._memDB,exportedAt:new Date().toISOString(),_exportFormat:'hamms-active-records-v1',_completeRecoveryBackup:false,_scope:'Active operational records only. Use reviewed Firestore snapshots and private binary bundles for recovery.'};
+  const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='HAMMS_Active_Records_'+new Date().toISOString().slice(0,10)+'.json';a.click();URL.revokeObjectURL(url);toast('Active records exported. Archives, protected metadata and Storage image binaries require the recovery snapshot/bundle workflow.','warning',10000);};
 const status=document.createElement('div');status.id='phase3-status';status.setAttribute('role','status');status.setAttribute('aria-live','polite');
 status.style.cssText='padding:8px 12px;background:var(--navy);color:var(--white);display:flex;flex-wrap:wrap;gap:8px;align-items:center';
 const label=document.createElement('span');status.append(label);

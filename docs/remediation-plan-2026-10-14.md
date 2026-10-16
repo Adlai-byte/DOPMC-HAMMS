@@ -16,6 +16,8 @@ Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation
 
 ## 1. Decisions and baseline
 
+[Phase 8 scale/attachments candidate](phase-8-scale-attachments.md) adds isolated bounded browsing, complete overview counts, protected new-image storage, binary bundles and a separately scoped modular PWA shell. Existing operational editors and analytical dashboards retain complete dependencies; no embedded-image migration or hosted deployment is implied.
+
 [Phase 7 recovery jobs](phase-7-recovery-jobs.md) adds original archive evidence, complete typed manifests, explicit administrator preview verification, maintenance-owned checkpointed recovery and rollback in isolated emulators. Production data and both hosted sites remain unchanged; cloud recovery, billing and scheduled backups remain pending.
 
 ### Confirmed decisions

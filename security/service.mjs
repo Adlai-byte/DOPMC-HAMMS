@@ -10,6 +10,8 @@ import {RELATIONSHIP_COMMANDS,prepareRelationship,validateWORelationship,validat
 import {ENERGY_COMMANDS,prepareEnergyCommand,prepareBill} from './energy-authority.mjs';
 import {createRecoveryJobs} from './recovery-jobs.mjs';
 import {stampRecord} from './record-stamps.mjs';
+import {createScopedReads} from './scoped-reads.mjs';
+import {createAttachmentService} from './attachments.mjs';
 
 export const SECURITY_PROJECT='demo-hamms-security';
 export function requireEmulators(project,env=process.env) {
@@ -22,7 +24,9 @@ export async function createSecurityService(project=SECURITY_PROJECT,options={})
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
   const db=getFirestore(app),auth=getAuth(app);
-  let recovery;try{recovery=createRecoveryJobs({db,auth,project,requireEmulators,root:options.recoveryRoot});}catch(e){await db.terminate();await deleteApp(app);throw e;}
+  const attachments=createAttachmentService({app,db,auth,project,requireEmulators});
+  let recovery;try{recovery=createRecoveryJobs({db,auth,project,requireEmulators,root:options.recoveryRoot,verifyBinaryRecords:attachments.verifyRecords});}catch(e){await db.terminate();await deleteApp(app);throw e;}
+  const scoped=createScopedReads({db,auth,project,requireEmulators});
   const resourceQueues=new Map();
   async function serial(key,fn) {
     const previous=resourceQueues.get(key)||Promise.resolve();
@@ -32,7 +36,7 @@ export async function createSecurityService(project=SECURITY_PROJECT,options={})
   }
   async function inspect(token,body) {
     let actor;
-    try {actor=await auth.verifyIdToken(token,true);const user=await auth.getUser(actor.uid);check(!user.disabled&&actor.email===user.email,'unauthenticated','Account unavailable');}
+    try {actor=await auth.verifyIdToken(token,true);const user=await auth.getUser(actor.uid);check(!user.disabled&&typeof actor.email==='string'&&actor.email.length>0&&actor.email===user.email,'unauthenticated','Account unavailable');}
     catch {throw new CommandError('unauthenticated','Active named Firebase account required');}
     exactKeys(body,['operationId','store','docId','load','stock','energy']);
     if(body.operationId)identifier(body.operationId);
@@ -190,17 +194,18 @@ export async function createSecurityService(project=SECURITY_PROJECT,options={})
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
     try {
-      check(req.method==='POST'&&['/commands','/inspect','/recovery'].includes(req.url),'invalid-argument','POST command, inspection or recovery required');
+      check(req.method==='POST'&&['/commands','/inspect','/recovery','/catalog','/attachments'].includes(req.url),'invalid-argument','POST command, inspection or recovery required');
+      if(['/catalog','/attachments'].includes(req.url))check(req.headers['x-hamms-protocol']==='8','failed-precondition','Update this client before using scoped reads');
       check(req.headers['content-type']?.split(';')[0]==='application/json','invalid-argument','JSON content type required');
       const match=req.headers.authorization?.match(/^Bearer ([^\s]+)$/);check(match,'unauthenticated','Firebase ID token required');
-      const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;check(size<=(req.url==='/recovery'?20000000:800000),'invalid-argument','Request too large');chunks.push(chunk);}
+      const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;check(size<=(req.url==='/recovery'?20000000:req.url==='/attachments'?3000000:800000),'invalid-argument','Request too large');chunks.push(chunk);}
       let body;try{body=JSON.parse(Buffer.concat(chunks).toString());}catch{throw new CommandError('invalid-argument','Invalid JSON');}
-      const result=await(req.url==='/recovery'?recovery.execute(match[1],body):req.url==='/inspect'?inspect(match[1],body):execute(match[1],body));res.statusCode=200;res.end(JSON.stringify(result));
+      const result=await(req.url==='/attachments'?attachments.execute(match[1],body):req.url==='/catalog'?scoped.execute(match[1],body):req.url==='/recovery'?recovery.execute(match[1],body):req.url==='/inspect'?inspect(match[1],body):execute(match[1],body));res.statusCode=200;res.end(JSON.stringify(result));
     } catch(e) {
       const code=e instanceof CommandError?e.code:'internal';res.statusCode=codes[code]||500;
       res.end(JSON.stringify({error:{code,message:e instanceof CommandError?e.message:'Command failed'}}));
     }
   });
   // The caller can start the test service only on a loopback listener.
-  return {execute,inspect,recovery:recovery.execute,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
+  return {execute,inspect,recovery:recovery.execute,catalog:scoped.execute,attachments:attachments.execute,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
 }

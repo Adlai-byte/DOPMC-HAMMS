@@ -4,7 +4,7 @@ import {stampRecoveryFields} from './record-stamps.mjs';
 
 // Recovery never imports credentials, membership, locks or historical command outcomes.
 export const MUTABLE=['locations','inventoryLedgers','energySettings'];
-export const EVIDENCE=['assetCodes','numericIdentities','energyFactors','energyFactorVersions','energyBillPeriods','inventoryMovements','auditEvents','archiveSnapshots','correctionProposals','relationshipProposals'];
+export const EVIDENCE=['attachments','assetCodes','numericIdentities','energyFactors','energyFactorVersions','energyBillPeriods','inventoryMovements','auditEvents','archiveSnapshots','correctionProposals','relationshipProposals'];
 export const CONTROLS=['staff','system','operationResults','privilegedJobs'];
 export const COVERAGE=[...STORES.map(s=>`hammsStores/${s}/records`),...MUTABLE,...EVIDENCE,...CONTROLS,'hammsMeta','hamms'];
 export const FORMAT='hamms-firestore-typed-v2';
@@ -48,11 +48,11 @@ export function validateFields(fields,project,depth=0){
 export function attachments(documents){
   const found=[];
   function visit(v,path,attachment=false){
-    if(v.stringValue!==undefined&&attachment&&v.stringValue){const s=v.stringValue;found.push({field:path,kind:s.startsWith('data:')?'embedded':'external',hash:sha(s),bytes:Buffer.byteLength(s)});}
+    if(v.stringValue!==undefined&&attachment&&/^(?:data:|https?:|gs:)/i.test(v.stringValue)){const s=v.stringValue;found.push({field:path,kind:s.startsWith('data:')?'embedded':'external',hash:sha(s),bytes:Buffer.byteLength(s)});}
     for(const [k,x] of Object.entries(v.mapValue?.fields||{}))visit(x,path+'.'+k,attachment||/photo|image|attachment|report/i.test(k));
     for(const [i,x] of (v.arrayValue?.values||[]).entries())visit(x,path+'['+i+']',attachment);
   }
-  for(const d of documents)for(const [k,v] of Object.entries(d.fields))visit(v,d.path+'.'+k,/photo|image|attachment|report/i.test(k));
+  for(const d of documents){if(collectionOf(d.path)==='attachments')found.push({field:d.path+'.objectPath',kind:'external',hash:scalar(d.fields.hash)||sha(d.fields),bytes:Number(scalar(d.fields.size)||0)});for(const [k,v] of Object.entries(d.fields))visit(v,d.path+'.'+k,/photo|image|attachment|report/i.test(k));}
   return found.sort((a,b)=>a.field.localeCompare(b.field));
 }
 export function makeBackup(project,documents,readTime=null){
@@ -100,6 +100,7 @@ export function referenceProblems(documents){
       while(next){const p='locations/'+next;if(seen.has(p)){problems.push({path:d.path,field:'parentId',target:'Location cycle'});break;}seen.add(p);next=scalar(byPath.get(p)?.fields?.parentId);}
     }
     if(c==='numericIdentities'){const path=scalar(f.recordPath);if(path&&!byPath.has(path))problems.push({path:d.path,field:'recordPath',target:path});}
+    if(c==='attachments'){const path=scalar(f.recordPath);if(!path||!byPath.has(path))problems.push({path:d.path,field:'recordPath',target:path||'Missing attachment owner'});}
     if(c==='inventoryLedgers'){
       const inv=byPath.get('hammsStores/inventory/records/'+(scalar(f.invDocId)||d.path.split('/').at(-1))),balance=scalar(f.balanceUnits);
       if(inv&&Math.round(Number(scalar(inv.fields.qty))*10000)!==balance)problems.push({path:d.path,field:'balanceUnits',target:'Inventory/ledger mismatch'});

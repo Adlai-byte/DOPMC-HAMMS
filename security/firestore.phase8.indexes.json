@@ -1,0 +1,6 @@
+{
+  "indexes": [
+    {"collectionGroup":"attachments","queryScope":"COLLECTION","fields":[{"fieldPath":"recordPath","order":"ASCENDING"},{"fieldPath":"state","order":"ASCENDING"}]}
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,8 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Proxy reads recheck current membership and record access every time. No public
+    // download tokens or direct writes, even for administrators.
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}

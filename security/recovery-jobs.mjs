@@ -8,12 +8,12 @@ import {COVERAGE,collectionOf,makeBackup,validateRecoveryBackup,recoveryPlan,dig
 
 // This adapter deliberately has no cloud destination. Files are private, durable staging,
 // never served as static assets. Control documents and exact typed writes commit together.
-export function createRecoveryJobs({db,auth,project,requireEmulators,root=path.resolve('..','hamms-recovery','emulator-jobs')}){
+export function createRecoveryJobs({db,auth,project,requireEmulators,verifyBinaryRecords=null,root=path.resolve('..','hamms-recovery','emulator-jobs')}){
   requireEmulators(project);root=assertPrivateOutput(root,path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'));
   const base=`http://127.0.0.1:8186/v1/projects/${project}/databases/(default)/documents`,name=p=>`projects/${project}/databases/(default)/documents/${p}`;
   async function rest(suffix,body){const r=await fetch(base+suffix,{method:'POST',redirect:'error',headers:{Authorization:'Bearer owner','Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();check(r.ok,'unavailable','Recovery emulator request failed: '+(j.error?.status||r.status));return j;}
   async function actor(token){
-    let a;try{a=await auth.verifyIdToken(token,true);const u=await auth.getUser(a.uid);check(!u.disabled&&u.email===a.email,'unauthenticated','Active account required');}catch{check(false,'unauthenticated','Active named account required');}
+    let a;try{a=await auth.verifyIdToken(token,true);const u=await auth.getUser(a.uid);check(!u.disabled&&typeof a.email==='string'&&a.email.length>0&&u.email===a.email,'unauthenticated','Active account required');}catch{check(false,'unauthenticated','Active named account required');}
     const m=(await db.doc('staff/'+a.uid).get()).data();check(m?.active===true&&m.role==='admin'&&m.facilityId==='dopmc','permission-denied','Administrator required');return a;
   }
   async function snapshot(){
@@ -40,7 +40,8 @@ export function createRecoveryJobs({db,auth,project,requireEmulators,root=path.r
     if(['merge','replace'].includes(b.mode))validateRecoveryBackup(b.backup,project);else check(b.backup===undefined,'invalid-argument','Reset/purge cannot import a backup');
     check(!(await db.doc('system/writePolicy').get()).data()?.maintenance,'unavailable','Cannot stage during maintenance');
     const before=await snapshot(),at=new Date().toISOString().replace('.000Z','Z'),prepared=recoveryPlan(before,b.backup,{mode:b.mode,uid:a.uid,email:a.email,reason:b.reason,at,jobId:id,paths:b.paths});
-    check(!prepared.preview.conflicts.length&&!prepared.preview.unresolved.length&&!prepared.preview.externalAttachments.length,'failed-precondition','Preview has conflicting evidence, unresolved references or unbacked external attachments');
+    if(prepared.preview.externalAttachments.length&&verifyBinaryRecords){const desired=new Map(before.documents.map(d=>[d.path,d]));for(const c of prepared.changes){if(c.fields)desired.set(c.path,{path:c.path,fields:c.fields});else desired.delete(c.path);}const fields=new Set(await verifyBinaryRecords([...desired.values()]));prepared.preview.externalAttachments=prepared.preview.externalAttachments.map(a=>({...a,verified:fields.has(a.field)}));prepared.previewHash=sha(prepared.preview);}
+    check(!prepared.preview.conflicts.length&&!prepared.preview.unresolved.length&&!prepared.preview.externalAttachments.some(a=>a.verified!==true),'failed-precondition','Preview has conflicting evidence, unresolved references or unbacked external attachments');
     // Membership is reported but never replaced by importing a data backup.
     const plan={...prepared,before,source:b.backup||null,mode:b.mode,reason:b.reason,actorUid:a.uid,actorEmail:a.email,createdAt:at};
     await writePrivate(id,'plan',plan);
@@ -68,6 +69,7 @@ export function createRecoveryJobs({db,auth,project,requireEmulators,root=path.r
     if(stable(before)!==stable(plan.before)){
       await transactControl(a,id,(tx,j,p)=>{check(p.recoveryJobId===id,'failed-precondition','Job lock lost');tx.update(db.doc('privilegedJobs/'+id),{status:'stale-preview'});tx.update(db.doc('system/writePolicy'),{maintenance:false,recoveryJobId:FieldValue.delete()});});check(false,'aborted','Data changed after preview; stage a fresh preview');
     }
+    if(verifyBinaryRecords){const desired=new Map(before.documents.map(d=>[d.path,d]));for(const c of plan.changes){if(c.fields)desired.set(c.path,{path:c.path,fields:c.fields});else desired.delete(c.path);}await verifyBinaryRecords([...desired.values()]);}
     let verified=before;
     try{await writePrivate(id,'pre-operation',before);}catch(e){if(e.code!=='EEXIST')throw e;verified=JSON.parse(await fs.readFile(file(id,'pre-operation'),'utf8'));check(stable(verified)===stable(before),'failed-precondition','Pre-operation snapshot mismatch');validateRecoveryBackup(verified,project);}
     const readback=JSON.parse(await fs.readFile(file(id,'pre-operation'),'utf8'));validateRecoveryBackup(readback,project);check(readback.manifest.datasetHash===verified.manifest.datasetHash,'failed-precondition','Pre-operation disk verification failed');
@@ -122,6 +124,7 @@ export function createRecoveryJobs({db,auth,project,requireEmulators,root=path.r
   }
   async function finish(a,id,plan,job){
     const actual=await snapshot(),actualMap=new Map(actual.documents.map(d=>[d.path,d.hash]));
+    if(verifyBinaryRecords)await verifyBinaryRecords(actual.documents);
     const rollbackExpected=new Map(plan.before.documents.map(d=>[d.path,{path:d.path,hash:d.hash}]));
     if(job.direction==='rollback')for(const c of rollbackChanges(plan,job.forwardCursor)){if(c.fields)rollbackExpected.set(c.path,{path:c.path,hash:c.afterHash});else rollbackExpected.delete(c.path);}
     const expected=job.direction==='rollback'?[...rollbackExpected.values()]:plan.expected;
