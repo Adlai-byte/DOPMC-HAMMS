@@ -6,18 +6,18 @@ import {createSecurityService,requireEmulators,SECURITY_PROJECT} from '../securi
 import {SCHEMAS} from '../security/validation.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 
-export async function createLocalHarness() {
-  requireEmulators(SECURITY_PROJECT);const service=await createSecurityService(),upstream=await service.listen();
+export async function createLocalHarness(options={}) {
+  requireEmulators(SECURITY_PROJECT);const service=await createSecurityService(SECURITY_PROJECT,options),upstream=await service.listen();
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');
     try {
       const url=new URL(req.url,'http://127.0.0.1');
       if(url.pathname==='/schema.json'){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(Object.fromEntries(Object.entries(SCHEMAS).map(([k,v])=>[k,Object.keys(v.fields)]))));return;}
-      if(req.method==='POST'&&['/api/commands','/api/inspect','/api/login'].includes(url.pathname)) {
+      if(req.method==='POST'&&['/api/commands','/api/inspect','/api/login','/api/recovery'].includes(url.pathname)) {
         if(req.headers.origin) {
           const origin=new URL(req.headers.origin);if(origin.hostname!=='127.0.0.1'||origin.port!==String(server.address().port)){res.writeHead(403);res.end();return;}
         }
-        let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>800000)throw Error('Request too large');chunks.push(chunk);}
+        let size=0;const chunks=[];for await(const chunk of req){size+=chunk.length;if(size>(url.pathname==='/api/recovery'?20000000:800000))throw Error('Request too large');chunks.push(chunk);}
         const body=Buffer.concat(chunks);
         const destination=url.pathname==='/api/login'?'http://127.0.0.1:9098/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=emulator-key':upstream+url.pathname.slice(4);
         const r=await fetch(destination,{method:'POST',redirect:'error',headers:{'Content-Type':'application/json',...(req.headers.authorization?{Authorization:req.headers.authorization}:{})},body});
@@ -31,6 +31,7 @@ export async function createLocalHarness() {
         ,'/relationship-domain.mjs':'security/relationship-domain.mjs'
         ,'/analysis-ui.mjs':'security/client/analysis-ui.mjs'
         ,'/analysis-domain.mjs':'security/analysis-domain.mjs'
+        ,'/recovery-ui.mjs':'security/client/recovery-ui.mjs'
       };
       if(assets[url.pathname]) {res.setHeader('Content-Type','text/javascript');res.end(await fs.readFile(path.join(root,assets[url.pathname]),'utf8'));return;}
       if(url.pathname==='/'||url.pathname==='/index.html') {

@@ -16,6 +16,8 @@ Implementation checkpoints: [Phase 1 local recovery](phase-1-recovery-foundation
 
 ## 1. Decisions and baseline
 
+[Phase 7 recovery jobs](phase-7-recovery-jobs.md) adds original archive evidence, complete typed manifests, explicit administrator preview verification, maintenance-owned checkpointed recovery and rollback in isolated emulators. Production data and both hosted sites remain unchanged; cloud recovery, billing and scheduled backups remain pending.
+
 ### Confirmed decisions
 
 1. Recover the earlier fixes and merge them into the current release, preserving newer legitimate changes such as remember-me authentication.

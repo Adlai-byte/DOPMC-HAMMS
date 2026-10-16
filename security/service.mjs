@@ -8,21 +8,21 @@ import {STOCK_COMMANDS,ADMIN_STOCK_COMMANDS,stockBody} from './stock-domain.mjs'
 import {prepareStock} from './stock-transaction.mjs';
 import {RELATIONSHIP_COMMANDS,prepareRelationship,validateWORelationship,validateAssetRelationship} from './relationship-authority.mjs';
 import {ENERGY_COMMANDS,prepareEnergyCommand,prepareBill} from './energy-authority.mjs';
+import {createRecoveryJobs} from './recovery-jobs.mjs';
+import {stampRecord} from './record-stamps.mjs';
 
 export const SECURITY_PROJECT='demo-hamms-security';
 export function requireEmulators(project,env=process.env) {
   check(project===SECURITY_PROJECT&&env.FIRESTORE_EMULATOR_HOST==='127.0.0.1:8186'&&env.FIREBASE_AUTH_EMULATOR_HOST==='127.0.0.1:9098','failed-precondition','Security service is restricted to the isolated local Auth/Firestore emulators');
 }
 function active(member) {return member?.active===true&&['staff','admin'].includes(member.role)&&member.facilityId==='dopmc';}
-function stampRecord(record,docId,actor,version) {
-  return {...record,_docId:docId,_v:version,_updatedBy:actor.email,_updatedAt:Date.now(),_committedAt:FieldValue.serverTimestamp()};
-}
 const commands=['createRecord','updateRecord','archiveRecord','restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...STOCK_COMMANDS,...RELATIONSHIP_COMMANDS,...ENERGY_COMMANDS];
 const administratorCommands=new Set(['restoreRecord','setMembership','setMaintenance','setEnergySettings','requestRestore','requestReset','requestPurge',...ADMIN_STOCK_COMMANDS,...RELATIONSHIP_COMMANDS,...ENERGY_COMMANDS]);
-export async function createSecurityService(project=SECURITY_PROJECT) {
+export async function createSecurityService(project=SECURITY_PROJECT,options={}) {
   requireEmulators(project);
   const app=initializeApp({projectId:project},'hamms-security-'+crypto.randomUUID());
   const db=getFirestore(app),auth=getAuth(app);
+  let recovery;try{recovery=createRecoveryJobs({db,auth,project,requireEmulators,root:options.recoveryRoot});}catch(e){await db.terminate();await deleteApp(app);throw e;}
   const resourceQueues=new Map();
   async function serial(key,fn) {
     const previous=resourceQueues.get(key)||Promise.resolve();
@@ -155,7 +155,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
           check(archived?!old._archived:old._archived===true,'failed-precondition','Record lifecycle already changed');
           afterVersion=old._v+1;
           record={...old,_archived:archived,...(archived?{_archivedAt:FieldValue.serverTimestamp(),_archivedBy:actor.uid,_archiveReason:body.reason}:{_restoredAt:FieldValue.serverTimestamp(),_restoredBy:actor.uid})};
-          write=()=>tx.update(ref,stampRecord(record,docId,actor,afterVersion));
+          write=()=>{tx.create(db.doc('archiveSnapshots/'+opKey),{recordPath:ref.path,operationId:body.operationId,action:command,actorUid:actor.uid,reason:body.reason,beforeVersion:old._v,original:old,committedAt:FieldValue.serverTimestamp()});tx.update(ref,stampRecord(record,docId,actor,afterVersion));};
         }
         result={status:'committed',docId,version:afterVersion};
       } else if(command==='setMembership') {
@@ -167,6 +167,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         result={status:'committed',targetUid:body.targetUid};
       } else if(command==='setMaintenance') {
         exactKeys(body.payload,['maintenance']);check(typeof body.payload.maintenance==='boolean','invalid-argument','Maintenance boolean required');
+        check(!policy.recoveryJobId,'failed-precondition','Recovery owns maintenance; resume or roll back the job');
         target='system/writePolicy';write=()=>tx.set(db.doc(target),{maintenance:body.payload.maintenance,updatedBy:actor.uid,updatedAt:FieldValue.serverTimestamp()},{merge:true});result={status:'committed',maintenance:body.payload.maintenance};
       } else if(command==='setEnergySettings') {
         validateEnergySettings(body.payload);target='energySettings/current';
@@ -180,7 +181,7 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
         result={status:'awaiting-implementation-and-review',jobId:opKey};
       }
       write();
-      tx.create(auditRef,{actorUid:actor.uid,actorEmail:actor.email,command,target,reason:body.reason,beforeVersion,afterVersion,operationId:body.operationId,detail:auditDetail,committedAt:FieldValue.serverTimestamp()});
+      tx.create(auditRef,{actorUid:actor.uid,actorEmail:actor.email,command,target,reason:body.reason,beforeVersion,afterVersion,operationId:body.operationId,outcome:'committed',detail:auditDetail,committedAt:FieldValue.serverTimestamp()});
       tx.create(outcomeRef,{actorUid:actor.uid,requestHash,result,committedAt:FieldValue.serverTimestamp()});
       return result;
     }));
@@ -189,17 +190,17 @@ export async function createSecurityService(project=SECURITY_PROJECT) {
   const server=http.createServer(async(req,res)=>{
     res.setHeader('Content-Type','application/json');res.setHeader('Cache-Control','no-store');
     try {
-      check(req.method==='POST'&&['/commands','/inspect'].includes(req.url),'invalid-argument','POST /commands or /inspect required');
+      check(req.method==='POST'&&['/commands','/inspect','/recovery'].includes(req.url),'invalid-argument','POST command, inspection or recovery required');
       check(req.headers['content-type']?.split(';')[0]==='application/json','invalid-argument','JSON content type required');
       const match=req.headers.authorization?.match(/^Bearer ([^\s]+)$/);check(match,'unauthenticated','Firebase ID token required');
-      const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;check(size<=800000,'invalid-argument','Request too large');chunks.push(chunk);}
+      const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;check(size<=(req.url==='/recovery'?20000000:800000),'invalid-argument','Request too large');chunks.push(chunk);}
       let body;try{body=JSON.parse(Buffer.concat(chunks).toString());}catch{throw new CommandError('invalid-argument','Invalid JSON');}
-      const result=await(req.url==='/inspect'?inspect(match[1],body):execute(match[1],body));res.statusCode=200;res.end(JSON.stringify(result));
+      const result=await(req.url==='/recovery'?recovery.execute(match[1],body):req.url==='/inspect'?inspect(match[1],body):execute(match[1],body));res.statusCode=200;res.end(JSON.stringify(result));
     } catch(e) {
       const code=e instanceof CommandError?e.code:'internal';res.statusCode=codes[code]||500;
       res.end(JSON.stringify({error:{code,message:e instanceof CommandError?e.message:'Command failed'}}));
     }
   });
   // The caller can start the test service only on a loopback listener.
-  return {execute,inspect,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
+  return {execute,inspect,recovery:recovery.execute,db,auth,async listen(){await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));return 'http://127.0.0.1:'+server.address().port;},async close(){if(server.listening)await new Promise(resolve=>server.close(resolve));await db.terminate();await deleteApp(app);}};
 }

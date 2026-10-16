@@ -2,6 +2,7 @@ import {createConfirmedSaves,SaveError} from './confirmed-saves.mjs';
 import {installStockUI} from './stock-ui.mjs';
 import {installRelationshipUI} from './relationship-ui.mjs';
 import {installAnalysisUI} from './analysis-ui.mjs';
+import {installRecoveryUI} from './recovery-ui.mjs';
 
 if(location.hostname!=='127.0.0.1')throw Error('Emulator UI must run on loopback');
 document.getElementById('app-loading-overlay')?.remove();
@@ -187,6 +188,7 @@ async function signIn(email,password){
   const data=await r.json();if(!r.ok)throw new SaveError('unauthenticated','Emulator login failed');
   identity={uid:data.localId,token:data.idToken};controller.account(identity.uid);
   const loaded=await request('/inspect',{load:true});
+  window.HAMMS_PHASE7?.acceptSession(loaded);
   window._phase3Locations=loaded.locations;
   window._phase4AllWO=loaded.stores.wo;
   window._phase5AllAssets=loaded.stores.assets;window._phase5Proposals=loaded.relationshipProposals||[];
@@ -235,6 +237,14 @@ installRelationshipUI({request,notify,toast,watchModal:modal=>modalObserver.obse
 });
 installAnalysisUI({request,notify,toast,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']}),
   async submit(command,closed=[]){if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save first');review={command,closed,draft:visibleDraft()};await applyCompleted(await controller.submit(command));}
+});
+installRecoveryUI({request,notify,watchModal:modal=>modalObserver.observe(modal,{attributes:true,attributeFilter:['class']}),
+  ensureIdle(){if(completion||controller.snapshot.busy||controller.snapshot.pending)throw new SaveError('busy','Resolve the current save before recovery');},
+  async afterCompleted(){const epoch=identity?.uid,loaded=await request('/inspect',{load:true});if(identity?.uid!==epoch)return;
+    window._phase3Locations=loaded.locations;window._phase4AllWO=loaded.stores.wo;window._phase5AllAssets=loaded.stores.assets;window._phase5Proposals=loaded.relationshipProposals||[];window.HAMMS_PHASE6.acceptShared(loaded);
+    for(const [store,rows]of Object.entries(loaded.stores)){_memDB[store]=rows.filter(r=>!r._archived);_cleanStoreState[store]=clone(_memDB[store]);}
+    const page=document.querySelector('.page.active')?.id?.slice(5)||'dashboard';navigate(page,true);await controller.probe();
+  }
 });
 // Always require explicit local sign-in, regardless of the legacy Firebase-disabled fallback.
 document.getElementById('hamms-login-overlay').style.cssText='display:flex!important';document.getElementById('app').style.visibility='hidden';

@@ -71,6 +71,7 @@ export async function prepareStock({db,tx,body,actor,opKey,stampRecord}){
     if(old)check(old._stockManaged===true||!(old.materials?.length),'failed-precondition','Legacy material records require reviewed reconciliation');
     beforeVersion=old?._v??null;afterVersion=(old?._v||0)+1;let record={...old};
     if(cmd==='archiveWorkOrder'||cmd==='restoreWorkOrder'||cmd==='reopenWorkOrder'){
+      if(cmd!=='reopenWorkOrder')writes.push(()=>tx.create(db.doc('archiveSnapshots/'+opKey),{recordPath:ref.path,operationId:body.operationId,action:cmd,actorUid:actor.uid,reason:body.reason,beforeVersion:old._v,original:old,committedAt:now()}));
       if(cmd==='archiveWorkOrder'){check(!old._archived,'failed-precondition','Already archived');record={...old,_archived:true,_archivedAt:now(),_archivedBy:actor.uid,_archiveReason:body.reason};}
       if(cmd==='restoreWorkOrder'){check(old._archived===true,'failed-precondition','Not archived');record={...old,_archived:false,_restoredAt:now(),_restoredBy:actor.uid};}
       if(cmd==='reopenWorkOrder'){check(!old._archived&&old.status==='Cancelled','failed-precondition','Only active cancelled WOs may reopen');record={...old,status:'Open'};}
